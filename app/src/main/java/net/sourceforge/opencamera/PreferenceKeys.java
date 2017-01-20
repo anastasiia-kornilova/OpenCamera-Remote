@@ -239,10 +239,22 @@ public class PreferenceKeys {
     	return "preference_save_photo_prefix";
     }
 
+    // Andy Modla start block
+    public static String getSavePhotoSuffixPreferenceKey() {
+        return "preference_save_photo_suffix";
+    }
+    // Andy Modla end block
+
     public static String getSaveVideoPrefixPreferenceKey() {
     	return "preference_save_video_prefix";
     }
-    
+
+    // Andy Modla start block
+    public static String getSaveVideoSuffixPreferenceKey() {
+        return "preference_save_video_suffix";
+    }
+    // Andy Modla end block
+
     public static String getSaveZuluTimePreferenceKey() {
     	return "preference_save_zulu_time";
     }

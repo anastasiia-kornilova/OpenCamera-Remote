@@ -216,6 +216,18 @@
 	            android:defaultValue="IMG_"
 		        />
 
+			<!-- Andy Modla addition -->
+			<EditTextPreference
+				android:key="preference_save_photo_suffix"
+				android:title="Save photo suffix"
+				android:summary="The suffix to use for the save filenames for photos"
+				android:dialogTitle="Save photo suffix"
+				android:dialogMessage="The suffix to use for save filenames for photos"
+				android:inputType="text"
+				android:defaultValue=""
+				/>
+			<!-- Andy Modla end addition -->
+
 	        <EditTextPreference
 	            android:key="preference_save_video_prefix"
 	            android:title="@string/preference_save_video_prefix"
@@ -226,6 +238,18 @@
 	            android:defaultValue="VID_"
 		        />
 
+			<!-- Andy Modla addition -->
+			<EditTextPreference
+				android:key="preference_save_video_suffix"
+				android:title="Save video suffix"
+				android:summary="The suffix to use for the save filenames for videos"
+				android:dialogTitle="Save video suffix"
+				android:dialogMessage="The suffix to use for save filenames for videos"
+				android:inputType="text"
+				android:defaultValue=""
+				/>
+
+			<!-- Andy Modla end addition -->
             <ListPreference
                 android:key="preference_save_zulu_time"
                 android:title="@string/preference_save_zulu_time"

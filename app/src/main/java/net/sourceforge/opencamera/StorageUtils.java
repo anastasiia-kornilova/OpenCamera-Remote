@@ -448,10 +448,24 @@ public class StorageUtils {
 		String mediaFilename;
         if( type == MEDIA_TYPE_IMAGE ) {
     		String prefix = sharedPreferences.getString(PreferenceKeys.getSavePhotoPrefixPreferenceKey(), "IMG_");
+			// Andy Modla start block -------
+			String sSuffix = sharedPreferences.getString(PreferenceKeys.getSavePhotoSuffixPreferenceKey(), "");
+			if (MainActivity.sCount != "") {
+				mediaFilename = prefix + MainActivity.sCount + index + sSuffix + "." + extension;
+			}
+			else
+				// Andy Modla end block -------
     		mediaFilename = prefix + timeStamp + suffix + index + "." + extension;
         }
         else if( type == MEDIA_TYPE_VIDEO ) {
     		String prefix = sharedPreferences.getString(PreferenceKeys.getSaveVideoPrefixPreferenceKey(), "VID_");
+			// Andy Modla start block -------
+			String sSuffix = sharedPreferences.getString(PreferenceKeys.getSaveVideoSuffixPreferenceKey(), "");
+			if (MainActivity.sCount != "") {
+				mediaFilename = prefix + MainActivity.sCount + index + sSuffix + "." + extension;
+			}
+			else
+				// Andy Modla end block -------
     		mediaFilename = prefix + timeStamp + suffix + index + "." + extension;
         }
         else {

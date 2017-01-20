@@ -911,6 +911,7 @@ public class MainUI {
 				}
 
 				if( volume_keys.equals("volume_take_photo") ) {
+					MainActivity.sCount = "";  // Andy Modla
 					main_activity.takePicture();
 					return true;
 				}
@@ -918,6 +919,7 @@ public class MainUI {
 					if( keydown_volume_up && keydown_volume_down ) {
 						if( MyDebug.LOG )
 							Log.d(TAG, "take photo rather than focus, as both volume keys are down");
+						MainActivity.sCount = "";  // Andy Modla
 						main_activity.takePicture();
 					}
 					else if( main_activity.getPreview().getCurrentFocusValue() != null && main_activity.getPreview().getCurrentFocusValue().equals("focus_mode_manual2") ) {
@@ -1000,6 +1002,7 @@ public class MainUI {
 			case KeyEvent.KEYCODE_CAMERA:
 			{
 				if( event.getRepeatCount() == 0 ) {
+					MainActivity.sCount = "";  // Andy Modla
 					main_activity.takePicture();
 					return true;
 				}

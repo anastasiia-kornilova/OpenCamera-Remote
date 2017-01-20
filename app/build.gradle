@@ -24,6 +24,12 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'
         }
     }
+    productFlavors {
+        remote {
+            applicationId "net.sourceforge.opencameraremote"
+            buildConfigField 'boolean', 'EXTRA_FEATURES', "true"
+        }
+    }
 
     lintOptions {
         checkReleaseBuilds false
@@ -32,5 +38,6 @@ android {
 
 dependencies {
     compile 'com.android.support:support-v4:24.0.0'
+	compile files('libs/oscP5.jar')
     testCompile 'junit:junit:4.12'
 }

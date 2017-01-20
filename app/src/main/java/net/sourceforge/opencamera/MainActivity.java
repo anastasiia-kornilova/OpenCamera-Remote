@@ -8,6 +8,7 @@ import net.sourceforge.opencamera.UI.MainUI;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.DatagramSocket;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Hashtable;
@@ -80,6 +81,8 @@ import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.ZoomControls;
 
+import netP5.*; // network library for UDP Server Andy Modla
+
 /** The main Activity for Open Camera.
  */
 public class MainActivity extends Activity implements AudioListener.AudioListenerCallback {
@@ -132,6 +135,11 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 	public volatile float test_angle;
 	public volatile String test_last_saved_image;
 	
+	private UdpServer udpServer; 	// Andy Modla
+	private int port = 8000;  // Andy Modla
+	public static String sCount = ""; // Andy Modla
+	public static String sSuffix = "_1"; // Andy Modla
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		long debug_time = 0;
@@ -512,7 +520,121 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 			Log.d(TAG, "size of preloaded_bitmap_resources: " + preloaded_bitmap_resources.size());
 		}
 	}
-	
+
+	// Andy Modla begin block
+	@Override
+	protected void onStart() {
+		if( MyDebug.LOG ) {
+			Log.d(TAG, "onStart");
+		}
+		super.onStart();
+		// Andy Modla code for UDP server setup
+		// Create the UDP server to listen for incoming broadcast messages,
+		// create a listener for the server.
+		// A listener will receive NetMessages which contain camera commands.
+		// NetListener is an interface and requires methods netEvent
+		// and netStatus.
+		//
+		NetListener nl1 = new NetListener() {
+			public void netEvent(NetMessage m) {
+				byte[] data = m.getData();
+				byte[] b = new byte[1];
+				b[0] = data[0];
+				String command = Bytes.getAsString(b);
+				Log.d(TAG, "netEvent (UDP Server) command=" + command);
+				if (command.startsWith("F")) {
+					if (!preview.isVideo()) {
+						if (!preview.isFocusWaiting()) {
+							Log.d(TAG, "remote request focus");
+							preview.requestAutoFocus();
+						}
+					}
+					else {
+						preview.showToast(null, "Remote NotIn Photo Mode");
+					}
+				}
+				else if (command.startsWith("S") || command.startsWith("C")) {
+					byte[] s = new byte[4];
+					s[0] = data[1];
+					s[1] = data[2];
+					s[2] = data[3];
+					s[3] = data[4];
+					sCount = Bytes.getAsString(s);
+					Log.d(TAG, "remote takePicture() " + sCount);
+					if (!preview.isVideo()) {
+						takePicture();
+					}
+					else {
+						preview.showToast(null, "Remote Not In Photo Mode");
+					}
+				}
+				else if (command.startsWith("V")) { // record/stop video
+					byte[] s = new byte[4];
+					s[0] = data[1];
+					s[1] = data[2];
+					s[2] = data[3];
+					s[3] = data[4];
+					sCount = Bytes.getAsString(s);
+					Log.d(TAG, "remote record video " + sCount);
+					if (preview.isVideo()) {
+						MainActivity.this.runOnUiThread(new Runnable() {
+							public void run() {
+								if (preview.isVideoRecording())
+									preview.stopVideo(true);
+								else
+									takePicture();
+							}
+						});
+					}
+					else {
+						preview.showToast(null, "Remote Not In Video Mode");
+					}
+				}
+				else if (command.startsWith("P")) { // pause
+					Log.d(TAG, "remote pause Video " );
+					if (preview.isVideo()) {
+						MainActivity.this.runOnUiThread(new Runnable() {
+							public void run() {
+								if (preview.isVideoRecording()) {
+									preview.pauseVideo();
+								}
+							}
+						});
+					}
+					else {
+						preview.showToast(null, "Remote Not In Video Mode");
+					}
+				}
+			}
+			public void netStatus(NetStatus s) {
+				Log.d(TAG, "netStatus (UDP Server) : "+s);
+			}
+		};
+		udpServer = new UdpServer( nl1 , port );
+		if (udpServer == null) {
+			Log.d(TAG, "UdpServer error");
+			preview.showToast(null, "Remote Message Server not started");
+		}
+	}
+	// Andy Modla end block
+
+	// Andy Modla begin block
+	@Override
+	protected void onStop() {
+		if( MyDebug.LOG ) {
+			Log.d(TAG, "onStop");
+		}
+		super.onStop();
+		if (udpServer != null) {
+			DatagramSocket ds = udpServer.socket();
+			if (ds!= null) {
+				ds.disconnect();
+				ds.close();
+			}
+		}
+	}
+	// Andy Modla end block
+
     @TargetApi(Build.VERSION_CODES.M)
 	@Override
 	protected void onDestroy() {
@@ -669,6 +791,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 				public void run() {
 					if( MyDebug.LOG )
 						Log.d(TAG, "taking picture due to audio trigger");
+					MainActivity.sCount = ""; // Andy Modla
 					takePicture();
 				}
 			});
