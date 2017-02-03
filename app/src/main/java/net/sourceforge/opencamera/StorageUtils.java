@@ -429,20 +429,70 @@ public class StorageUtils {
 		return null;
 	}
 
+	private String getFilenameNumber(int index) {
+		// fix size of index number at 4 characters long
+		if (index == 0)
+			return "0000";
+		else if (index < 10)
+			return ("000" + String.valueOf(index));
+		else if (index < 100)
+			return ("00" + String.valueOf(index));
+		else if (index < 1000)
+			return ("0" + String.valueOf(index));
+		return String.valueOf(index);
+	}
+
+	private String getPhotoIndex() {
+		SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+		int photoIndex = sharedPreferences.getInt(PreferenceKeys.getPhotoFilenameNumberPreferenceKey(),0);
+		photoIndex++;
+		if (photoIndex > 9999) {
+			photoIndex = 1;
+		}
+		SharedPreferences.Editor edit = sharedPreferences.edit();
+		edit.putInt(PreferenceKeys.getPhotoFilenameNumberPreferenceKey(), photoIndex);
+		edit.commit();
+		return getFilenameNumber(photoIndex);
+	}
+
+	private String getVideoIndex() {
+		SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+		int videoIndex = sharedPreferences.getInt(PreferenceKeys.getVideoFilenameNumberPreferenceKey(),0);
+		videoIndex++;
+		if (videoIndex > 9999) {
+			videoIndex = 1;
+		}
+		SharedPreferences.Editor edit = sharedPreferences.edit();
+		edit.putInt(PreferenceKeys.getVideoFilenameNumberPreferenceKey(), videoIndex);
+		edit.commit();
+		return getFilenameNumber(videoIndex);
+	}
+
+
+	enum FN_FORMAT {local, zulu, number};
+
 	private String createMediaFilename(int type, String suffix, int count, String extension, Date current_date) {
         String index = "";
         if( count > 0 ) {
             index = "_" + count; // try to find a unique filename
         }
 		SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
-		boolean useZuluTime = sharedPreferences.getString(PreferenceKeys.getSaveZuluTimePreferenceKey(), "local").equals("zulu");
-		String timeStamp;
-		if( useZuluTime ) {
+		// Andy Modla
+		String sfnFormat = sharedPreferences.getString(PreferenceKeys.getSaveZuluTimePreferenceKey(),"local");
+		FN_FORMAT fnFormat;
+		if (sfnFormat.equals("local"))
+			fnFormat = FN_FORMAT.local;
+		else if (sfnFormat.equals("zulu"))
+			fnFormat = FN_FORMAT.zulu;
+		else
+			fnFormat = FN_FORMAT.number;
+		String timeStamp = "";
+		if( fnFormat == FN_FORMAT.zulu ) {
 			SimpleDateFormat fmt = new SimpleDateFormat("yyyyMMdd_HHmmss'Z'", Locale.US);
 			fmt.setTimeZone(TimeZone.getTimeZone("UTC"));
 			timeStamp = fmt.format(current_date);
 		}
-		else {
+		else if (fnFormat == FN_FORMAT.local){
 			timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(current_date);
 		}
 		String mediaFilename;
@@ -453,9 +503,15 @@ public class StorageUtils {
 			if (MainActivity.sCount != "") {
 				mediaFilename = prefix + MainActivity.sCount + index + sSuffix + "." + extension;
 			}
-			else
-				// Andy Modla end block -------
-    		mediaFilename = prefix + timeStamp + suffix + index + "." + extension;
+			else {
+				if (fnFormat == FN_FORMAT.number) {
+					timeStamp = getPhotoIndex();
+					mediaFilename = prefix + timeStamp + sSuffix + suffix + index + "." + extension;
+				} else {
+					mediaFilename = prefix + timeStamp + suffix + index + "." + extension;
+				}
+			}
+			// Andy Modla end block -------
         }
         else if( type == MEDIA_TYPE_VIDEO ) {
     		String prefix = sharedPreferences.getString(PreferenceKeys.getSaveVideoPrefixPreferenceKey(), "VID_");
@@ -464,9 +520,15 @@ public class StorageUtils {
 			if (MainActivity.sCount != "") {
 				mediaFilename = prefix + MainActivity.sCount + index + sSuffix + "." + extension;
 			}
-			else
-				// Andy Modla end block -------
-    		mediaFilename = prefix + timeStamp + suffix + index + "." + extension;
+			else {
+				if (fnFormat == FN_FORMAT.number) {
+					timeStamp = getVideoIndex();
+					mediaFilename = prefix + timeStamp + sSuffix + suffix + index + "." + extension;
+				} else {
+					mediaFilename = prefix + timeStamp + suffix + index + "." + extension;
+				}
+			}
+			// Andy Modla end block -------
         }
         else {
         	// throw exception as this is a programming error

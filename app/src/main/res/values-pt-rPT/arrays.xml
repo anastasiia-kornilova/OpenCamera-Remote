@@ -547,5 +547,6 @@
     <string-array name="preference_save_zulu_time_values">
         <item>local</item>
         <item>zulu</item>
+        <item>number</item>
     </string-array>
 </resources>

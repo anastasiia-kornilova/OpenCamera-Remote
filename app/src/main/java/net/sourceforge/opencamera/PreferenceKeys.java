@@ -12,8 +12,22 @@ public class PreferenceKeys {
     public static String getFirstTimePreferenceKey() {
         return "done_first_time";
     }
-    
-	/** If this preference is set, no longer show the auto-stabilise info dialog.
+
+    /** Photo Filename number
+     *
+     */
+    public static String getPhotoFilenameNumberPreferenceKey() {
+        return "photo_filename_number";
+    }
+
+    /** Photo Filename number
+     *
+     */
+    public static String getVideoFilenameNumberPreferenceKey() {
+        return "video_filename_number";
+    }
+
+    /** If this preference is set, no longer show the auto-stabilise info dialog.
 	 */
     public static String getAutoStabiliseInfoPreferenceKey() {
         return "done_auto_stabilise_info";

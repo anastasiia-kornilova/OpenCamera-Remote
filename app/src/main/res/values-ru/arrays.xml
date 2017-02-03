@@ -543,10 +543,12 @@
     <string-array name="preference_save_zulu_time_entries">
         <item>Местное время</item>
         <item>UTC (Zulu)</item>
+        <item>####</item>
     </string-array>
     <string-array name="preference_save_zulu_time_values">
         <item>local</item>
         <item>zulu</item>
+        <item>number</item>
     </string-array>
     <string-array name="preference_expo_bracketing_n_images_entries">
         <item>3</item>
