@@ -444,12 +444,19 @@ public class StorageUtils {
 
 	private String getPhotoIndex() {
 		SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
-		int photoIndex = sharedPreferences.getInt(PreferenceKeys.getPhotoFilenameNumberPreferenceKey(),0);
+		SharedPreferences.Editor edit = sharedPreferences.edit();
+		boolean resetNumber = sharedPreferences.getBoolean(PreferenceKeys.getPhotoFilenameNumberResetPreferenceKey(),false);
+		int photoIndex = 0;
+		if (resetNumber) {
+			edit.putBoolean(PreferenceKeys.getPhotoFilenameNumberResetPreferenceKey(),false);
+		}
+		else {
+			photoIndex = sharedPreferences.getInt(PreferenceKeys.getPhotoFilenameNumberPreferenceKey(), 0);
+		}
 		photoIndex++;
 		if (photoIndex > 9999) {
 			photoIndex = 1;
 		}
-		SharedPreferences.Editor edit = sharedPreferences.edit();
 		edit.putInt(PreferenceKeys.getPhotoFilenameNumberPreferenceKey(), photoIndex);
 		edit.commit();
 		return getFilenameNumber(photoIndex);
@@ -457,12 +464,19 @@ public class StorageUtils {
 
 	private String getVideoIndex() {
 		SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
-		int videoIndex = sharedPreferences.getInt(PreferenceKeys.getVideoFilenameNumberPreferenceKey(),0);
+		SharedPreferences.Editor edit = sharedPreferences.edit();
+		boolean resetNumber = sharedPreferences.getBoolean(PreferenceKeys.getVideoFilenameNumberResetPreferenceKey(),false);
+		int videoIndex = 0;
+		if (resetNumber) {
+			edit.putBoolean(PreferenceKeys.getVideoFilenameNumberResetPreferenceKey(),false);
+		}
+		else {
+			videoIndex = sharedPreferences.getInt(PreferenceKeys.getVideoFilenameNumberPreferenceKey(), 0);
+		}
 		videoIndex++;
 		if (videoIndex > 9999) {
 			videoIndex = 1;
 		}
-		SharedPreferences.Editor edit = sharedPreferences.edit();
 		edit.putInt(PreferenceKeys.getVideoFilenameNumberPreferenceKey(), videoIndex);
 		edit.commit();
 		return getFilenameNumber(videoIndex);

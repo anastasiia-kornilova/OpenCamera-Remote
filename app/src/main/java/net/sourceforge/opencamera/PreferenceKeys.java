@@ -20,11 +20,25 @@ public class PreferenceKeys {
         return "photo_filename_number";
     }
 
-    /** Photo Filename number
+    /** Video Filename number
      *
      */
     public static String getVideoFilenameNumberPreferenceKey() {
         return "video_filename_number";
+    }
+
+    /** Photo Filename number reset
+     *
+     */
+    public static String getPhotoFilenameNumberResetPreferenceKey() {
+        return "photo_filename_number_reset";
+    }
+
+    /** Video Filename number reset
+     *
+     */
+    public static String getVideoFilenameNumberResetPreferenceKey() {
+        return "video_filename_number_reset";
     }
 
     /** If this preference is set, no longer show the auto-stabilise info dialog.

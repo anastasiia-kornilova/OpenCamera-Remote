@@ -248,8 +248,8 @@
 				android:inputType="text"
 				android:defaultValue=""
 				/>
-
 			<!-- Andy Modla end addition -->
+
             <ListPreference
                 android:key="preference_save_zulu_time"
                 android:title="@string/preference_save_zulu_time"
@@ -259,7 +259,22 @@
                 android:defaultValue="local"
                 />
 
-	       <SwitchPreference
+			<!-- Andy Modla addition -->
+			<SwitchPreference
+				android:key="photo_filename_number_reset"
+				android:title="Reset photo filename number"
+				android:summary="Reset photo filename number"
+				android:defaultValue="false"
+				/>
+			<SwitchPreference
+				android:key="video_filename_number_reset"
+				android:title="Reset video filename number"
+				android:summary="Reset video filename number"
+				android:defaultValue="false"
+				/>
+			<!-- Andy Modla end addition -->
+
+			<SwitchPreference
                 android:key="preference_show_when_locked"
                 android:title="@string/preference_show_when_locked"
                 android:summary="@string/preference_show_when_locked_summary"
