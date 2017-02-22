@@ -127,6 +127,8 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 	private final ToastBoxer audio_control_toast = new ToastBoxer();
 	private boolean block_startup_toast = false; // used when returning from Settings/Popup - if we're displaying a toast anyway, don't want to display the info toast too
 
+	private final int manual_n = 1000; // the number of values on the seekbar used for manual focus distance, ISO or exposure speed
+
 	// for testing; must be volatile for test project reading the state
 	public boolean is_test; // whether called from OpenCamera.test testing
 	public volatile Bitmap gallery_bitmap;
@@ -387,45 +389,41 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 		SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
 		boolean is_samsung = Build.MANUFACTURER.toLowerCase(Locale.US).contains("samsung");
 		boolean is_oneplus = Build.MANUFACTURER.toLowerCase(Locale.US).contains("oneplus");
-		boolean is_nexus = Build.MODEL.toLowerCase(Locale.US).contains("nexus");
-		boolean is_nexus6 = Build.MODEL.toLowerCase(Locale.US).contains("nexus 6");
-		boolean is_pixel_phone = Build.DEVICE != null && Build.DEVICE.equals("sailfish");
-		boolean is_pixel_xl_phone = Build.DEVICE != null && Build.DEVICE.equals("marlin");
+		//boolean is_nexus = Build.MODEL.toLowerCase(Locale.US).contains("nexus");
+		//boolean is_nexus6 = Build.MODEL.toLowerCase(Locale.US).contains("nexus 6");
+		//boolean is_pixel_phone = Build.DEVICE != null && Build.DEVICE.equals("sailfish");
+		//boolean is_pixel_xl_phone = Build.DEVICE != null && Build.DEVICE.equals("marlin");
 		if( MyDebug.LOG ) {
 			Log.d(TAG, "is_samsung? " + is_samsung);
 			Log.d(TAG, "is_oneplus? " + is_oneplus);
-			Log.d(TAG, "is_nexus? " + is_nexus);
-			Log.d(TAG, "is_nexus6? " + is_nexus6);
-			Log.d(TAG, "is_pixel_phone? " + is_pixel_phone);
-			Log.d(TAG, "is_pixel_xl_phone? " + is_pixel_xl_phone);
+			//Log.d(TAG, "is_nexus? " + is_nexus);
+			//Log.d(TAG, "is_nexus6? " + is_nexus6);
+			//Log.d(TAG, "is_pixel_phone? " + is_pixel_phone);
+			//Log.d(TAG, "is_pixel_xl_phone? " + is_pixel_xl_phone);
 		}
 		if( is_samsung || is_oneplus ) {
 			// workaround needed for Samsung S7 at least (tested on Samsung RTL)
 			// workaround needed for OnePlus 3 at least (see http://forum.xda-developers.com/oneplus-3/help/camera2-support-t3453103 )
+			// update for v1.37: significant improvements have been made for standard flash and Camera2 API. But OnePlus 3T still has problem
+			// that photos come out with a blue tinge if flash is on, and the scene is bright enough not to need it; Samsung devices also seem
+			// to work okay, testing on S7 on RTL, but still keeping the fake flash mode in place for these devices, until we're sure of good
+			// behaviour
 			if( MyDebug.LOG )
 				Log.d(TAG, "set fake flash for camera2");
 			SharedPreferences.Editor editor = sharedPreferences.edit();
 			editor.putBoolean(PreferenceKeys.getCamera2FakeFlashPreferenceKey(), true);
 			editor.apply();
 		}
-		if( is_nexus6 ) {
+		/*if( is_nexus6 ) {
 			// Nexus 6 captureBurst() started having problems with Android 7 upgrade - images appeared in wrong order (and with wrong order of shutter speeds in exif info), as well as problems with the camera failing with serious errors
 			// we set this even for Nexus 6 devices not on Android 7, as at some point they'll likely be upgraded to Android 7
+			// Update: now fixed in v1.37, this was due to bug where we set RequestTag.CAPTURE for all captures in takePictureBurstExpoBracketing(), rather than just the last!
 			if( MyDebug.LOG )
 				Log.d(TAG, "disable fast burst for camera2");
 			SharedPreferences.Editor editor = sharedPreferences.edit();
 			editor.putBoolean(PreferenceKeys.getCamera2FastBurstPreferenceKey(), false);
 			editor.apply();
-		}
-		if( is_nexus || is_pixel_phone || is_pixel_xl_phone ) {
-			// generally continuous picture mode works better than auto-focus, though we want to make sure it works okay on the device
-			// Nexus devices seem to work fine with continuous mode, and we know that Google's camera uses continuous focus
-			if( MyDebug.LOG )
-				Log.d(TAG, "set continuous focus mode for photo");
-			SharedPreferences.Editor editor = sharedPreferences.edit();
-			editor.putString(PreferenceKeys.getFocusPreferenceKey(0, false), "focus_mode_continuous_picture");
-			editor.apply();
-		}
+		}*/
 	}
 
 	/** Switches modes if required, if called from a relevant intent/tile.
@@ -1070,17 +1068,17 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
     private static double seekbarScalingInverse(double scaling) {
     	return Math.log(99.0*scaling + 1.0) / Math.log(100.0);
     }
-    
+
 	private void setProgressSeekbarScaled(SeekBar seekBar, double min_value, double max_value, double value) {
-		seekBar.setMax(100);
+		seekBar.setMax(manual_n);
 		double scaling = (value - min_value)/(max_value - min_value);
 		double frac = MainActivity.seekbarScalingInverse(scaling);
-		int percent = (int)(frac*100.0 + 0.5); // add 0.5 for rounding
-		if( percent < 0 )
-			percent = 0;
-		else if( percent > 100 )
-			percent = 100;
-		seekBar.setProgress(percent);
+		int new_value = (int)(frac*manual_n + 0.5); // add 0.5 for rounding
+		if( new_value < 0 )
+			new_value = 0;
+		else if( new_value > manual_n )
+			new_value = manual_n;
+		seekBar.setProgress(new_value);
 	}
     
     public void clickedExposureLock(View view) {
@@ -2244,7 +2242,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 		    focusSeekBar.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
 				@Override
 				public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-					double frac = progress/100.0;
+					double frac = progress/(double)manual_n;
 					double scaling = MainActivity.seekbarScaling(frac);
 					float focus_distance = (float)(scaling * preview.getMinimumFocusDistance());
 					preview.setFocusDistance(focus_distance);
@@ -2275,7 +2273,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 					public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
 						if( MyDebug.LOG )
 							Log.d(TAG, "iso seekbar onProgressChanged: " + progress);
-						double frac = progress/100.0;
+						double frac = progress/(double)manual_n;
 						if( MyDebug.LOG )
 							Log.d(TAG, "exposure_time frac: " + frac);
 						double scaling = MainActivity.seekbarScaling(frac);
@@ -2306,7 +2304,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 						public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
 							if( MyDebug.LOG )
 								Log.d(TAG, "exposure_time seekbar onProgressChanged: " + progress);
-							double frac = progress/100.0;
+							double frac = progress/(double)manual_n;
 							if( MyDebug.LOG )
 								Log.d(TAG, "exposure_time frac: " + frac);
 							//long exposure_time = min_exposure_time + (long)(frac * (max_exposure_time - min_exposure_time));
@@ -2708,24 +2706,26 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 			audio_listener.start();
 			SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
 			String sensitivity_pref = sharedPreferences.getString(PreferenceKeys.getAudioNoiseControlSensitivityPreferenceKey(), "0");
-			if( sensitivity_pref.equals("3") ) {
-				audio_noise_sensitivity = 50;
-			}
-			else if( sensitivity_pref.equals("2") ) {
-				audio_noise_sensitivity = 75;
-			}
-			else if( sensitivity_pref.equals("1") ) {
-				audio_noise_sensitivity = 125;
-			}
-			else if( sensitivity_pref.equals("-1") ) {
-				audio_noise_sensitivity = 150;
-			}
-			else if( sensitivity_pref.equals("-2") ) {
-				audio_noise_sensitivity = 200;
-			}
-			else {
-				// default
-				audio_noise_sensitivity = 100;
+			switch(sensitivity_pref) {
+				case "3":
+					audio_noise_sensitivity = 50;
+					break;
+				case "2":
+					audio_noise_sensitivity = 75;
+					break;
+				case "1":
+					audio_noise_sensitivity = 125;
+					break;
+				case "-1":
+					audio_noise_sensitivity = 150;
+					break;
+				case "-2":
+					audio_noise_sensitivity = 200;
+					break;
+				default:
+					// default
+					audio_noise_sensitivity = 100;
+					break;
 			}
 			mainUI.audioControlStarted();
 		}

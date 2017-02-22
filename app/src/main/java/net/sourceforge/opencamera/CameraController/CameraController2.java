@@ -6,6 +6,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
@@ -57,6 +58,8 @@ public class CameraController2 extends CameraController {
 	private CameraCharacteristics characteristics;
 	private List<Integer> zoom_ratios;
 	private int current_zoom_value;
+	private boolean supports_face_detect_mode_simple;
+	private boolean supports_face_detect_mode_full;
 	private final ErrorCallback preview_error_cb;
 	private final ErrorCallback camera_error_cb;
 	private CameraCaptureSession captureSession;
@@ -124,7 +127,8 @@ public class CameraController2 extends CameraController {
 	private boolean sounds_enabled = true;
 
 	private boolean capture_result_is_ae_scanning;
-	private boolean capture_result_needs_flash; // whether flash will fire
+	private Integer capture_result_ae; // latest ae_state, null if not available
+	private boolean is_flash_required; // whether capture_result_ae suggests FLASH_REQUIRED? Or in neither FLASH_REQUIRED nor CONVERGED, this stores the last known result
 	private boolean capture_result_has_iso;
 	private int capture_result_iso;
 	private boolean capture_result_has_exposure_time;
@@ -327,44 +331,47 @@ public class CameraController2 extends CameraController {
 					Log.d(TAG, "flash_value: " + flash_value);
 				}
 				// prefer to set flash via the ae mode (otherwise get even worse results), except for torch which we can't
-		    	if( flash_value.equals("flash_off") ) {
-		    		builder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_ON);
-					builder.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_OFF);
-		    	}
-		    	else if( flash_value.equals("flash_auto") ) {
-					// note we set this even in fake flash mode (where we manually turn torch on and off to simulate flash) so we
-					// can read the FLASH_REQUIRED state to determine if flash is required
+				switch(flash_value) {
+					case "flash_off":
+						builder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_ON);
+						builder.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_OFF);
+						break;
+					case "flash_auto":
+						// note we set this even in fake flash mode (where we manually turn torch on and off to simulate flash) so we
+						// can read the FLASH_REQUIRED state to determine if flash is required
 		    		/*if( use_fake_precapture || CameraController2.this.want_expo_bracketing )
 			    		builder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_ON);
 		    		else*/
-		    			builder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_ON_AUTO_FLASH);
-					builder.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_OFF);
-		    	}
-		    	else if( flash_value.equals("flash_on") ) {
-					// see note above for "flash_auto" for why we set this even fake flash mode - arguably we don't need to know
-					// about FLASH_REQUIRED in flash_on mode, but we set it for consistency...
+						builder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_ON_AUTO_FLASH);
+						builder.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_OFF);
+						break;
+					case "flash_on":
+						// see note above for "flash_auto" for why we set this even fake flash mode - arguably we don't need to know
+						// about FLASH_REQUIRED in flash_on mode, but we set it for consistency...
 		    		/*if( use_fake_precapture || CameraController2.this.want_expo_bracketing )
 			    		builder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_ON);
 		    		else*/
-		    			builder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_ON_ALWAYS_FLASH);
-					builder.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_OFF);
-		    	}
-		    	else if( flash_value.equals("flash_torch") ) {
-					builder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_ON);
-					builder.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_TORCH);
-		    	}
-		    	else if( flash_value.equals("flash_red_eye") ) {
-		    		// not supported for expo bracketing
-		    		if( CameraController2.this.want_expo_bracketing )
-			    		builder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_ON);
-		    		else
-		    			builder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_ON_AUTO_FLASH_REDEYE);
-					builder.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_OFF);
-		    	}
-		    	else if( flash_value.equals("flash_frontscreen_auto") || flash_value.equals("flash_frontscreen_on") ) {
-		    		builder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_ON);
-					builder.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_OFF);
-		    	}
+						builder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_ON_ALWAYS_FLASH);
+						builder.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_OFF);
+						break;
+					case "flash_torch":
+						builder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_ON);
+						builder.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_TORCH);
+						break;
+					case "flash_red_eye":
+						// not supported for expo bracketing
+						if (CameraController2.this.want_expo_bracketing)
+							builder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_ON);
+						else
+							builder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_ON_AUTO_FLASH_REDEYE);
+						builder.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_OFF);
+						break;
+					case "flash_frontscreen_auto":
+					case "flash_frontscreen_on":
+						builder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_ON);
+						builder.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_OFF);
+						break;
+				}
 			}
 			return true;
 		}
@@ -961,19 +968,34 @@ public class CameraController2 extends CameraController {
 
 		int [] face_modes = characteristics.get(CameraCharacteristics.STATISTICS_INFO_AVAILABLE_FACE_DETECT_MODES);
 		camera_features.supports_face_detection = false;
+		supports_face_detect_mode_simple = false;
+		supports_face_detect_mode_full = false;
 		for(int face_mode : face_modes) {
 			if( MyDebug.LOG )
 				Log.d(TAG, "face detection mode: " + face_mode);
-			// Although we currently only make use of the "SIMPLE" features, some devices (e.g., Nexus 6) support FULL and not SIMPLE.
-			// We don't support SIMPLE yet, as I don't have any devices to test this.
-			if( face_mode == CameraCharacteristics.STATISTICS_FACE_DETECT_MODE_FULL ) {
+			// we currently only make use of the "SIMPLE" features, documented as:
+			// "Return face rectangle and confidence values only."
+			// note that devices that support STATISTICS_FACE_DETECT_MODE_FULL (e.g., Nexus 6) don't return
+			// STATISTICS_FACE_DETECT_MODE_SIMPLE in the list, so we have check for either
+			if( face_mode == CameraCharacteristics.STATISTICS_FACE_DETECT_MODE_SIMPLE ) {
 				camera_features.supports_face_detection = true;
+				supports_face_detect_mode_simple = true;
+				if( MyDebug.LOG )
+					Log.d(TAG, "supports simple face detection mode");
+			}
+			else if( face_mode == CameraCharacteristics.STATISTICS_FACE_DETECT_MODE_FULL ) {
+				camera_features.supports_face_detection = true;
+				supports_face_detect_mode_full = true;
+				if( MyDebug.LOG )
+					Log.d(TAG, "supports full face detection mode");
 			}
 		}
 		if( camera_features.supports_face_detection ) {
 			int face_count = characteristics.get(CameraCharacteristics.STATISTICS_INFO_MAX_FACE_COUNT);
 			if( face_count <= 0 ) {
 				camera_features.supports_face_detection = false;
+				supports_face_detect_mode_simple = false;
+				supports_face_detect_mode_full = false;
 			}
 		}
 
@@ -1237,58 +1259,60 @@ public class CameraController2 extends CameraController {
 		SupportedValues supported_values = checkModeIsSupported(values, value, default_value);
 		if( supported_values != null ) {
 			int selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_DISABLED;
-			if( supported_values.selected_value.equals("action") ) {
-				selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_ACTION;
-			}
-			else if( supported_values.selected_value.equals("barcode") ) {
-				selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_BARCODE;
-			}
-			else if( supported_values.selected_value.equals("beach") ) {
-				selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_BEACH;
-			}
-			else if( supported_values.selected_value.equals("candlelight") ) {
-				selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_CANDLELIGHT;
-			}
-			else if( supported_values.selected_value.equals("auto") ) {
-				selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_DISABLED;
-			}
-			else if( supported_values.selected_value.equals("fireworks") ) {
-				selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_FIREWORKS;
-			}
-			// "hdr" no longer available in Camera2
-			else if( supported_values.selected_value.equals("landscape") ) {
-				selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_LANDSCAPE;
-			}
-			else if( supported_values.selected_value.equals("night") ) {
-				selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_NIGHT;
-			}
-			else if( supported_values.selected_value.equals("night-portrait") ) {
-				selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_NIGHT_PORTRAIT;
-			}
-			else if( supported_values.selected_value.equals("party") ) {
-				selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_PARTY;
-			}
-			else if( supported_values.selected_value.equals("portrait") ) {
-				selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_PORTRAIT;
-			}
-			else if( supported_values.selected_value.equals("snow") ) {
-				selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_SNOW;
-			}
-			else if( supported_values.selected_value.equals("sports") ) {
-				selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_SPORTS;
-			}
-			else if( supported_values.selected_value.equals("steadyphoto") ) {
-				selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_STEADYPHOTO;
-			}
-			else if( supported_values.selected_value.equals("sunset") ) {
-				selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_SUNSET;
-			}
-			else if( supported_values.selected_value.equals("theatre") ) {
-				selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_THEATRE;
-			}
-			else {
-				if( MyDebug.LOG )
-					Log.d(TAG, "unknown selected_value: " + supported_values.selected_value);
+			switch(supported_values.selected_value) {
+				case "action":
+					selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_ACTION;
+					break;
+				case "barcode":
+					selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_BARCODE;
+					break;
+				case "beach":
+					selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_BEACH;
+					break;
+				case "candlelight":
+					selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_CANDLELIGHT;
+					break;
+				case "auto":
+					selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_DISABLED;
+					break;
+				case "fireworks":
+					selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_FIREWORKS;
+					break;
+				// "hdr" no longer available in Camera2
+				case "landscape":
+					selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_LANDSCAPE;
+					break;
+				case "night":
+					selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_NIGHT;
+					break;
+				case "night-portrait":
+					selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_NIGHT_PORTRAIT;
+					break;
+				case "party":
+					selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_PARTY;
+					break;
+				case "portrait":
+					selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_PORTRAIT;
+					break;
+				case "snow":
+					selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_SNOW;
+					break;
+				case "sports":
+					selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_SPORTS;
+					break;
+				case "steadyphoto":
+					selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_STEADYPHOTO;
+					break;
+				case "sunset":
+					selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_SUNSET;
+					break;
+				case "theatre":
+					selected_value2 = CameraMetadata.CONTROL_SCENE_MODE_THEATRE;
+					break;
+				default:
+					if (MyDebug.LOG)
+						Log.d(TAG, "unknown selected_value: " + supported_values.selected_value);
+					break;
 			}
 
 			camera_settings.scene_mode = selected_value2;
@@ -1373,36 +1397,38 @@ public class CameraController2 extends CameraController {
 		SupportedValues supported_values = checkModeIsSupported(values, value, default_value);
 		if( supported_values != null ) {
 			int selected_value2 = CameraMetadata.CONTROL_EFFECT_MODE_OFF;
-			if( supported_values.selected_value.equals("aqua") ) {
-				selected_value2 = CameraMetadata.CONTROL_EFFECT_MODE_AQUA;
-			}
-			else if( supported_values.selected_value.equals("blackboard") ) {
-				selected_value2 = CameraMetadata.CONTROL_EFFECT_MODE_BLACKBOARD;
-			}
-			else if( supported_values.selected_value.equals("mono") ) {
-				selected_value2 = CameraMetadata.CONTROL_EFFECT_MODE_MONO;
-			}
-			else if( supported_values.selected_value.equals("negative") ) {
-				selected_value2 = CameraMetadata.CONTROL_EFFECT_MODE_NEGATIVE;
-			}
-			else if( supported_values.selected_value.equals("none") ) {
-				selected_value2 = CameraMetadata.CONTROL_EFFECT_MODE_OFF;
-			}
-			else if( supported_values.selected_value.equals("posterize") ) {
-				selected_value2 = CameraMetadata.CONTROL_EFFECT_MODE_POSTERIZE;
-			}
-			else if( supported_values.selected_value.equals("sepia") ) {
-				selected_value2 = CameraMetadata.CONTROL_EFFECT_MODE_SEPIA;
-			}
-			else if( supported_values.selected_value.equals("solarize") ) {
-				selected_value2 = CameraMetadata.CONTROL_EFFECT_MODE_SOLARIZE;
-			}
-			else if( supported_values.selected_value.equals("whiteboard") ) {
-				selected_value2 = CameraMetadata.CONTROL_EFFECT_MODE_WHITEBOARD;
-			}
-			else {
-				if( MyDebug.LOG )
-					Log.d(TAG, "unknown selected_value: " + supported_values.selected_value);
+			switch(supported_values.selected_value) {
+				case "aqua":
+					selected_value2 = CameraMetadata.CONTROL_EFFECT_MODE_AQUA;
+					break;
+				case "blackboard":
+					selected_value2 = CameraMetadata.CONTROL_EFFECT_MODE_BLACKBOARD;
+					break;
+				case "mono":
+					selected_value2 = CameraMetadata.CONTROL_EFFECT_MODE_MONO;
+					break;
+				case "negative":
+					selected_value2 = CameraMetadata.CONTROL_EFFECT_MODE_NEGATIVE;
+					break;
+				case "none":
+					selected_value2 = CameraMetadata.CONTROL_EFFECT_MODE_OFF;
+					break;
+				case "posterize":
+					selected_value2 = CameraMetadata.CONTROL_EFFECT_MODE_POSTERIZE;
+					break;
+				case "sepia":
+					selected_value2 = CameraMetadata.CONTROL_EFFECT_MODE_SEPIA;
+					break;
+				case "solarize":
+					selected_value2 = CameraMetadata.CONTROL_EFFECT_MODE_SOLARIZE;
+					break;
+				case "whiteboard":
+					selected_value2 = CameraMetadata.CONTROL_EFFECT_MODE_WHITEBOARD;
+					break;
+				default:
+					if (MyDebug.LOG)
+						Log.d(TAG, "unknown selected_value: " + supported_values.selected_value);
+					break;
 			}
 
 			camera_settings.color_effect = selected_value2;
@@ -1484,33 +1510,35 @@ public class CameraController2 extends CameraController {
 		SupportedValues supported_values = checkModeIsSupported(values, value, default_value);
 		if( supported_values != null ) {
 			int selected_value2 = CameraMetadata.CONTROL_AWB_MODE_AUTO;
-			if( supported_values.selected_value.equals("auto") ) {
-				selected_value2 = CameraMetadata.CONTROL_AWB_MODE_AUTO;
-			}
-			else if( supported_values.selected_value.equals("cloudy-daylight") ) {
-				selected_value2 = CameraMetadata.CONTROL_AWB_MODE_CLOUDY_DAYLIGHT;
-			}
-			else if( supported_values.selected_value.equals("daylight") ) {
-				selected_value2 = CameraMetadata.CONTROL_AWB_MODE_DAYLIGHT;
-			}
-			else if( supported_values.selected_value.equals("fluorescent") ) {
-				selected_value2 = CameraMetadata.CONTROL_AWB_MODE_FLUORESCENT;
-			}
-			else if( supported_values.selected_value.equals("incandescent") ) {
-				selected_value2 = CameraMetadata.CONTROL_AWB_MODE_INCANDESCENT;
-			}
-			else if( supported_values.selected_value.equals("shade") ) {
-				selected_value2 = CameraMetadata.CONTROL_AWB_MODE_SHADE;
-			}
-			else if( supported_values.selected_value.equals("twilight") ) {
-				selected_value2 = CameraMetadata.CONTROL_AWB_MODE_TWILIGHT;
-			}
-			else if( supported_values.selected_value.equals("warm-fluorescent") ) {
-				selected_value2 = CameraMetadata.CONTROL_AWB_MODE_WARM_FLUORESCENT;
-			}
-			else {
-				if( MyDebug.LOG )
-					Log.d(TAG, "unknown selected_value: " + supported_values.selected_value);
+			switch(supported_values.selected_value) {
+				case "auto":
+					selected_value2 = CameraMetadata.CONTROL_AWB_MODE_AUTO;
+					break;
+				case "cloudy-daylight":
+					selected_value2 = CameraMetadata.CONTROL_AWB_MODE_CLOUDY_DAYLIGHT;
+					break;
+				case "daylight":
+					selected_value2 = CameraMetadata.CONTROL_AWB_MODE_DAYLIGHT;
+					break;
+				case "fluorescent":
+					selected_value2 = CameraMetadata.CONTROL_AWB_MODE_FLUORESCENT;
+					break;
+				case "incandescent":
+					selected_value2 = CameraMetadata.CONTROL_AWB_MODE_INCANDESCENT;
+					break;
+				case "shade":
+					selected_value2 = CameraMetadata.CONTROL_AWB_MODE_SHADE;
+					break;
+				case "twilight":
+					selected_value2 = CameraMetadata.CONTROL_AWB_MODE_TWILIGHT;
+					break;
+				case "warm-fluorescent":
+					selected_value2 = CameraMetadata.CONTROL_AWB_MODE_WARM_FLUORESCENT;
+					break;
+				default:
+					if (MyDebug.LOG)
+						Log.d(TAG, "unknown selected_value: " + supported_values.selected_value);
+					break;
 			}
 
 			camera_settings.white_balance = selected_value2;
@@ -1771,9 +1799,19 @@ public class CameraController2 extends CameraController {
 
 	@Override
 	public void setOptimiseAEForDRO(boolean optimise_ae_for_dro) {
-		if (MyDebug.LOG)
-			Log.d(TAG, "clearCaptureExposureScaleStops");
-		this.optimise_ae_for_dro = optimise_ae_for_dro;
+		if( MyDebug.LOG )
+			Log.d(TAG, "setOptimiseAEForDRO: " + optimise_ae_for_dro);
+		boolean is_oneplus = Build.MANUFACTURER.toLowerCase(Locale.US).contains("oneplus");
+		if( is_oneplus ) {
+			// OnePlus 3T has preview corruption / camera freezing problems when using manual shutter speeds
+			// So best not to modify auto-exposure for DRO
+			this.optimise_ae_for_dro = false;
+			if( MyDebug.LOG )
+				Log.d(TAG, "don't modify ae for OnePlus");
+		}
+		else {
+			this.optimise_ae_for_dro = optimise_ae_for_dro;
+		}
 	}
 
 	@Override
@@ -2125,34 +2163,36 @@ public class CameraController2 extends CameraController {
 		if( MyDebug.LOG )
 			Log.d(TAG, "setFocusValue: " + focus_value);
 		int focus_mode;
-    	if( focus_value.equals("focus_mode_auto") || focus_value.equals("focus_mode_locked") ) {
-    		focus_mode = CaptureRequest.CONTROL_AF_MODE_AUTO;
-    	}
-    	else if( focus_value.equals("focus_mode_infinity") ) {
-    		focus_mode = CaptureRequest.CONTROL_AF_MODE_OFF;
-        	camera_settings.focus_distance = 0.0f;
-    	}
-    	else if( focus_value.equals("focus_mode_manual2") ) {
-    		focus_mode = CaptureRequest.CONTROL_AF_MODE_OFF;
-        	camera_settings.focus_distance = camera_settings.focus_distance_manual;
-    	}
-    	else if( focus_value.equals("focus_mode_macro") ) {
-    		focus_mode = CaptureRequest.CONTROL_AF_MODE_MACRO;
-    	}
-    	else if( focus_value.equals("focus_mode_edof") ) {
-    		focus_mode = CaptureRequest.CONTROL_AF_MODE_EDOF;
-    	}
-    	else if( focus_value.equals("focus_mode_continuous_picture") ) {
-    		focus_mode = CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE;
-    	}
-    	else if( focus_value.equals("focus_mode_continuous_video") ) {
-    		focus_mode = CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_VIDEO;
-    	}
-    	else {
-    		if( MyDebug.LOG )
-    			Log.d(TAG, "setFocusValue() received unknown focus value " + focus_value);
-    		return;
-    	}
+		switch(focus_value) {
+			case "focus_mode_auto":
+			case "focus_mode_locked":
+				focus_mode = CaptureRequest.CONTROL_AF_MODE_AUTO;
+				break;
+			case "focus_mode_infinity":
+				focus_mode = CaptureRequest.CONTROL_AF_MODE_OFF;
+				camera_settings.focus_distance = 0.0f;
+				break;
+			case "focus_mode_manual2":
+				focus_mode = CaptureRequest.CONTROL_AF_MODE_OFF;
+				camera_settings.focus_distance = camera_settings.focus_distance_manual;
+				break;
+			case "focus_mode_macro":
+				focus_mode = CaptureRequest.CONTROL_AF_MODE_MACRO;
+				break;
+			case "focus_mode_edof":
+				focus_mode = CaptureRequest.CONTROL_AF_MODE_EDOF;
+				break;
+			case "focus_mode_continuous_picture":
+				focus_mode = CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE;
+				break;
+			case "focus_mode_continuous_video":
+				focus_mode = CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_VIDEO;
+				break;
+			default:
+				if (MyDebug.LOG)
+					Log.d(TAG, "setFocusValue() received unknown focus value " + focus_value);
+				return;
+		}
     	camera_settings.has_af_mode = true;
     	camera_settings.af_mode = focus_mode;
     	camera_settings.setFocusMode(previewBuilder);
@@ -2929,14 +2969,33 @@ public class CameraController2 extends CameraController {
 
 	@Override
 	public boolean startFaceDetection() {
-    	if( previewBuilder.get(CaptureRequest.STATISTICS_FACE_DETECT_MODE) != null && previewBuilder.get(CaptureRequest.STATISTICS_FACE_DETECT_MODE) == CaptureRequest.STATISTICS_FACE_DETECT_MODE_FULL ) {
+		if( MyDebug.LOG )
+			Log.d(TAG, "startFaceDetection");
+    	if( previewBuilder.get(CaptureRequest.STATISTICS_FACE_DETECT_MODE) != null && previewBuilder.get(CaptureRequest.STATISTICS_FACE_DETECT_MODE) != CaptureRequest.STATISTICS_FACE_DETECT_MODE_OFF ) {
+			if( MyDebug.LOG )
+				Log.d(TAG, "face detection already enabled");
     		return false;
     	}
-    	camera_settings.has_face_detect_mode = true;
-    	camera_settings.face_detect_mode = CaptureRequest.STATISTICS_FACE_DETECT_MODE_FULL;
+		if( supports_face_detect_mode_full ) {
+			if( MyDebug.LOG )
+				Log.d(TAG, "use full face detection");
+			camera_settings.has_face_detect_mode = true;
+			camera_settings.face_detect_mode = CaptureRequest.STATISTICS_FACE_DETECT_MODE_FULL;
+		}
+		else if( supports_face_detect_mode_simple ) {
+			if( MyDebug.LOG )
+				Log.d(TAG, "use simple face detection");
+			camera_settings.has_face_detect_mode = true;
+			camera_settings.face_detect_mode = CaptureRequest.STATISTICS_FACE_DETECT_MODE_SIMPLE;
+		}
+		else {
+			Log.e(TAG, "startFaceDetection() called but face detection not available");
+			return false;
+		}
     	camera_settings.setFaceDetectMode(previewBuilder);
     	try {
     		setRepeatingRequest();
+			return false;
     	}
 		catch(CameraAccessException e) {
 			if( MyDebug.LOG ) {
@@ -2953,6 +3012,32 @@ public class CameraController2 extends CameraController {
 	public void setFaceDetectionListener(final FaceDetectionListener listener) {
 		this.face_detection_listener = listener;
 	}
+
+	/* If do_af_trigger_for_continuous is false, doing an autoFocus() in continuous focus mode just
+	   means we call the autofocus callback the moment focus is not scanning (as with old Camera API).
+	   If do_af_trigger_for_continuous is true, we set CONTROL_AF_TRIGGER_START, and wait for
+	   CONTROL_AF_STATE_FOCUSED_LOCKED or CONTROL_AF_STATE_NOT_FOCUSED_LOCKED, similar to other focus
+	   methods.
+	   do_af_trigger_for_continuous==true has advantages:
+	     - On Nexus 6 for flash auto, it means ae state is set to FLASH_REQUIRED if it is required
+	       when it comes to taking the photo. If do_af_trigger_for_continuous==false, sometimes
+	       it's set to CONTROL_AE_STATE_CONVERGED even for dark scenes, so we think we can skip
+	       the precapture, causing photos to come out dark (or we can force always doing precapture,
+	       but that makes things slower when flash isn't needed)
+	     - On OnePlus 3T, with do_af_trigger_for_continuous==false photos come out with blue tinge
+	       if the scene is not dark (but still dark enough that you'd want flash).
+	       do_af_trigger_for_continuous==true fixes this for cases where the flash fires for autofocus.
+	       Note that the problem is still not fixed for flash on where the scene is bright enough to
+	       not need flash (and so we don't fire flash for autofocus).
+	   do_af_trigger_for_continuous==true has disadvantage:
+	     - On both Nexus 6 and OnePlus 3T, taking photos with flash is longer, as we have flash firing
+	       for autofocus and precapture. Though note this is the case with autofocus mode anyway.
+	   Note for fake flash mode, we still can use do_af_trigger_for_continuous==false (and doing the
+	   af trigger for fake flash mode can sometimes mean flash fires for too long and we get a worse
+	   result).
+	 */
+	//private final static boolean do_af_trigger_for_continuous = false;
+	private final static boolean do_af_trigger_for_continuous = true;
 
 	@Override
 	public void autoFocus(final AutoFocusCallback cb, boolean capture_follows_autofocus_hint) {
@@ -2975,15 +3060,8 @@ public class CameraController2 extends CameraController {
 			cb.onAutoFocus(true);
 			return;
 		}
-		else if( focus_mode == CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE ) {
-			/* In the old Camera API, doing an autofocus in FOCUS_MODE_CONTINUOUS_PICTURE mode would call the callback when the camera isn't focusing,
-			 * and return whether focus was successful or not. So we replicate the behaviour here too (see previewCaptureCallback.process()).
-			 * This is essential to have correct behaviour for flash mode in continuous picture focus mode. Otherwise:
-			 *  - Taking photo with flash auto when flash is used, or flash on, takes longer (excessive amount of flash firing due to an additional unnecessary focus before taking photo).
-			 *  - Taking photo with flash auto when flash is needed sometime results in flash firing for the (unnecessary) autofocus, then not firing for final picture, resulting in too dark pictures.
-			 *    This seems to happen with scenes that have both light and dark regions.
-			 *  (All tested on Nexus 6, Android 6.)
-			 */
+		else if( (!do_af_trigger_for_continuous || use_fake_precapture_mode) && focus_mode == CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE ) {
+			// See note above for do_af_trigger_for_continuous
 			this.capture_follows_autofocus_hint = capture_follows_autofocus_hint;
 			this.autofocus_cb = cb;
 			return;
@@ -3015,8 +3093,6 @@ public class CameraController2 extends CameraController {
 		precapture_state_change_time_ms = -1;
 		this.capture_follows_autofocus_hint = capture_follows_autofocus_hint;
 		this.autofocus_cb = cb;
-		// Camera2Basic sets a trigger with capture
-		// Google Camera sets to idle with a repeating request, then sets af trigger to start with a capture
 		try {
 			if( use_fake_precapture_mode && !camera_settings.has_iso ) {
 				boolean want_flash = false;
@@ -3033,6 +3109,7 @@ public class CameraController2 extends CameraController {
 						Log.d(TAG, "turn on torch for fake flash");
 					afBuilder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_ON);
 					afBuilder.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_TORCH);
+					test_fake_flash_focus++;
 					fake_precapture_torch_focus_performed = true;
 					setRepeatingRequest(afBuilder.build());
 					// We sleep for a short time as on some devices (e.g., OnePlus 3T), the torch will turn off when autofocus
@@ -3052,6 +3129,9 @@ public class CameraController2 extends CameraController {
 					}
 				}
 			}
+
+			// Camera2Basic sets a trigger with capture
+			// Google Camera sets to idle with a repeating request, then sets af trigger to start with a capture
 			afBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_IDLE);
 			setRepeatingRequest(afBuilder.build());
 			afBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START);
@@ -3177,6 +3257,7 @@ public class CameraController2 extends CameraController {
 					Log.d(TAG, "setting torch for capture");
 				stillBuilder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_ON);
 				stillBuilder.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_TORCH);
+				test_fake_flash_photo++;
 			}
 			if( !camera_settings.has_iso && this.optimise_ae_for_dro && capture_result_has_exposure_time && (camera_settings.flash_value.equals("flash_off") || camera_settings.flash_value.equals("flash_auto") || camera_settings.flash_value.equals("flash_frontscreen_auto") ) ) {
 				final double full_exposure_time_scale = Math.pow(2.0, -0.5);
@@ -3291,6 +3372,7 @@ public class CameraController2 extends CameraController {
 			stillBuilder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_OFF);
 			if( use_fake_precapture_mode && fake_precapture_torch_performed ) {
 				stillBuilder.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_TORCH);
+				test_fake_flash_photo++;
 			}
 			// else don't turn torch off, as user may be in torch on mode
 
@@ -3387,6 +3469,18 @@ public class CameraController2 extends CameraController {
 					requests.add( stillBuilder.build() );
 				}
 			}
+
+			/*
+			// testing:
+			requests.add( stillBuilder.build() );
+			requests.add( stillBuilder.build() );
+			requests.add( stillBuilder.build() );
+			requests.add( stillBuilder.build() );
+			if( MyDebug.LOG )
+				Log.d(TAG, "set RequestTag.CAPTURE for last burst request");
+			stillBuilder.setTag(RequestTag.CAPTURE);
+			requests.add( stillBuilder.build() );
+			*/
 
 			n_burst = requests.size();
 			if( MyDebug.LOG )
@@ -3485,27 +3579,32 @@ public class CameraController2 extends CameraController {
 	private void runFakePrecapture() {
 		if( MyDebug.LOG )
 			Log.d(TAG, "runFakePrecapture");
-		if( camera_settings.flash_value.equals("flash_auto") || camera_settings.flash_value.equals("flash_on") ) {
-			if( MyDebug.LOG )
-				Log.d(TAG, "turn on torch");
-			previewBuilder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_ON);
-			previewBuilder.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_TORCH);
-			fake_precapture_torch_performed = true;
-		}
-		else if( camera_settings.flash_value.equals("flash_frontscreen_auto") || camera_settings.flash_value.equals("flash_frontscreen_on") ) {
-			if( jpeg_cb != null ) {
-				if( MyDebug.LOG )
-					Log.d(TAG, "request screen turn on for frontscreen flash");
-				jpeg_cb.onFrontScreenTurnOn();
-			}
-			else {
-				if( MyDebug.LOG )
-					Log.e(TAG, "can't request screen turn on for frontscreen flash, as no jpeg_cb");
-			}
-		}
-		else {
-			if( MyDebug.LOG )
-				Log.e(TAG, "runFakePrecapture called with unexpected flash value: " + camera_settings.flash_value);
+		switch(camera_settings.flash_value) {
+			case "flash_auto":
+			case "flash_on":
+				if(MyDebug.LOG)
+					Log.d(TAG, "turn on torch");
+				previewBuilder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_ON);
+				previewBuilder.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_TORCH);
+				test_fake_flash_precapture++;
+				fake_precapture_torch_performed = true;
+				break;
+			case "flash_frontscreen_auto":
+			case "flash_frontscreen_on":
+				if(jpeg_cb != null) {
+					if(MyDebug.LOG)
+						Log.d(TAG, "request screen turn on for frontscreen flash");
+					jpeg_cb.onFrontScreenTurnOn();
+				}
+				else {
+					if (MyDebug.LOG)
+						Log.e(TAG, "can't request screen turn on for frontscreen flash, as no jpeg_cb");
+				}
+				break;
+			default:
+				if(MyDebug.LOG)
+					Log.e(TAG, "runFakePrecapture called with unexpected flash value: " + camera_settings.flash_value);
+				break;
 		}
     	state = STATE_WAITING_FAKE_PRECAPTURE_START;
     	precapture_state_change_time_ms = System.currentTimeMillis();
@@ -3555,23 +3654,34 @@ public class CameraController2 extends CameraController {
 			fake_precapture_use_flash_time_ms = time_now;
 			return fake_precapture_use_flash;
 		}
-		fake_precapture_use_flash_time_ms = time_now;
-		if( camera_settings.flash_value.equals("flash_auto") ) {
-			fake_precapture_use_flash = capture_result_needs_flash;
-		}
-		else if( camera_settings.flash_value.equals("flash_frontscreen_auto") ) {
-			// iso_threshold fine-tuned for Nexus 6 - front camera ISO never goes above 805, but a threshold of 700 is too low
-			int iso_threshold = camera_settings.flash_value.equals("flash_frontscreen_auto") ? 750 : 1000;
-			fake_precapture_use_flash = capture_result_has_iso && capture_result_iso >= iso_threshold;
-			if( MyDebug.LOG )
-				Log.d(TAG, "    ISO was: " + capture_result_iso);
-		}
-		else {
-			// shouldn't really be calling this function if not flash auto...
-			fake_precapture_use_flash = false;
+		switch(camera_settings.flash_value) {
+			case "flash_auto":
+				fake_precapture_use_flash = is_flash_required;
+				break;
+			case "flash_frontscreen_auto":
+				// iso_threshold fine-tuned for Nexus 6 - front camera ISO never goes above 805, but a threshold of 700 is too low
+				int iso_threshold = camera_settings.flash_value.equals("flash_frontscreen_auto") ? 750 : 1000;
+				fake_precapture_use_flash = capture_result_has_iso && capture_result_iso >= iso_threshold;
+				if(MyDebug.LOG)
+					Log.d(TAG, "    ISO was: " + capture_result_iso);
+				break;
+			default:
+				// shouldn't really be calling this function if not flash auto...
+				fake_precapture_use_flash = false;
+				break;
 		}
 		if( MyDebug.LOG )
 			Log.d(TAG, "fake_precapture_use_flash: " + fake_precapture_use_flash);
+		// We only cache the result if we decide to turn on torch, as that mucks up our ability to tell if we need the flash (since once the torch
+		// is on, the ae_state thinks it's bright enough to not need flash!)
+		// But if we don't turn on torch, this problem doesn't occur, so no need to cache - and good that the next time we should make an up-to-date
+		// decision.
+		if( fake_precapture_use_flash ) {
+			fake_precapture_use_flash_time_ms = time_now;
+		}
+		else {
+			fake_precapture_use_flash_time_ms = -1;
+		}
 		return fake_precapture_use_flash;
 	}
 	
@@ -3610,6 +3720,7 @@ public class CameraController2 extends CameraController {
 				takePictureAfterPrecapture();
 			}
 			else if( use_fake_precapture_mode ) {
+				// fake flash auto/on mode
 				// fake precapture works by turning on torch (or using a "front screen flash"), so we can't use the camera's own decision for flash auto
 				// instead we check the current ISO value
 				boolean auto_flash = camera_settings.flash_value.equals("flash_auto") || camera_settings.flash_value.equals("flash_frontscreen_auto");
@@ -3635,6 +3746,7 @@ public class CameraController2 extends CameraController {
 					// An alternative solution would be to switch torch off and back on again to cause ae scanning to start - but
 					// at worst this is tricky to get working, and at best, taking photos would be slower.
 					fake_precapture_torch_performed = true; // so we know to fire the torch when capturing
+					test_fake_flash_precapture++; // for testing, should treat this same as if we did do the precapture
 					state = STATE_WAITING_FAKE_PRECAPTURE_DONE;
 					precapture_state_change_time_ms = System.currentTimeMillis();
 				}
@@ -3644,7 +3756,11 @@ public class CameraController2 extends CameraController {
 			}
 			else {
 				// standard flash, flash auto or on
-				if( camera_settings.flash_value.equals("flash_auto") && !capture_result_needs_flash ) {
+				// note that we don't call needsFlash() (or use is_flash_required) - as if ae state is neither CONVERGED nor FLASH_REQUIRED, we err on the side
+				// of caution and don't skip the precapture
+				//boolean needs_flash = capture_result_ae != null && capture_result_ae == CaptureResult.CONTROL_AE_STATE_FLASH_REQUIRED;
+				boolean needs_flash = capture_result_ae != null && capture_result_ae != CaptureResult.CONTROL_AE_STATE_CONVERGED;
+				if( camera_settings.flash_value.equals("flash_auto") && !needs_flash ) {
 					// if we call precapture anyway, flash wouldn't fire - but we tend to have a pause
 					// so skipping the precapture if flash isn't going to fire makes this faster
 					if( MyDebug.LOG )
@@ -3754,6 +3870,13 @@ public class CameraController2 extends CameraController {
 	}
 
 	@Override
+	public boolean needsFlash() {
+		//boolean needs_flash = capture_result_ae != null && capture_result_ae == CaptureResult.CONTROL_AE_STATE_FLASH_REQUIRED;
+		//return needs_flash;
+		return is_flash_required;
+	}
+
+	@Override
 	public boolean captureResultHasIso() {
 		return capture_result_has_iso;
 	}
@@ -3804,13 +3927,13 @@ public class CameraController2 extends CameraController {
 		private long last_process_frame_number = 0;
 		private int last_af_state = -1;
 
-		public void onCaptureBufferLost(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, Surface target, long frameNumber) {
+		public void onCaptureBufferLost(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull Surface target, long frameNumber) {
 			if( MyDebug.LOG )
 				Log.d(TAG, "onCaptureBufferLost: " + frameNumber);
 			super.onCaptureBufferLost(session, request, target, frameNumber);
 		}
 
-		public void onCaptureFailed(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, CaptureFailure failure) {
+		public void onCaptureFailed(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull CaptureFailure failure) {
 			if( MyDebug.LOG )
 				Log.d(TAG, "onCaptureFailed: " + failure);
 			super.onCaptureFailed(session, request, failure); // API docs say this does nothing, but call it just to be safe
@@ -3846,11 +3969,17 @@ public class CameraController2 extends CameraController {
 		public void onCaptureProgressed(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull CaptureResult partialResult) {
 			/*if( MyDebug.LOG )
 				Log.d(TAG, "onCaptureProgressed");*/
-			process(request, partialResult);
+			//process(request, partialResult);
+			// Note that we shouldn't try to process partial results - or if in future we decide to, remember that it's documented that
+			// not all results may be available. E.g., OnePlus 3T on Android 7 (OxygenOS 4.0.2) reports null for AF_STATE from this method.
+			// We'd also need to fix up the discarding of old frames in process(), as we probably don't want to be discarding the
+			// complete results from onCaptureCompleted()!
 			super.onCaptureProgressed(session, request, partialResult); // API docs say this does nothing, but call it just to be safe (as with Google Camera)
 		}
 
 		public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
+			/*if( MyDebug.LOG )
+				Log.d(TAG, "onCaptureCompleted");*/
 			if( request.getTag() == RequestTag.CAPTURE ) {
 				if (MyDebug.LOG) {
 					Log.d(TAG, "onCaptureCompleted: capture");
@@ -3910,47 +4039,7 @@ public class CameraController2 extends CameraController {
 				else
 					Log.d(TAG, "CONTROL_AF_STATE = " + af_state);
 			}*/
-			if( af_state != null && af_state == CaptureResult.CONTROL_AF_STATE_PASSIVE_SCAN ) {
-				/*if( MyDebug.LOG )
-					Log.d(TAG, "not ready for capture: " + af_state);*/
-				ready_for_capture = false;
-			}
-			else {
-				/*if( MyDebug.LOG )
-					Log.d(TAG, "ready for capture: " + af_state);*/
-				ready_for_capture = true;
-				if( autofocus_cb != null && focusIsContinuous() ) {
-					Integer focus_mode = previewBuilder.get(CaptureRequest.CONTROL_AF_MODE);
-					if( focus_mode != null && focus_mode == CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE ) {
-						if( MyDebug.LOG )
-							Log.d(TAG, "call autofocus callback, as continuous mode and not focusing: " + af_state);
-						// need to check af_state != null, I received Google Play crash in 1.33 where it was null
-						boolean focus_success = af_state != null && ( af_state == CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED || af_state == CaptureResult.CONTROL_AF_STATE_PASSIVE_FOCUSED );
-						if( MyDebug.LOG ) {
-							if( focus_success )
-								Log.d(TAG, "autofocus success");
-							else
-								Log.d(TAG, "autofocus failed");
-							if( af_state == null )
-								Log.e(TAG, "continuous focus mode but af_state is null");
-							else
-								Log.d(TAG, "af_state: " + af_state);
-						}
-						autofocus_cb.onAutoFocus(focus_success);
-						autofocus_cb = null;
-						capture_follows_autofocus_hint = false;
-					}
-				}
-			}
 
-			/*if( MyDebug.LOG ) {
-				if( autofocus_cb == null ) {
-					if( af_state == CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED )
-						Log.d(TAG, "processAF: autofocus success but no callback set");
-					else if( af_state == CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED )
-						Log.d(TAG, "processAF: autofocus failed but no callback set");
-				}
-			}*/
 			// CONTROL_AE_STATE can be null on some devices, so as with af_state, use Integer
 			Integer ae_state = result.get(CaptureResult.CONTROL_AE_STATE);
 			/*if( MyDebug.LOG ) {
@@ -3971,6 +4060,77 @@ public class CameraController2 extends CameraController {
 				else
 					Log.d(TAG, "CONTROL_AE_STATE = " + ae_state);
 			}*/
+			Integer flash_mode = result.get(CaptureResult.FLASH_MODE);
+			if( use_fake_precapture_mode && ( fake_precapture_torch_focus_performed || fake_precapture_torch_performed ) && flash_mode != null && flash_mode == CameraMetadata.FLASH_MODE_TORCH ) {
+				// don't change ae state while torch is on for fake flash
+			}
+			else if( ae_state == null ) {
+				capture_result_ae = null;
+				is_flash_required = false;
+			}
+			else if( !ae_state.equals(capture_result_ae) ) {
+				// need to store this before calling the autofocus callbacks below
+				if( MyDebug.LOG )
+					Log.d(TAG, "CONTROL_AE_STATE changed from " + capture_result_ae + " to " + ae_state);
+				capture_result_ae = ae_state;
+				// capture_result_ae should always be non-null here, as we've already handled ae_state separately
+				if( capture_result_ae == CaptureResult.CONTROL_AE_STATE_FLASH_REQUIRED && !is_flash_required ) {
+					is_flash_required = true;
+					if( MyDebug.LOG )
+						Log.d(TAG, "flash now required");
+				}
+				else if( capture_result_ae == CaptureResult.CONTROL_AE_STATE_CONVERGED && is_flash_required ) {
+					is_flash_required = false;
+					if( MyDebug.LOG )
+						Log.d(TAG, "flash no longer required");
+				}
+			}
+
+			if( af_state != null && af_state == CaptureResult.CONTROL_AF_STATE_PASSIVE_SCAN ) {
+				/*if( MyDebug.LOG )
+					Log.d(TAG, "not ready for capture: " + af_state);*/
+				ready_for_capture = false;
+			}
+			else {
+				/*if( MyDebug.LOG )
+					Log.d(TAG, "ready for capture: " + af_state);*/
+				ready_for_capture = true;
+				if( autofocus_cb != null && (!do_af_trigger_for_continuous || use_fake_precapture_mode) && focusIsContinuous() ) {
+					Integer focus_mode = previewBuilder.get(CaptureRequest.CONTROL_AF_MODE);
+					if( focus_mode != null && focus_mode == CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE ) {
+						if( MyDebug.LOG )
+							Log.d(TAG, "call autofocus callback, as continuous mode and not focusing: " + af_state);
+						// need to check af_state != null, I received Google Play crash in 1.33 where it was null
+						boolean focus_success = af_state != null && ( af_state == CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED || af_state == CaptureResult.CONTROL_AF_STATE_PASSIVE_FOCUSED );
+						if( MyDebug.LOG ) {
+							if( focus_success )
+								Log.d(TAG, "autofocus success");
+							else
+								Log.d(TAG, "autofocus failed");
+							if( af_state == null )
+								Log.e(TAG, "continuous focus mode but af_state is null");
+							else
+								Log.d(TAG, "af_state: " + af_state);
+						}
+						if( af_state == null ) {
+							test_af_state_null_focus++;
+						}
+						autofocus_cb.onAutoFocus(focus_success);
+						autofocus_cb = null;
+						capture_follows_autofocus_hint = false;
+					}
+				}
+			}
+
+			/*if( MyDebug.LOG ) {
+				if( autofocus_cb == null ) {
+					if( af_state == CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED )
+						Log.d(TAG, "processAF: autofocus success but no callback set");
+					else if( af_state == CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED )
+						Log.d(TAG, "processAF: autofocus failed but no callback set");
+				}
+			}*/
+
 			if( ae_state != null && ae_state == CaptureResult.CONTROL_AE_STATE_SEARCHING ) {
 				/*if( MyDebug.LOG && !capture_result_is_ae_scanning )
 					Log.d(TAG, "ae_state now searching");*/
@@ -3980,17 +4140,6 @@ public class CameraController2 extends CameraController {
 				/*if( MyDebug.LOG && capture_result_is_ae_scanning )
 					Log.d(TAG, "ae_state stopped searching");*/
 				capture_result_is_ae_scanning = false;
-			}
-
-			if( ae_state != null && ae_state == CaptureResult.CONTROL_AE_STATE_FLASH_REQUIRED ) {
-				if( MyDebug.LOG && !capture_result_needs_flash )
-					Log.d(TAG, "ae_state now needs flash");
-				capture_result_needs_flash = true;
-			}
-			else {
-				if( MyDebug.LOG && capture_result_needs_flash )
-					Log.d(TAG, "ae_state no longer needs flash");
-				capture_result_needs_flash = false;
 			}
 
 			/*Integer awb_state = result.get(CaptureResult.CONTROL_AWB_STATE);
@@ -4023,6 +4172,7 @@ public class CameraController2 extends CameraController {
 					// autofocus shouldn't really be requested if af not available, but still allow this rather than getting stuck waiting for autofocus to complete
 					if( MyDebug.LOG )
 						Log.e(TAG, "waiting for autofocus but af_state is null");
+					test_af_state_null_focus++;
 					state = STATE_NORMAL;
 			    	precapture_state_change_time_ms = -1;
 					if( autofocus_cb != null ) {
@@ -4034,8 +4184,8 @@ public class CameraController2 extends CameraController {
 				else if( af_state != last_af_state ) {
 					// check for autofocus completing
 					// need to check that af_state != last_af_state, except for continuous focus mode where if we're already focused, should return immediately
-					if( af_state == CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED || af_state == CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED ||
-							af_state == CaptureResult.CONTROL_AF_STATE_PASSIVE_FOCUSED || af_state == CaptureResult.CONTROL_AF_STATE_PASSIVE_UNFOCUSED
+					if( af_state == CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED || af_state == CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED /*||
+							af_state == CaptureResult.CONTROL_AF_STATE_PASSIVE_FOCUSED || af_state == CaptureResult.CONTROL_AF_STATE_PASSIVE_UNFOCUSED*/
 							) {
 						boolean focus_success = af_state == CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED || af_state == CaptureResult.CONTROL_AF_STATE_PASSIVE_FOCUSED;
 						if( MyDebug.LOG ) {
@@ -4114,6 +4264,7 @@ public class CameraController2 extends CameraController {
 				if( ae_state == null || ae_state == CaptureResult.CONTROL_AE_STATE_PRECAPTURE /*|| ae_state == CaptureResult.CONTROL_AE_STATE_FLASH_REQUIRED*/ ) {
 					// we have to wait for CONTROL_AE_STATE_PRECAPTURE; if we allow CONTROL_AE_STATE_FLASH_REQUIRED, then on Nexus 6 at least we get poor quality results with flash:
 					// varying levels of brightness, sometimes too bright or too dark, sometimes with blue tinge, sometimes even with green corruption
+					// similarly photos with flash come out too dark on OnePlus 3T
 					if( MyDebug.LOG ) {
 						Log.d(TAG, "precapture started after: " + (System.currentTimeMillis() - precapture_state_change_time_ms));
 					}
@@ -4311,7 +4462,7 @@ public class CameraController2 extends CameraController {
 				capture_result_has_focus_distance = false;
 			}*/
 
-			if( face_detection_listener != null && previewBuilder != null && previewBuilder.get(CaptureRequest.STATISTICS_FACE_DETECT_MODE) != null && previewBuilder.get(CaptureRequest.STATISTICS_FACE_DETECT_MODE) == CaptureRequest.STATISTICS_FACE_DETECT_MODE_FULL ) {
+			if( face_detection_listener != null && previewBuilder != null && previewBuilder.get(CaptureRequest.STATISTICS_FACE_DETECT_MODE) != null && previewBuilder.get(CaptureRequest.STATISTICS_FACE_DETECT_MODE) != CaptureRequest.STATISTICS_FACE_DETECT_MODE_OFF ) {
 				Rect sensor_rect = getViewableRect();
 				android.hardware.camera2.params.Face [] camera_faces = result.get(CaptureResult.STATISTICS_FACES);
 				if( camera_faces != null ) {

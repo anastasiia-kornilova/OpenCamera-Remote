@@ -258,6 +258,7 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 	public volatile int count_cameraContinuousFocusMoving;
 	public volatile boolean test_fail_open_camera;
 	public volatile boolean test_video_failure;
+	public volatile boolean test_ticker_called; // set from MySurfaceView or CanvasView
 
 	public Preview(ApplicationInterface applicationInterface, ViewGroup parent) {
 		if( MyDebug.LOG ) {
@@ -2121,6 +2122,7 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 					Log.d(TAG, "bitrate invalid format, can't parse to int: " + bitrate_value);
 			}
 		}
+
 		String fps_value = applicationInterface.getVideoFPSPref();
 		if( !fps_value.equals("default") ) {
 			try {
@@ -2133,7 +2135,37 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 				if( MyDebug.LOG )
 					Log.d(TAG, "fps invalid format, can't parse to int: " + fps_value);
 			}
-		}		
+		}
+
+		/*String pref_video_output_format = applicationInterface.getRecordVideoOutputFormatPref();
+		if( MyDebug.LOG )
+			Log.d(TAG, "pref_video_output_format: " + pref_video_output_format);
+		if( pref_video_output_format.equals("output_format_default") ) {
+			// n.b., although there is MediaRecorder.OutputFormat.DEFAULT, we don't explicitly set that - rather stick with what is default in the CamcorderProfile
+		}
+		else if( pref_video_output_format.equals("output_format_aac_adts") ) {
+			profile.fileFormat = MediaRecorder.OutputFormat.AAC_ADTS;
+		}
+		else if( pref_video_output_format.equals("output_format_amr_nb") ) {
+			profile.fileFormat = MediaRecorder.OutputFormat.AMR_NB;
+		}
+		else if( pref_video_output_format.equals("output_format_amr_wb") ) {
+			profile.fileFormat = MediaRecorder.OutputFormat.AMR_WB;
+		}
+		else if( pref_video_output_format.equals("output_format_mpeg4") ) {
+			profile.fileFormat = MediaRecorder.OutputFormat.MPEG_4;
+			//video_recorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264 );
+			//video_recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC );
+		}
+		else if( pref_video_output_format.equals("output_format_3gpp") ) {
+			profile.fileFormat = MediaRecorder.OutputFormat.THREE_GPP;
+		}
+		else if( pref_video_output_format.equals("output_format_webm") ) {
+			profile.fileFormat = MediaRecorder.OutputFormat.WEBM;
+			profile.videoCodec = MediaRecorder.VideoEncoder.VP8;
+			profile.audioCodec = MediaRecorder.AudioEncoder.VORBIS;
+		}*/
+
 		return profile;
 	}
 	
@@ -3047,7 +3079,9 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 		else {
 			if( MyDebug.LOG )
 				Log.d(TAG, "found no existing focus_value");
-			updateFocus(is_video ? "focus_mode_continuous_video" : "focus_mode_auto", true, true, auto_focus);
+			// here we set the default values for focus mode
+			// note if updating default focus value for photo mode, also update MainActivityTest.setToDefault()
+			updateFocus(is_video ? "focus_mode_continuous_video" : "focus_mode_continuous_picture", true, true, auto_focus);
 		}
 	}
 
@@ -3071,7 +3105,7 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 				if( MyDebug.LOG )
 					Log.d(TAG, "need to change focus mode");
 				old_focus_mode = this.getCurrentFocusValue();
-				updateFocus(is_video ? "focus_mode_continuous_video" : "focus_mode_auto", true, false, false); // don't save, as we're just changing focus mode temporarily for the Samsung S5 video hack
+				updateFocus("focus_mode_continuous_video", true, false, false); // don't save, as we're just changing focus mode temporarily for the Samsung S5 video hack
 			}
 		}
 		return old_focus_mode;
@@ -3757,15 +3791,17 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 	    		if( MyDebug.LOG )
 	    			Log.d(TAG, "pref_audio_src: " + pref_audio_src);
         		int audio_source = MediaRecorder.AudioSource.CAMCORDER;
-        		if( pref_audio_src.equals("audio_src_mic") ) {
-	        		audio_source = MediaRecorder.AudioSource.MIC;
-        		}
-        		else if( pref_audio_src.equals("audio_src_default") ) {
-	        		audio_source = MediaRecorder.AudioSource.DEFAULT;
-        		}
-        		else if( pref_audio_src.equals("audio_src_voice_communication") ) {
-	        		audio_source = MediaRecorder.AudioSource.VOICE_COMMUNICATION;
-        		}
+				switch(pref_audio_src) {
+					case "audio_src_mic":
+						audio_source = MediaRecorder.AudioSource.MIC;
+						break;
+					case "audio_src_default":
+						audio_source = MediaRecorder.AudioSource.DEFAULT;
+						break;
+					case "audio_src_voice_communication":
+						audio_source = MediaRecorder.AudioSource.VOICE_COMMUNICATION;
+						break;
+				}
 	    		if( MyDebug.LOG )
 	    			Log.d(TAG, "audio_source: " + audio_source);
 				video_recorder.setAudioSource(audio_source);
@@ -5116,6 +5152,9 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 		if( MyDebug.LOG )
 			Log.d(TAG, "onResume");
 		this.app_is_paused = false;
+		cameraSurface.onResume();
+		if( canvasView != null )
+			canvasView.onResume();
 		this.openCamera();
     }
 
@@ -5124,6 +5163,9 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 			Log.d(TAG, "onPause");
 		this.app_is_paused = true;
 		this.closeCamera();
+		cameraSurface.onPause();
+		if( canvasView != null )
+			canvasView.onPause();
     }
     
     /*void updateUIPlacement() {
