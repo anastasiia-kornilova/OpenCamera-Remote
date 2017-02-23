@@ -626,8 +626,8 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 		if (udpServer != null) {
 			DatagramSocket ds = udpServer.socket();
 			if (ds!= null) {
-				ds.disconnect();
 				ds.close();
+				ds.disconnect();
 			}
 		}
 	}
