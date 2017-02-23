@@ -495,7 +495,7 @@ public class MyPreferenceFragment extends PreferenceFragment implements OnShared
 	                			Log.d(TAG, "NameNotFoundException exception trying to get version number");
 							e.printStackTrace();
 						}
-                        about_string.append("Open Camera v");
+                        about_string.append("Open Camera Remote v");
                         about_string.append(version);
                         about_string.append("\nCode: ");
                         about_string.append(version_code);
@@ -718,7 +718,7 @@ public class MyPreferenceFragment extends PreferenceFragment implements OnShared
                 		}
                         
                         alertDialog.setMessage(about_string);
-                        alertDialog.setPositiveButton(R.string.about_ok, null);
+						alertDialog.setPositiveButton(android.R.string.ok, null);
                         alertDialog.setNegativeButton(R.string.about_copy_to_clipboard, new DialogInterface.OnClickListener() {
                             public void onClick(DialogInterface dialog, int id) {
                         		if( MyDebug.LOG )
