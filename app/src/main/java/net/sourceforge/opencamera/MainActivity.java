@@ -81,7 +81,7 @@ import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.ZoomControls;
 
-import netP5.*; // network library for UDP Server Andy Modla
+import netP5.*; // network library for UDP Server (Andy Modla change)
 
 /** The main Activity for Open Camera.
  */
@@ -136,11 +136,13 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 	public volatile boolean test_have_angle;
 	public volatile float test_angle;
 	public volatile String test_last_saved_image;
-	
-	private UdpServer udpServer; 	// Andy Modla
-	private int port = 8000;  // Andy Modla
-	public static String sCount = ""; // Andy Modla
-	public static String sSuffix = "_1"; // Andy Modla
+
+	// begin Andy Modla addition
+	private UdpServer udpServer; 	// Broadcast receiver
+	private int port = 8000;  // Broadcast port
+	public static String sCount = ""; // Photo counter received from Broadcast message
+	public static String sSuffix = "_1"; // filename suffix working storage
+	// end Andy Modla addition
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -526,7 +528,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 			Log.d(TAG, "onStart");
 		}
 		super.onStart();
-		// Andy Modla code for UDP server setup
+		// UDP server setup
 		// Create the UDP server to listen for incoming broadcast messages,
 		// create a listener for the server.
 		// A listener will receive NetMessages which contain camera commands.
@@ -623,7 +625,19 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 			Log.d(TAG, "onStop");
 		}
 		super.onStop();
-		if (udpServer != null) {
+		// Do this in stop not pause
+        mainUI.destroyPopup();
+        mSensorManager.unregisterListener(accelerometerListener);
+        mSensorManager.unregisterListener(magneticListener);
+        orientationEventListener.disable();
+        freeAudioListener(false);
+        freeSpeechRecognizer();
+        applicationInterface.getLocationSupplier().freeLocationListeners();
+        releaseSound();
+        applicationInterface.clearLastImages(); // this should happen when pausing the preview, but call explicitly just to be safe
+        preview.onPause();
+
+        if (udpServer != null) {
 			DatagramSocket ds = udpServer.socket();
 			if (ds!= null) {
 				ds.close();
@@ -789,7 +803,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 				public void run() {
 					if( MyDebug.LOG )
 						Log.d(TAG, "taking picture due to audio trigger");
-					MainActivity.sCount = ""; // Andy Modla
+					MainActivity.sCount = ""; // initialize photo counter (Andy Modla)
 					takePicture();
 				}
 			});
@@ -911,16 +925,16 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 		}
 		waitUntilImageQueueEmpty(); // so we don't risk losing any images
         super.onPause(); // docs say to call this before freeing other things
-        mainUI.destroyPopup();
-        mSensorManager.unregisterListener(accelerometerListener);
-        mSensorManager.unregisterListener(magneticListener);
-        orientationEventListener.disable();
-        freeAudioListener(false);
-        freeSpeechRecognizer();
-        applicationInterface.getLocationSupplier().freeLocationListeners();
-		releaseSound();
-		applicationInterface.clearLastImages(); // this should happen when pausing the preview, but call explicitly just to be safe
-		preview.onPause();
+//        mainUI.destroyPopup();
+//        mSensorManager.unregisterListener(accelerometerListener);
+//        mSensorManager.unregisterListener(magneticListener);
+//        orientationEventListener.disable();
+//        freeAudioListener(false);
+//        freeSpeechRecognizer();
+//        applicationInterface.getLocationSupplier().freeLocationListeners();
+//		releaseSound();
+//		applicationInterface.clearLastImages(); // this should happen when pausing the preview, but call explicitly just to be safe
+//		preview.onPause();
 		if( MyDebug.LOG ) {
 			Log.d(TAG, "onPause: total time to pause: " + (System.currentTimeMillis() - debug_time));
 		}
