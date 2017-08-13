@@ -34,6 +34,7 @@
 <body>
 
 <p><small><b>More of my Free software:</b>
+<a href="https://play.google.com/store/apps/details?id=uk.org.opencamera.vibrancehdr">Vibrance HDR</a> ~
 <a href="http://wifiremoteplay.sourceforge.net">Wifi Remote Play</a> ~
 <a href="http://erebusrpg.sourceforge.net">Erebus RPG</a>
 </small>
@@ -50,7 +51,7 @@
 <ul>
 <li><a href="#quickstart">Quickstart</a></li>
 <li><a href="#user_interface">On-Screen User Interface</a></li>
-<li><a href="#auto_stabilise">Auto-stabilise feature</a></li>
+<li><a href="#auto_stabilise">Auto-level feature</a></li>
 <li><a href="#dro">DRO</a></li>
 <li><a href="#hdr">HDR</a></li>
 <li><a href="#dro_vs_hdr">DRO vs HDR</a></li>
@@ -112,7 +113,8 @@ click the Exposure button again, or click elsewhere on the screen. See
 <a href="http://en.wikipedia.org/wiki/Exposure_compensation">Exposure compensation</a>.
 (Only available if the camera supports control of the exposure, and ISO is "auto".) If Camera2 API is used, and
 a non-auto ISO mode is selected, then instead clicking this icon will bring up sliders allowing you to control the ISO
-setting and (if supported) the exposure time.</p>
+setting and (if supported) the exposure time. If Camera2 API is used, and manual white balance is enabled, then this
+icon will also bring up a slider allowing you to control the white balance temperature.</p>
 
 <p><img src="exposure_unlocked.png" alt="Lock Exposure icon" width="32" height="32"><b>Exposure lock</b> - Click to lock or unlock the exposure.
 When locked, the icon will change to <img src="exposure_locked.png" alt="Exposure Locked icon" width="32" height="32">. Locking the exposure means
@@ -136,19 +138,24 @@ back to automatic ISO mode. Note that this setting may not be supported on all c
 If Camera2 API is used, then if a non-auto ISO is used, then selecting the exposure compensation icon
 <img src="ic_exposure_white_48dp.png" alt="Exposure Compensation icon" width="32" height="32"> will bring up sliders allowing direct control over the ISO and exposure
 time. You can also select "M" to switch straight to manual mode, keeping to the current ISO value.</li>
-<li><b>Photo Mode</b> - If Camera2 API is enabled, you can also choose different photo modes:<ul>
+<li><b>Photo Mode</b> - You can also choose different photo modes:<ul>
 	<li><b>Standard</b> - Ordinary operation: takes a single photo.</li>
-	<li><b>DRO</b> - Enables <a href="#dro">Dynamic Range Optimisation</a> mode.</li>
-	<li><b>HDR</b> - Enables <a href="#hdr">High Dynamic Range</a> mode.</li>
-	<li><b>Exposure Bracketing</b> - Takes multiple images at different exposure levels (see
-	Settings/"Photo settings" for options to control the number of images and stops.</li>
+	<li><b>DRO</b> - Enables <a href="#dro">Dynamic Range Optimisation</a> mode (requires Android 5).</li>
+	<li><b>HDR</b> - Enables <a href="#hdr">High Dynamic Range</a> mode (requires Android 5).</li>
+	<li><b>Expo {}</b> - Enables Auto Exposure Bracketing (AEB) mode. Takes multiple images at different exposure
+	levels. See Settings/"Photo settings" for options to control the number of images and stops. These images can
+	be processed in other applications to create HDR images. For Android, you can try my own
+	<a href="https://play.google.com/store/apps/details?id=uk.org.opencamera.vibrancehdr">Vibrance HDR</a>. For
+	PC platforms, try <a href="http://qtpfsgui.sourceforge.net/">Luminance HDR</a>.</li>
 </ul></li>
-<li><b>Auto-stabilise</b> - Enable the auto-stabilise features for photos (see
+<li><b>Auto-level</b> - Enable the auto-level feature for photos (see
 <a href="#auto_stabilise">below</a>). (Only available if the device has enough memory.)</li>
 <li><b>White balance</b> - Choose a method to control how the white balance is set. See
 <a href="http://digital-photography-school.com/introduction-to-white-balance">here</a> for an
 explanation of white balance. (Only available if the camera supports different white balance
-settings.)</li>
+settings.) If Camera2 API is enabled, then you can also set "manual". In this mode, manual
+control over the white balance temperature is available from the exposure compensation icon
+<img src="ic_exposure_white_48dp.png" alt="Exposure Compensation icon" width="32" height="32">.</li>
 <li><b>Scene mode</b> - Choose a scene mode to apply. (Only available if the camera supports scene
 modes.)</li>
 <li><b>Color effect</b> - Choose a color effect to apply. (Only available if the camera supports
@@ -187,14 +194,14 @@ the battery indicator when the location is available (you can still take photos 
 it's just that location data won't be stored in the photo). A dot shows to the top-right of the earth icon to
 indicate the accuracy (green for accurate, yellow for less accurate). If the location isn't available, a red dash will be shown through the earth icon.</p>
 
-<p><a name="auto_stabilise"></a><b>Auto-stabilise feature</b></p>
+<p><a name="auto_stabilise"></a><b>Auto-level feature</b></p>
 
 <p>All Android cameras will rotate the photo depending on the orientation of the camera, but only to the nearest 90 degrees - so the
 photos look right whether you hold the device in "portrait" or "landscape" mode. But Open Camera has the option to rotate the
 photos so they are perfectly level, so your shots come out looking perfectly level every time!</p>
 
 <p><a href="auto_stabilise_image_20131009.jpg">
-<img src="auto_stabilise_image_20131009.jpg" style="max-width:100%" alt="Screenshots demonstrating auto-stabilise" title="Screenshots demonstrating auto-stabilise">
+<img src="auto_stabilise_image_20131009.jpg" style="max-width:100%" alt="Screenshots demonstrating auto-level" title="Screenshots demonstrating auto-level">
 </a></p>
 
 <p>(Note the above screenshot is from a rather old version of Open Camera - the user interface icons look better
@@ -203,7 +210,7 @@ these days!)</p>
 <p>The above shows a rather exaggerated example - in practice, you can probably take better photos, but this feature ensures they
 come out perfectly level, without you having to edit them afterwards in a photo editor. Of course you won't always want this -
 perhaps you're going for artistic 45-degree shots - so this is an option. By default it is disabled.  To enable, open the
-<a href="#user_interface">Popup menu</a>, and enable "Auto-stabilise". Note that this feature is memory intensive - it will not be available
+<a href="#user_interface">Popup menu</a>, and enable "Auto-level". Note that this feature is memory intensive - it will not be available
 on devices with low memory. Even where it is available, the performance of taking photos will be
 slower, and there is a risk it may cause the app to fail on devices I haven't been able
 to test. If you do have problems, you'll have to disable the feature again.</p>
@@ -242,14 +249,10 @@ the grass. Meanwhile the tree branches in the foreground is a bit too dark.</p>
 
 <p>Some things to note about Open Camera's HDR feature:</p>
 <ul>
-<li>HDR requires Camera2 API to be enabled (under Settings), which is only available on some devices.</li>
-<li>Taking photos with HDR is significantly slower than regular photos.</li>
+<li>Taking photos with HDR is significantly slower than regular photos (although note that HDR will give much faster performance if Camera2 API is enabled, see Settings - not all devices support this).</li>
 <li>HDR isn't suitable for scenes with movement, due to combining an image from multiple shots.</li>
 <li>Although Open Camera applies auto-alignment to the images, it's still best to try to hold your device steady while the photo is
 being taken.</li>
-<li>Some devices have problems taking photos in HDR or Exposure Bracketing mode (symptoms include preview freezing, or
-exposure bracketing shots coming out in the wrong order, which will also mess up the HDR algorithm), try disabling
-Settings/Photo settings/"Enable fast HDR/expo burst" if this happens.</li>
 <li>HDR can sometimes result in less accurate colour reproduction (due to trying to estimate the colours from multiple exposures).</li>
 <li>Some Android camera apps use "HDR" to mean "apply a whacky-looking filter". Whilst HDR filters can be used to apply a rather
 unreal or vivid image, for now Open Camera's HDR is more geared towards capturing the range of exposures. Also note that many camera
@@ -290,7 +293,7 @@ darker. Set to 0 for the default exposure. See
 noise. This mimics the film speed on traditional film cameras. Note that this setting may not be supported on all cameras.
 See <a href="http://digital-photography-school.com/iso-settings">here</a> for more details on ISO.</p>
 
-<p><b>Auto-stabilise</b> - Enable the auto-stabilise features for photos (see <a href="#auto_stabilise">above</a>). (Only available
+<p><b>Auto-level</b> - Enable the auto-level features for photos (see <a href="#auto_stabilise">above</a>). (Only available
 if the device has enough memory.)</p>-->
 
 <p><b>Camera Controls:</b></p>
@@ -338,7 +341,7 @@ will take a photo (or start/stop video). This makes your volume keys behave more
 key to focus, then both to take a photo.</li>
 <li>Zoom in/out.</li>
 <li>Change the exposure compensation (or if in manual ISO mode and using Camera2 API, change the ISO).</li>
-<li>Switch <a href="#auto_stabilise">auto-stabilise</a> on/off.</li>
+<li>Switch <a href="#auto_stabilise">auto-level</a> on/off.</li>
 <li>Change the device's volume as normal.</li>
 <li>Do nothing.</li>
 </ul>
@@ -358,7 +361,7 @@ If you find it's taking photos too often unintentionally, or isn't responding to
 <p><b>Lock photo/video orientation</b> - Normally the orientation of the photo/video will be rotated by some multiple of
 90 degree such that the orientation looks right - e.g. if your device is held in portrait, the resultant image/video will
 be in portrait. This option allows fixing the camera to either be in portrait or landscape. Note that if
-<a href="#auto_stabilise">auto-stabilise</a> is also enabled, it will have the effect of aligning photos to the nearest
+<a href="#auto_stabilise">auto-level</a> is also enabled, it will have the effect of aligning photos to the nearest
 90 degrees.</p>
 
 <p><a name="save_location"></a><b>Save location</b> - Select the folder to store the photos in. Click on a folder
@@ -403,7 +406,7 @@ be unavailable when your device is locked, you can disable this option.</p>
 <p><b>Perform auto-focus on startup</b> - Whether Open Camera should auto-focus when starting the camera. Some devices
 have a bug where the flash turns on when this happens, so a workaround is to disable this option.</p>
 
-<p><b>Calibrate level angle</b> - The options <a href="#auto_stabilise">Auto-stabilise</a>, "Show angle" and "Show angle line"
+<p><b>Calibrate level angle</b> - The options <a href="#auto_stabilise">Auto-level</a>, "Show angle" and "Show angle line"
 rely on your device's ability to detect which orientation it's being held (the accelerometer). On some device's this might not
 be calibated correctly. If so, you can use this option to calibrate the acceleromer (or reset the calibration back to the
 default behaviour).</p>
@@ -451,13 +454,6 @@ to only have the preview showing.</li>
 <p><b>Show take photo icon</b> - Whether to display the butto for taking a photo (or recording video). This is useful if you'd
 rather take photos by other methods (e.g., if your device has a hardware shutter button, or using the volume keys).</p>
 
-<p><b>Show ISO</b> - If selected, the current ISO, exposure time and frame rate (FPS) will be displayed (only available if Camera2
-API is used). The text will be shown in red when the auto-exposure routine is scanning. In flash auto mode, a flash symbol will
-also indicate when flash will fire. Note that this is not an absolute guarantee - when you take a photo, the camera will make an
-updated decision on whether to fire the flash, which in some cases may disagree with whether the flash symbol was displayed.</p>
-
-<p><b>Show free memory</b> - Whether to display the remaining storage space of the device.</p>
-
 <p><b>Show angle</b> - Whether to display the orientation angle of the device's camera.</p>
 
 <p><b>Show angle line</b> - Whether to display a horizontal "level" line that visually indicates the orientation of the device.</p>
@@ -471,9 +467,16 @@ level; and also for the 0 degree pitch line when the camera is held at nearly ze
 
 <p><b>Show compass direction lines</b> - Whether to display vertical lines that visually indicate the compass direction of the device.</p>
 
+<p><b>Show battery</b> - Whether to display the current battery level.</p>
+
 <p><b>Show time</b> - Whether to display the current time.</p>
 
-<p><b>Show battery</b> - Whether to display the current battery level.</p>
+<p><b>Show free memory</b> - Whether to display the remaining storage space of the device.</p>
+
+<p><b>Show ISO</b> - If selected, the current ISO, exposure time and frame rate (FPS) will be displayed (only available if Camera2
+API is used). The text will be shown in red when the auto-exposure routine is scanning. In flash auto mode, a flash symbol will
+also indicate when flash will fire. Note that this is not an absolute guarantee - when you take a photo, the camera will make an
+updated decision on whether to fire the flash, which in some cases may disagree with whether the flash symbol was displayed.</p>
 
 <p><b>Show a grid</b> - Whether to display one of a choice of grids on the camera preview. Grids are useful in photography to help
 compose your image. Options are:</p>
@@ -503,17 +506,17 @@ to a particular aspect ratio. For photos, the crop-guide requires "Preview size"
 
 <p><b>Force maximum brightness</b> - Whether to force the screen display to maximum brightness.</p>
 
-<p><b>Rotate preview</b> - this option rotates the on-screen preview by 180 degrees. Most users won't ever need this,
-but this option can be useful if you are using Open Camera with equipment which inverts the image. Note that this
-doesn't rotate the resultant photos/videos - you'll still have to rotate those yourself afterwards - but this will
-correct the preview so that you can still see what you are shooting properly.</p>
+<p><b>Rotate preview</b> - this option rotates the on-screen preview by 180 degrees (i.e., upside down). Most users
+won't ever need this, but this option can be useful if you are using Open Camera with equipment such as zoom lenses
+which invert the image. Note that this doesn't rotate the resultant photos/videos - you'll still have to rotate those
+yourself afterwards - but this will correct the preview so that you can still see what you are shooting properly.</p>
 
 <p><b>Photo and Video Settings:</b></p>
 
 <p><b>Photo settings</b> - Select to access the following controls:</p>
 
 <p><b>Camera resolution</b> - Select the resolution of photo images taken by the camera. Note that if
-<a href="#auto_stabilise">auto-stabilise</a> is enabled, images will in general come out as a slightly lower resolution
+<a href="#auto_stabilise">auto-level</a> is enabled, images will in general come out as a slightly lower resolution
 (due to the rotation and cropping that's required).</p>
 
 <p><b>Image quality</b> - The image quality of saved JPEG images. Higher means better quality, but the image files will take up
@@ -537,7 +540,7 @@ uncompressed and unprocessed information from your camera. Please note the follo
 	<a href="https://play.google.com/store/apps/details?id=com.amaze.filemanager">Amaze</a> may also be useful,
 	to delete DNGs if you don't want them (DNGs take up a lot of space - and won't be deleted when you delete
 	the corresponding JPEG from a Gallery app).</li>
-	<li>Note that various processing options such as "Stamp photos" and <a href="#auto_stabilise">"Auto-stabilise"</a> will only apply
+	<li>Note that various processing options such as "Stamp photos" and <a href="#auto_stabilise">"Auto-level"</a> will only apply
 	to the JPEG images, and not the DNG images. This is not a bug - the DNGs represent the RAW output
 	of the camera device.</li>
 	<li>RAW images will only be saved in the Standard or DRO photo modes.</li>
@@ -545,16 +548,20 @@ uncompressed and unprocessed information from your camera. Please note the follo
 
 <p><b>Save all images for HDR mode</b> - When using <a href="#hdr">HDR</a> mode, if this option is enabled,
 then the three base exposure images will be saved as well as the final HDR photo. This is useful if you want
-to use external HDR applications (such as <a href="http://qtpfsgui.sourceforge.net/">Luminance HDR</a>) to
+to use external HDR applications (such as my own
+<a href="https://play.google.com/store/apps/details?id=uk.org.opencamera.vibrancehdr">Vibrance HDR</a> for Android,
+or <a href="http://qtpfsgui.sourceforge.net/">Luminance HDR</a> for PC) to
 create the final HDR image (although if you don't want Open Camera's HDR mode at all, you can instead use the
 Exposure Bracketing Photo Mode). Note this will make saving slower, especially if options like "Stamp photos" or
-<a href="#auto_stabilise">Auto-stabilise</a> are also used.</p>
+<a href="#auto_stabilise">Auto-level</a> are also used.</p>
 
 <p><b>Exposure Bracketing</b> - Specifies the total number of images to save in Exposure Bracketing Photo Mode
 (Camera2 API only).</p>
 
-<p><b>Exposure Bracketing Stops</b> - Specifies the number of stops between each successive image in Exposure
-Bracketing Photo Mode. An increase of 1 stop means a doubling of the amount of light (Camera2 API only).</p>
+<p><b>Exposure Bracketing Stops</b> - Specifies the number of stops to subtract/add from the "base"
+exposure level to the darkest/brightest image, in Exposure Bracketing Photo Mode. An increase of 1
+stop means a doubling of the amount of light. So a setting of "2", with 3 images, will produce
+images with exposure set to [-2, 0, +2]. For 5 images, this will produce [-2, -1, 0, +1, +2].</p>
 
 <p><b>Front camera mirror</b> - Normally for front cameras, the preview will behave like a mirror, but resultant
 photos will still be as the camera (or other people) view the scene. This option can be used to mirror the
@@ -562,7 +569,7 @@ resultant photo, so the resultant photo matches the mirrored image you see on th
 
 <p><b>Stamp photos</b> - Option to add a date and timestamp to the resultant photos. If "Store
 location data" is enabled (see "Location settings" below), then the current location latitude
-and longitude coordinates will also be stamped on the resultant photos (if the location is known).
+and longitude coordinates, and altitude, will also be stamped on the resultant photos (if the location is known).
 Similarly for "Store compass direction". Note that if this option is enabled, then it will take
 longer to save the photo. Also see "Video subtitles".</p>
 
@@ -762,7 +769,9 @@ if you use this method, and then uninstall!</li>
 instead you can enable "Settings/More camera controls/"Use Storage Access Framework", and this should allow you
 to save to external SD cards. If when choosing a folder, you only see "Recent", you may need to click on the
 three dots at the top right to open the menu, to enable showing the drives (e.g., "Show internal storage", and
-hopefully you'll see something similar for the SD card).</li>
+hopefully you'll see something similar for the SD card). Note that a known issue is that the on-screen "free memory"
+will still show the free internal storage rather than on the SD card (this is an Android limitation - when using
+Storage Access Framework, there doesn't seem to be a way to get the free space on the drive).</li>
 <li><b>Android 6.0</b> - On Android 6, some devices support "Adoptable Storage" allowing you to
 <a href="http://www.idigitaltimes.com/android-m-update-will-include-native-micro-sd-support-445463">select to use
 an SD card as internal storage</a>. Note that not all devices support this, even if running Android 6. If your device
@@ -782,18 +791,18 @@ one possibility is due to focusing before taking photos; some
 cameras use continuous focus mode which gives faster picture taking. Open Camera supports continuous focus mode, just select
 the popup menu and choose the "C" icon
 <img src="focus_mode_continuous_picture.png" alt="Continuous Picture focus icon" width="32" height="32">.
-Other reasons may be if some options are set (such as <a href="#auto_stabilise">auto-stabilise</a>, or "Stamp photos"), these will result in slower photo
+Other reasons may be if some options are set (such as <a href="#auto_stabilise">auto-level</a>, or "Stamp photos"), these will result in slower photo
 times.</p>
 
-<p><b>My pictures are being rotated/cropped!</b> - This likely means the <a href="#auto_stabilise">auto-stabilise</a>
+<p><b>My pictures are being rotated/cropped!</b> - This likely means the <a href="#auto_stabilise">auto-level</a>
 option is on. (If they're being rotated even when the phone is held level, it may mean the accelerometer sensor on your
 device isn't calibrated.) It's off by default, but you may have accidentally switched it on. To turn off, go to the "popup" menu
-and untick Auto-stabilise.</p>
+and untick Auto-level.</p>
 
 <p><b>My device can do 4K/UHD, so why doesn't it work on Open Camera?</b> - Unfortunately many devices with 4K support
-have for some reason not exposed this through the Android API to 3rd party camera apps. If the "Force 4K" option
-doesn't work, it's not a bug in Open Camera, it's something that's just not possible through
-3rd party apps on some devices. If you want a device with proper support for 4K video recording, get a Nexus 6.</p>
+have for some reason not exposed this through the Android API to 3rd party camera apps. (In some cases the "Force 4K"
+option can make this work anyway, but it's unreliable - ultimately the fault is with the device manufacturer for not
+supporting third party camera applications.)</p>
 
 <p><b>Why doesn't the FPS/bitrate setting for video work?</b> - These settings only give "recommendations" to the
 camera, and there is no guarantee that they will be met. Some devices might not even allow recording at some
@@ -808,7 +817,7 @@ the standard Android camera API.</p>
 have restricted the maximum resolution to 8MP for third party apps</a>.</p>
 
 <p><b>Why does the resolution of my photos not match the specified camera resolution?</b> - This happens if
-<a href="#auto_stabilise">auto-stabilise</a> is enabled. The image is rotated to be level, which means the
+<a href="#auto_stabilise">auto-level</a> is enabled. The image is rotated to be level, which means the
 resolution (and aspect-ratio) will change.</p>
 
 <p><b>Why can't I change the ISO?</b> - Even if your device supports ISO, this may not be made available through the
@@ -853,12 +862,12 @@ offer translations. If you think a particular translation is inaccurate, please 
 <p><b>Why is the screen forced to maximum brightness?</b> - If you don't like this feature, you can switch it off
 by going to Settings/On screen GUI/Force maximum brightness.</p>
 
-<p><b>Why is auto-stabilise slow?</b> - This feature requires doing a decompress of the JPEG data, followed by a
+<p><b>Why is auto-level slow?</b> - This feature requires doing a decompress of the JPEG data, followed by a
 rotation of a multi-megapixel image, then recompressing, which typically results in a short pause on most devices.
 And as devices get faster CPUs, they typically come with cameras with even bigger megapixels! This is why I've made
 it optional (and you can set the volume control to quickly switch it on and off if you like).</p>
 
-<p><b>Why is auto-stabilise for photos only?</b> - Doing auto-stabilise for video is a <i>massively</i> harder
+<p><b>Why is auto-level for photos only?</b> - Doing auto-level for video is a <i>massively</i> harder
 problem. This wouldn't be possible in real-time - rotating images causes a noticeable pause as it is, imagine
 having to do that for every frame. Also the rotation angle wouldn't be constant, so it's a much harder problem
 figuring out what the correct result should actually be.</p>
@@ -871,10 +880,14 @@ default and you want to change it, then go to the App Settings for that app, and
 actions, with an option to clear them. There are plenty of gallery apps for Android, and it seems
 better for users to have this choice, rather than Open Camera having its own custom gallery.</p>
 
-<p><b>Can you implement disabling shutter sound for my phone?</b> - If the option isn't shown, it's not
-available. There are possible workarounds for some of these devices, though the issue is that
-doesn't work on all devices. The fault is with the device for not supporting Android's
-standard method for disabling the shutter sound.</p>
+<p><b>Can you implement disabling shutter sound for my phone?</b> -
+If the option "Shutter sound" under "More camera controls..." isn't shown, it's not available. There
+are possible workarounds for some of these devices, though the issue is that doesn't work on all
+devices. The fault is with the device for not supporting Android's standard method for disabling the
+shutter sound. In particular, if under Settings/About you see that "Can disable shutter sound?" says
+No, it means the device's camera API is telling 3rd party camera apps that shutter sound can't be
+disabled (so either it can't do it, or the API is lying - either way, this should be reported to your
+manufacturer).</p>
 
 <p><b>Why does Open Camera have ads?</b> - Open Camera does <i>not</i> have ads (there may be ads on the online
 webpage you're reading now, but not in the app). There are however some clones on Google Play with ads inserted.

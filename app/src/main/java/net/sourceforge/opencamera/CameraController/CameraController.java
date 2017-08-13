@@ -33,7 +33,7 @@ public abstract class CameraController {
 	public int count_camera_parameters_exception;
 	public int count_precapture_timeout;
 	public boolean test_wait_capture_result; // whether to test delayed capture result in Camera2 API
-	public volatile int test_capture_results; // for Camera2 API, only many capture requests completed with RequestTag.CAPTURE
+	public volatile int test_capture_results; // for Camera2 API, how many capture requests completed with RequestTag.CAPTURE
 	public volatile int test_fake_flash_focus; // for Camera2 API, records torch turning on for fake flash during autofocus
 	public volatile int test_fake_flash_precapture; // for Camera2 API, records torch turning on for fake flash during precapture
 	public volatile int test_fake_flash_photo; // for Camera2 API, records torch turning on for fake flash for photo capture
@@ -54,6 +54,9 @@ public abstract class CameraController {
 		public float minimum_focus_distance;
 		public boolean is_exposure_lock_supported;
 		public boolean is_video_stabilization_supported;
+		public boolean supports_white_balance_temperature;
+		public int min_temperature;
+		public int max_temperature;
 		public boolean supports_iso_range;
 		public int min_iso;
 		public int max_iso;
@@ -65,9 +68,10 @@ public abstract class CameraController {
 		public float exposure_step;
 		public boolean can_disable_shutter_sound;
 		public boolean supports_expo_bracketing;
+		public int max_expo_bracketing_n_images;
 		public boolean supports_raw;
 		public float view_angle_x; // horizontal angle of view in degrees (when unzoomed)
-		public float view_angle_y; // view angle of view in degrees (when unzoomed)
+		public float view_angle_y; // vertical angle of view in degrees (when unzoomed)
 	}
 
 	public static class Size {
@@ -178,6 +182,15 @@ public abstract class CameraController {
 	public int getCameraId() {
 		return cameraId;
 	}
+
+	/** For CameraController2 only. Applications should cover the preview textureview if either camera_controller==null, or if this
+	 *  method returns true. Otherwise there is a risk when opening the camera that the textureview still shows an image from when
+	 *  the camera was previously opened (e.g., from pausing and resuming the application). This returns false (for CameraController2)
+	 *  when the camera has received its first frame.
+	 */
+	public boolean shouldCoverPreview() {
+		return false;
+	}
 	public abstract SupportedValues setSceneMode(String value);
 	/**
 	 * @return The current scene mode. Will be null if scene mode not supported.
@@ -187,6 +200,8 @@ public abstract class CameraController {
 	public abstract String getColorEffect();
 	public abstract SupportedValues setWhiteBalance(String value);
 	public abstract String getWhiteBalance();
+	public abstract boolean setWhiteBalanceTemperature(int temperature);
+	public abstract int getWhiteBalanceTemperature();
 	/** Set an ISO value. Only supported if supports_iso_range is false.
 	 */
 	public abstract SupportedValues setISO(String value);
@@ -331,6 +346,12 @@ public abstract class CameraController {
      */
 	public boolean needsFlash() {
 		return false;
+	}
+	public boolean captureResultHasWhiteBalanceTemperature() {
+		return false;
+	}
+	public int captureResultWhiteBalanceTemperature() {
+		return 0;
 	}
 	public boolean captureResultHasIso() {
 		return false;

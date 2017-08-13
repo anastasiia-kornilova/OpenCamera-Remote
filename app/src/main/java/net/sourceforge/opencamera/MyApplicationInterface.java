@@ -63,6 +63,7 @@ public class MyApplicationInterface implements ApplicationInterface {
     
 	private final MainActivity main_activity;
 	private final LocationSupplier locationSupplier;
+	private final GyroSensor gyroSensor;
 	private final StorageUtils storageUtils;
 	private final DrawPreview drawPreview;
 	private final ImageSaver imageSaver;
@@ -113,6 +114,7 @@ public class MyApplicationInterface implements ApplicationInterface {
 		this.locationSupplier = new LocationSupplier(main_activity);
 		if( MyDebug.LOG )
 			Log.d(TAG, "MyApplicationInterface: time after creating location supplier: " + (System.currentTimeMillis() - debug_time));
+		this.gyroSensor = new GyroSensor(main_activity);
 		this.storageUtils = new StorageUtils(main_activity);
 		if( MyDebug.LOG )
 			Log.d(TAG, "MyApplicationInterface: time after creating storage utils: " + (System.currentTimeMillis() - debug_time));
@@ -164,6 +166,10 @@ public class MyApplicationInterface implements ApplicationInterface {
 
 	LocationSupplier getLocationSupplier() {
 		return locationSupplier;
+	}
+
+	public GyroSensor getGyroSensor() {
+		return gyroSensor;
 	}
 	
 	StorageUtils getStorageUtils() {
@@ -290,7 +296,13 @@ public class MyApplicationInterface implements ApplicationInterface {
 		return sharedPreferences.getString(PreferenceKeys.getWhiteBalancePreferenceKey(), "auto");
     }
 
-    @Override
+	@Override
+	public int getWhiteBalanceTemperaturePref() {
+		SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getContext());
+		return sharedPreferences.getInt(PreferenceKeys.getWhiteBalanceTemperaturePreferenceKey(), 5000);
+	}
+
+	@Override
 	public String getISOPref() {
 		SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getContext());
     	return sharedPreferences.getString(PreferenceKeys.getISOPreferenceKey(), "auto");
@@ -702,7 +714,7 @@ public class MyApplicationInterface implements ApplicationInterface {
     	return sharedPreferences.getString(PreferenceKeys.getRecordAudioSourcePreferenceKey(), "audio_src_camcorder");
     }
 
-    private boolean getAutoStabilisePref() {
+    public boolean getAutoStabilisePref() {
 		SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getContext());
 		boolean auto_stabilise = sharedPreferences.getBoolean(PreferenceKeys.getAutoStabilisePreferenceKey(), false);
 		if( auto_stabilise && main_activity.supportsAutoStabilise() )
@@ -710,7 +722,7 @@ public class MyApplicationInterface implements ApplicationInterface {
 		return false;
     }
     
-    private String getStampPref() {
+    public String getStampPref() {
 		SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getContext());
     	return sharedPreferences.getString(PreferenceKeys.getStampPreferenceKey(), "preference_stamp_no");
     }
@@ -906,6 +918,56 @@ public class MyApplicationInterface implements ApplicationInterface {
 		drawPreview.onContinuousFocusMove(start);
 	}
 
+    private int n_panorama_pics = 0;
+
+	void startPanorama() {
+		if( MyDebug.LOG )
+			Log.d(TAG, "startPanorama");
+		gyroSensor.startRecording();
+		n_panorama_pics = 0;
+	}
+
+	void stopPanorama() {
+		if( MyDebug.LOG )
+			Log.d(TAG, "stopPanorama");
+		gyroSensor.stopRecording();
+		clearPanoramaPoint();
+	}
+
+	void setNextPanoramaPoint() {
+		if( MyDebug.LOG )
+			Log.d(TAG, "setNextPanoramaPoint");
+		float camera_angle_y = main_activity.getPreview().getViewAngleY();
+		n_panorama_pics++;
+		float angle = (float) Math.toRadians(camera_angle_y) * n_panorama_pics;
+		final float pics_per_screen = 2.0f;
+		setNextPanoramaPoint((float) Math.sin(angle / pics_per_screen), 0.0f, (float) -Math.cos(angle / pics_per_screen));
+	}
+
+	private void setNextPanoramaPoint(float x, float y, float z) {
+		if( MyDebug.LOG )
+			Log.d(TAG, "setNextPanoramaPoint : " + x + " , " + y + " , " + z);
+
+		final float target_angle = 2.0f * 0.01745329252f;
+		gyroSensor.setTarget(x, y, z, target_angle, new GyroSensor.TargetCallback() {
+			@Override
+			public void onAchieved() {
+				if( MyDebug.LOG )
+					Log.d(TAG, "TargetCallback.onAchieved");
+				clearPanoramaPoint();
+				main_activity.takePicturePressed();
+			}
+		});
+		drawPreview.setGyroDirectionMarker(x, y, z);
+	}
+
+	void clearPanoramaPoint() {
+		if( MyDebug.LOG )
+			Log.d(TAG, "clearPanoramaPoint");
+		gyroSensor.clearTarget();
+		drawPreview.clearGyroDirectionMarker();
+	}
+
 	@Override
 	public void touchEvent(MotionEvent event) {
 		main_activity.getMainUI().clearSeekBar();
@@ -926,6 +988,7 @@ public class MyApplicationInterface implements ApplicationInterface {
 		view.setImageResource(R.drawable.take_video_recording);
 		view.setContentDescription( getContext().getResources().getString(R.string.stop_video) );
 		view.setTag(R.drawable.take_video_recording); // for testing
+		main_activity.getMainUI().destroyPopup(); // as the available popup options change while recording video
 	}
 
 	@Override
@@ -945,8 +1008,8 @@ public class MyApplicationInterface implements ApplicationInterface {
 			final String preference_stamp_dateformat = this.getStampDateFormatPref();
 			final String preference_stamp_timeformat = this.getStampTimeFormatPref();
 			final String preference_stamp_gpsformat = this.getStampGPSFormatPref();
-			final boolean store_location = getGeotaggingPref() && getLocation() != null;
-			final boolean store_geo_direction = main_activity.getPreview().hasGeoDirection() && getGeodirectionPref();
+			final boolean store_location = getGeotaggingPref();
+			final boolean store_geo_direction = getGeodirectionPref();
 			class SubtitleVideoTimerTask extends TimerTask {
 				OutputStreamWriter writer;
 				private int count = 1;
@@ -989,8 +1052,8 @@ public class MyApplicationInterface implements ApplicationInterface {
 					String date_stamp = TextFormatter.getDateString(preference_stamp_dateformat, current_date);
 					String time_stamp = TextFormatter.getTimeString(preference_stamp_timeformat, current_date);
 					Location location = store_location ? getLocation() : null;
-					double geo_direction = store_geo_direction ? main_activity.getPreview().getGeoDirection() : 0.0;
-					String gps_stamp = main_activity.getTextFormatter().getGPSString(preference_stamp_gpsformat, store_location, location, store_geo_direction, geo_direction);
+					double geo_direction = store_geo_direction && main_activity.getPreview().hasGeoDirection() ? main_activity.getPreview().getGeoDirection() : 0.0;
+					String gps_stamp = main_activity.getTextFormatter().getGPSString(preference_stamp_gpsformat, store_location && location!=null, location, store_geo_direction && main_activity.getPreview().hasGeoDirection(), geo_direction);
 					if( MyDebug.LOG ) {
 						Log.d(TAG, "date_stamp: " + date_stamp);
 						Log.d(TAG, "time_stamp: " + time_stamp);
@@ -1106,6 +1169,7 @@ public class MyApplicationInterface implements ApplicationInterface {
 		View pauseVideoButton = main_activity.findViewById(R.id.pause_video);
 		pauseVideoButton.setVisibility(View.INVISIBLE);
 		main_activity.getMainUI().setPauseVideoContentDescription(); // just to be safe
+		main_activity.getMainUI().destroyPopup(); // as the available popup options change while recording video
 		if( subtitleVideoTimerTask != null ) {
 			subtitleVideoTimerTask.cancel();
 			subtitleVideoTimerTask = null;
@@ -1421,7 +1485,7 @@ public class MyApplicationInterface implements ApplicationInterface {
 	
 	@Override
 	public void multitouchZoom(int new_zoom) {
-		main_activity.getMainUI().setSeekbarZoom();
+		main_activity.getMainUI().setSeekbarZoom(new_zoom);
 	}
 
 	@Override
@@ -1504,8 +1568,16 @@ public class MyApplicationInterface implements ApplicationInterface {
 		editor.remove(PreferenceKeys.getWhiteBalancePreferenceKey());
 		editor.apply();
     }
-	
-    @Override
+
+	@Override
+	public void setWhiteBalanceTemperaturePref(int white_balance_temperature) {
+		SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getContext());
+		SharedPreferences.Editor editor = sharedPreferences.edit();
+		editor.putInt(PreferenceKeys.getWhiteBalanceTemperaturePreferenceKey(), white_balance_temperature);
+		editor.apply();
+	}
+
+	@Override
 	public void setISOPref(String iso) {
     	SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getContext());
 		SharedPreferences.Editor editor = sharedPreferences.edit();

@@ -18,7 +18,7 @@ public class CanvasView extends View {
 	private final Preview preview;
 	private final int [] measure_spec = new int[2];
 	private final Handler handler = new Handler();
-	private Runnable tick;
+	private final Runnable tick;
 
 	CanvasView(Context context, final Preview preview) {
 		super(context);
@@ -36,7 +36,8 @@ public class CanvasView extends View {
 					Log.d(TAG, "invalidate()");*/
 				preview.test_ticker_called = true;
 		        invalidate();
-		        handler.postDelayed(this, 100);
+				// avoid overloading ui thread when taking photo
+				handler.postDelayed(this, preview.isTakingPhoto() ? 500 : 100);
 		    }
 		};
 	}

@@ -12,6 +12,7 @@ public class HDRTests {
 	 */
 	public static Test suite() {
 		TestSuite suite = new TestSuite(MainTests.class.getName());
+		suite.addTest(TestSuite.createTest(MainActivityTest.class, "testDROZero"));
 		suite.addTest(TestSuite.createTest(MainActivityTest.class, "testHDR1"));
 		suite.addTest(TestSuite.createTest(MainActivityTest.class, "testHDR2"));
 		suite.addTest(TestSuite.createTest(MainActivityTest.class, "testHDR3"));
@@ -47,6 +48,9 @@ public class HDRTests {
 		suite.addTest(TestSuite.createTest(MainActivityTest.class, "testHDR33"));
 		suite.addTest(TestSuite.createTest(MainActivityTest.class, "testHDR34"));
 		suite.addTest(TestSuite.createTest(MainActivityTest.class, "testHDR35"));
+		suite.addTest(TestSuite.createTest(MainActivityTest.class, "testHDR36"));
+		suite.addTest(TestSuite.createTest(MainActivityTest.class, "testHDR37"));
+		suite.addTest(TestSuite.createTest(MainActivityTest.class, "testHDR38"));
         return suite;
     }
 }

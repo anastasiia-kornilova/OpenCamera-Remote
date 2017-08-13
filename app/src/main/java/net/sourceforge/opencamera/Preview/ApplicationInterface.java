@@ -51,6 +51,7 @@ public interface ApplicationInterface {
 	String getSceneModePref(); // "auto" for default (strings correspond to Android's scene mode constants in android.hardware.Camera.Parameters)
 	String getColorEffectPref(); // "node" for default (strings correspond to Android's color effect constants in android.hardware.Camera.Parameters)
 	String getWhiteBalancePref(); // "auto" for default (strings correspond to Android's white balance constants in android.hardware.Camera.Parameters)
+	int getWhiteBalanceTemperaturePref();
 	String getISOPref(); // "auto" for auto-ISO, otherwise a numerical value; see documentation for Preview.supportsISORange().
 	int getExposureCompensationPref(); // 0 for default
 	Pair<Integer, Integer> getCameraResolutionPref(); // return null to let Preview choose size
@@ -123,7 +124,7 @@ public interface ApplicationInterface {
 
 	// methods that request actions
 	void layoutUI(); // application should layout UI that's on top of the preview
-	void multitouchZoom(int new_zoom); // zoom has changed due to multitouch gesture on preview
+	void multitouchZoom(int new_zoom); // indicates that the zoom has changed due to multitouch gesture on preview
 	// the set/clear*Pref() methods are called if Preview decides to override the requested pref (because Camera device doesn't support requested pref) (clear*Pref() is called if the feature isn't supported at all)
 	// the application can use this information to update its preferences
 	void setCameraIdPref(int cameraId);
@@ -136,6 +137,7 @@ public interface ApplicationInterface {
 	void clearColorEffectPref();
 	void setWhiteBalancePref(String white_balance);
 	void clearWhiteBalancePref();
+	void setWhiteBalanceTemperaturePref(int white_balance_temperature);
 	void setISOPref(String iso);
 	void clearISOPref();
 	void setExposureCompensationPref(int exposure);

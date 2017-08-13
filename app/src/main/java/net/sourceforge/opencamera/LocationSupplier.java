@@ -22,6 +22,7 @@ public class LocationSupplier {
 	private final Context context;
 	private final LocationManager locationManager;
 	private MyLocationListener [] locationListeners;
+	private volatile boolean test_force_no_location; // if true, always return null location; must be volatile for test project setting the state
 
 	LocationSupplier(Context context) {
 		this.context = context;
@@ -31,6 +32,8 @@ public class LocationSupplier {
 	public Location getLocation() {
 		// returns null if not available
 		if( locationListeners == null )
+			return null;
+		if( test_force_no_location )
 			return null;
 		// location listeners should be stored in order best to worst
 		for(MyLocationListener locationListener : locationListeners) {
@@ -44,7 +47,7 @@ public class LocationSupplier {
 	private static class MyLocationListener implements LocationListener {
 		private Location location;
 		volatile boolean test_has_received_location; // must be volatile for test project reading the state
-		
+
 		Location getLocation() {
 			return location;
 		}
@@ -54,7 +57,8 @@ public class LocationSupplier {
 				Log.d(TAG, "onLocationChanged");
 			this.test_has_received_location = true;
     		// Android camera source claims we need to check lat/long != 0.0d
-    		if( location.getLatitude() != 0.0d || location.getLongitude() != 0.0d ) {
+			// also check for not being null just in case - had a nullpointerexception on Google Play!
+    		if( location != null && ( location.getLatitude() != 0.0d || location.getLongitude() != 0.0d ) ) {
 	    		if( MyDebug.LOG ) {
 	    			Log.d(TAG, "received location:");
 	    			Log.d(TAG, "lat " + location.getLatitude() + " long " + location.getLongitude() + " accuracy " + location.getAccuracy());
@@ -198,6 +202,10 @@ public class LocationSupplier {
 				return true;
 		}
 		return false;
+	}
+
+	public void setForceNoLocation(boolean test_force_no_location) {
+		this.test_force_no_location = test_force_no_location;
 	}
 
 	public boolean hasLocationListeners() {

@@ -5,7 +5,6 @@ import net.sourceforge.opencamera.MyDebug;
 import net.sourceforge.opencamera.PreferenceKeys;
 import net.sourceforge.opencamera.R;
 
-import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
@@ -37,6 +36,7 @@ public class MainUI {
 
 	private volatile boolean popup_view_is_open; // must be volatile for test project reading the state
     private PopupView popup_view;
+	private final static boolean cache_popup = true; // if false, we recreate the popup each time
 
     private int current_orientation;
 	private boolean ui_placement_right = true;
@@ -73,7 +73,6 @@ public class MainUI {
 	    button.setBackgroundColor(Color.argb(63, 63, 63, 63)); // n.b., rgb color seems to be ignored for Android 6 onwards, but still relevant for older versions
 	}
 	
-	@TargetApi(Build.VERSION_CODES.LOLLIPOP)
 	private void setSeekbarColors() {
 		if( MyDebug.LOG )
 			Log.d(TAG, "setSeekbarColors");
@@ -100,6 +99,10 @@ public class MainUI {
 			seekBar = (SeekBar)main_activity.findViewById(R.id.exposure_time_seekbar);
 			seekBar.setProgressTintList(progress_color);
 			seekBar.setThumbTintList(thumb_color);
+
+			seekBar = (SeekBar)main_activity.findViewById(R.id.white_balance_seekbar);
+			seekBar.setProgressTintList(progress_color);
+			seekBar.setThumbTintList(thumb_color);
 		}
 	}
 
@@ -118,6 +121,10 @@ public class MainUI {
 	}
 
     public void layoutUI() {
+		layoutUI(false);
+	}
+
+    private void layoutUI(boolean popup_container_only) {
 		long debug_time = 0;
 		if( MyDebug.LOG ) {
 			Log.d(TAG, "layoutUI");
@@ -173,6 +180,8 @@ public class MainUI {
 			align_parent_top = RelativeLayout.ALIGN_PARENT_BOTTOM;
 			align_parent_bottom = RelativeLayout.ALIGN_PARENT_TOP;
 		}
+
+		if( !popup_container_only )
 		{
 			// we use a dummy button, so that the GUI buttons keep their positioning even if the Settings button is hidden (visibility set to View.GONE)
 			View view = main_activity.findViewById(R.id.gui_anchor);
@@ -341,6 +350,7 @@ public class MainUI {
 			view.setLayoutParams(layoutParams);
 		}
 
+		if( !popup_container_only )
 		{
 			// set seekbar info
 			int width_dp;
@@ -356,8 +366,9 @@ public class MainUI {
 			int height_pixels = (int) (height_dp * scale + 0.5f); // convert dps to pixels
 			int exposure_zoom_gap = (int) (4 * scale + 0.5f); // convert dps to pixels
 
-			View view = main_activity.findViewById(R.id.exposure_container);
+			View view = main_activity.findViewById(R.id.sliders_container);
 			setViewRotation(view, ui_rotation);
+
 			view = main_activity.findViewById(R.id.exposure_seekbar);
 			RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams)view.getLayoutParams();
 			lp.width = width_pixels;
@@ -365,29 +376,7 @@ public class MainUI {
 			view.setLayoutParams(lp);
 
 			view = main_activity.findViewById(R.id.exposure_seekbar_zoom);
-			setViewRotation(view, ui_rotation);
 			view.setAlpha(0.5f);
-
-			// n.b., using left_of etc doesn't work properly when using rotation (as the amount of space reserved is based on the UI elements before being rotated)
-			if( ui_rotation == 0 ) {
-				view.setTranslationX(0);
-				view.setTranslationY(height_pixels+exposure_zoom_gap);
-			}
-			else if( ui_rotation == 90 ) {
-				view.setTranslationX(-height_pixels-exposure_zoom_gap);
-				view.setTranslationY(0);
-			}
-			else if( ui_rotation == 180 ) {
-				view.setTranslationX(0);
-				view.setTranslationY(-height_pixels-exposure_zoom_gap);
-			}
-			else if( ui_rotation == 270 ) {
-				view.setTranslationX(height_pixels+exposure_zoom_gap);
-				view.setTranslationY(0);
-			}
-
-			view = main_activity.findViewById(R.id.manual_exposure_container);
-			setViewRotation(view, ui_rotation);
 
 			view = main_activity.findViewById(R.id.iso_seekbar);
 			lp = (RelativeLayout.LayoutParams)view.getLayoutParams();
@@ -396,6 +385,12 @@ public class MainUI {
 			view.setLayoutParams(lp);
 
 			view = main_activity.findViewById(R.id.exposure_time_seekbar);
+			lp = (RelativeLayout.LayoutParams)view.getLayoutParams();
+			lp.width = width_pixels;
+			lp.height = height_pixels;
+			view.setLayoutParams(lp);
+
+			view = main_activity.findViewById(R.id.white_balance_seekbar);
 			lp = (RelativeLayout.LayoutParams)view.getLayoutParams();
 			lp.width = width_pixels;
 			lp.height = height_pixels;
@@ -443,8 +438,10 @@ public class MainUI {
 			}
 		}
 
-		setTakePhotoIcon();
-		// no need to call setSwitchCameraContentDescription()
+		if( !popup_container_only ) {
+			setTakePhotoIcon();
+			// no need to call setSwitchCameraContentDescription()
+		}
 
 		if( MyDebug.LOG ) {
 			Log.d(TAG, "layoutUI: total time: " + (System.currentTimeMillis() - debug_time));
@@ -683,9 +680,8 @@ public class MainUI {
 			clearSeekBar();
 		}
 		else if( main_activity.getPreview().getCameraController() != null ) {
-			SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(main_activity);
-			String value = sharedPreferences.getString(PreferenceKeys.getISOPreferenceKey(), main_activity.getPreview().getCameraController().getDefaultISO());
-			if( main_activity.getPreview().usingCamera2API() && !value.equals("auto") ) {
+			String iso_value = main_activity.getApplicationInterface().getISOPref();
+			if( main_activity.getPreview().usingCamera2API() && !iso_value.equals("auto") ) {
 				// with Camera2 API, when using manual ISO we instead show sliders for ISO range and exposure time
 				if( main_activity.getPreview().supportsISORange()) {
 					manual_exposure_seek_bar.setVisibility(View.VISIBLE);
@@ -705,14 +701,27 @@ public class MainUI {
 					seek_bar_zoom.setVisibility(View.VISIBLE);
 				}
 			}
+
+			if( main_activity.getPreview().supportsWhiteBalanceTemperature()) {
+				// we also show slider for manual white balance, if in that mode
+				String white_balance_value = main_activity.getApplicationInterface().getWhiteBalancePref();
+				View manual_white_balance_seek_bar = main_activity.findViewById(R.id.manual_white_balance_container);
+				if (main_activity.getPreview().usingCamera2API() && white_balance_value.equals("manual")) {
+					manual_white_balance_seek_bar.setVisibility(View.VISIBLE);
+				} else {
+					manual_white_balance_seek_bar.setVisibility(View.GONE);
+				}
+			}
 		}
     }
 
-	public void setSeekbarZoom() {
+	public void setSeekbarZoom(int new_zoom) {
 		if( MyDebug.LOG )
-			Log.d(TAG, "setSeekbarZoom");
+			Log.d(TAG, "setSeekbarZoom: " + new_zoom);
 	    SeekBar zoomSeekBar = (SeekBar) main_activity.findViewById(R.id.zoom_seekbar);
-		zoomSeekBar.setProgress(main_activity.getPreview().getMaxZoom()-main_activity.getPreview().getCameraController().getZoom());
+		if( MyDebug.LOG )
+			Log.d(TAG, "progress was: " + zoomSeekBar.getProgress());
+		zoomSeekBar.setProgress(main_activity.getPreview().getMaxZoom()-new_zoom);
 		if( MyDebug.LOG )
 			Log.d(TAG, "progress is now: " + zoomSeekBar.getProgress());
 	}
@@ -743,6 +752,8 @@ public class MainUI {
 		view = main_activity.findViewById(R.id.exposure_seekbar_zoom);
 		view.setVisibility(View.GONE);
 		view = main_activity.findViewById(R.id.manual_exposure_container);
+		view.setVisibility(View.GONE);
+		view = main_activity.findViewById(R.id.manual_white_balance_container);
 		view.setVisibility(View.GONE);
     }
     
@@ -777,8 +788,6 @@ public class MainUI {
 		if( MyDebug.LOG )
 			Log.d(TAG, "close popup");
 		if( popupIsOpen() ) {
-			ViewGroup popup_container = (ViewGroup)main_activity.findViewById(R.id.popup_container);
-			popup_container.removeAllViews();
 			popup_view_is_open = false;
 			/* Not destroying the popup doesn't really gain any performance.
 			 * Also there are still outstanding bugs to fix if we wanted to do this:
@@ -789,7 +798,12 @@ public class MainUI {
 			 *     MainActivity.updateForSettings(), but doing so makes the popup close when checking photo or video resolutions!
 			 *     See test testSwitchResolution().
 			 */
-			destroyPopup();
+			if( cache_popup ) {
+				popup_view.setVisibility(View.GONE);
+			}
+			else {
+				destroyPopup();
+			}
 			main_activity.initImmersiveMode(); // to reset the timer when closing the popup
 		}
     }
@@ -802,6 +816,8 @@ public class MainUI {
 		if( popupIsOpen() ) {
 			closePopup();
 		}
+		ViewGroup popup_container = (ViewGroup)main_activity.findViewById(R.id.popup_container);
+		popup_container.removeAllViews();
 		popup_view = null;
     }
 
@@ -836,35 +852,36 @@ public class MainUI {
 			if( MyDebug.LOG )
 				Log.d(TAG, "create new popup_view");
     		popup_view = new PopupView(main_activity);
+			popup_container.addView(popup_view);
     	}
     	else {
 			if( MyDebug.LOG )
 				Log.d(TAG, "use cached popup_view");
+			popup_view.setVisibility(View.VISIBLE);
     	}
-		popup_container.addView(popup_view);
 		popup_view_is_open = true;
 		
         // need to call layoutUI to make sure the new popup is oriented correctly
 		// but need to do after the layout has been done, so we have a valid width/height to use
 		// n.b., even though we only need the portion of layoutUI for the popup container, there
 		// doesn't seem to be any performance benefit in only calling that part
-		popup_container.getViewTreeObserver().addOnGlobalLayoutListener( 
+		popup_container.getViewTreeObserver().addOnGlobalLayoutListener(
 			new OnGlobalLayoutListener() {
 				@SuppressWarnings("deprecation")
-				@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 				@Override
 			    public void onGlobalLayout() {
 					if( MyDebug.LOG )
 						Log.d(TAG, "onGlobalLayout()");
 					if( MyDebug.LOG )
 						Log.d(TAG, "time after global layout: " + (System.currentTimeMillis() - time_s));
-					layoutUI();
+					layoutUI(true);
 					if( MyDebug.LOG )
 						Log.d(TAG, "time after layoutUI: " + (System.currentTimeMillis() - time_s));
 		    		// stop listening - only want to call this once!
-		            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.ICE_CREAM_SANDWICH_MR1) {
+		            if( Build.VERSION.SDK_INT > Build.VERSION_CODES.ICE_CREAM_SANDWICH_MR1 ) {
 		            	popup_container.getViewTreeObserver().removeOnGlobalLayoutListener(this);
-		            } else {
+		            }
+		            else {
 		            	popup_container.getViewTreeObserver().removeGlobalOnLayoutListener(this);
 		            }
 

@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
-import android.annotation.TargetApi;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
 import android.hardware.Camera.AutoFocusMoveCallback;
@@ -31,6 +30,21 @@ public class CameraController1 extends CameraController {
 	private String iso_key;
 	private boolean frontscreen_flash;
 	private final ErrorCallback camera_error_cb;
+
+	private int n_burst; // number of expected burst images in this capture
+	private final List<byte []> pending_burst_images = new ArrayList<>(); // burst images that have been captured so far, but not yet sent to the application
+	private List<Integer> burst_exposures;
+	private boolean want_expo_bracketing;
+	private final static int max_expo_bracketing_n_images = 3; // seem to have problems with 5 images in some cases, e.g., images coming out same brightness on OnePlus 3T
+	private int expo_bracketing_n_images = 3;
+	private double expo_bracketing_stops = 2.0;
+
+	// we keep track of some camera settings rather than reading from Camera.getParameters() every time. Firstly this is important
+	// for performance (affects UI rendering times, e.g., see profiling of GPU rendering). Secondly runtimeexceptions from
+	// Camera.getParameters() seem to be common in Google Play, particularly for getZoom().
+	private int current_zoom_value;
+	private int picture_width;
+	private int picture_height;
 
 	/** Opens the camera device.
 	 * @param cameraId Which camera to open (must be between 0 and CameraControllerManager1.getNumberOfCameras()-1).
@@ -131,6 +145,8 @@ public class CameraController1 extends CameraController {
 	}
 
 	private Camera.Parameters getParameters() {
+		if( MyDebug.LOG )
+			Log.d(TAG, "getParameters");
 		return camera.getParameters();
 	}
 	
@@ -269,7 +285,6 @@ public class CameraController1 extends CameraController {
 		return "Camera";
 	}
 	
-	@TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR1)
 	public CameraFeatures getCameraFeatures() {
 		if( MyDebug.LOG )
 			Log.d(TAG, "getCameraFeatures()");
@@ -317,16 +332,9 @@ public class CameraController1 extends CameraController {
         
         camera_features.min_exposure = parameters.getMinExposureCompensation();
         camera_features.max_exposure = parameters.getMaxExposureCompensation();
-        try {
-        	camera_features.exposure_step = parameters.getExposureCompensationStep();
-        }
-        catch(Exception e) {
-        	// received a NullPointerException from StringToReal.parseFloat() beneath getExposureCompensationStep() on Google Play!
-    		if( MyDebug.LOG )
-    			Log.e(TAG, "exception from getExposureCompensationStep()");
-        	e.printStackTrace();
-        	camera_features.exposure_step = 1.0f/3.0f; // make up a typical example
-        }
+		camera_features.exposure_step = getExposureCompensationStep();
+		camera_features.supports_expo_bracketing = ( camera_features.min_exposure != 0 && camera_features.max_exposure != 0 ); // require both a darker and brighter exposure, in order to support expo bracketing
+		camera_features.max_expo_bracketing_n_images = max_expo_bracketing_n_images;
 
 		List<Camera.Size> camera_video_sizes = parameters.getSupportedVideoSizes();
     	if( camera_video_sizes == null ) {
@@ -431,7 +439,9 @@ public class CameraController1 extends CameraController {
 		List<String> values = parameters.getSupportedColorEffects();
 		SupportedValues supported_values = checkModeIsSupported(values, value, default_value);
 		if( supported_values != null ) {
-			if( !parameters.getColorEffect().equals(supported_values.selected_value) ) {
+			String color_effect = parameters.getColorEffect();
+			// have got nullpointerexception from Google Play, so now check for null
+			if( color_effect == null || !color_effect.equals(supported_values.selected_value) ) {
 	        	parameters.setColorEffect(supported_values.selected_value);
 	        	setCameraParameters(parameters);
 			}
@@ -448,9 +458,20 @@ public class CameraController1 extends CameraController {
 		String default_value = getDefaultWhiteBalance();
     	Camera.Parameters parameters = this.getParameters();
 		List<String> values = parameters.getSupportedWhiteBalance();
+		if( values != null ) {
+			// Some devices (e.g., OnePlus 3T) claim to support a "manual" mode, even though this
+			// isn't one of the possible white balances defined in Camera.Parameters.
+			// Since the old API doesn't support white balance temperatures, and this mode seems to
+			// have no useful effect, we remove it to avoid confusion.
+			while( values.contains("manual") ) {
+				values.remove("manual");
+			}
+		}
 		SupportedValues supported_values = checkModeIsSupported(values, value, default_value);
 		if( supported_values != null ) {
-			if( !parameters.getWhiteBalance().equals(supported_values.selected_value) ) {
+			String white_balance = parameters.getWhiteBalance();
+			// if white balance is null, it should mean white balances aren't supported anyway
+			if( white_balance != null && !white_balance.equals(supported_values.selected_value) ) {
 	        	parameters.setWhiteBalance(supported_values.selected_value);
 	        	setCameraParameters(parameters);
 			}
@@ -461,6 +482,18 @@ public class CameraController1 extends CameraController {
 	public String getWhiteBalance() {
     	Camera.Parameters parameters = this.getParameters();
     	return parameters.getWhiteBalance();
+	}
+
+	@Override
+	public boolean setWhiteBalanceTemperature(int temperature) {
+		// not supported for CameraController1
+		return false;
+	}
+
+	@Override
+	public int getWhiteBalanceTemperature() {
+		// not supported for CameraController1
+		return 0;
 	}
 
 	@Override
@@ -605,14 +638,17 @@ public class CameraController1 extends CameraController {
 	
 	@Override
     public CameraController.Size getPictureSize() {
-    	Camera.Parameters parameters = this.getParameters();
+    	/*Camera.Parameters parameters = this.getParameters();
     	Camera.Size camera_size = parameters.getPictureSize();
-    	return new CameraController.Size(camera_size.width, camera_size.height);
+    	return new CameraController.Size(camera_size.width, camera_size.height);*/
+		return new CameraController.Size(picture_width, picture_height);
     }
 
 	@Override
 	public void setPictureSize(int width, int height) {
     	Camera.Parameters parameters = this.getParameters();
+		this.picture_width = width;
+		this.picture_height = height;
 		parameters.setPictureSize(width, height);
 		if( MyDebug.LOG )
 			Log.d(TAG, "set picture size: " + parameters.getPictureSize().width + ", " + parameters.getPictureSize().height);
@@ -639,17 +675,46 @@ public class CameraController1 extends CameraController {
 	
 	@Override
 	public void setExpoBracketing(boolean want_expo_bracketing) {
-		// not supported for CameraController1
+		if( MyDebug.LOG )
+			Log.d(TAG, "setExpoBracketing: " + want_expo_bracketing);
+		if( camera == null ) {
+			if( MyDebug.LOG )
+				Log.e(TAG, "no camera");
+			return;
+		}
+		if( this.want_expo_bracketing == want_expo_bracketing ) {
+			return;
+		}
+		this.want_expo_bracketing = want_expo_bracketing;
 	}
-	
+
 	@Override
 	public void setExpoBracketingNImages(int n_images) {
-		// not supported for CameraController1
+		if( MyDebug.LOG )
+			Log.d(TAG, "setExpoBracketingNImages: " + n_images);
+		if( n_images <= 1 || (n_images % 2) == 0 ) {
+			if( MyDebug.LOG )
+				Log.e(TAG, "n_images should be an odd number greater than 1");
+			throw new RuntimeException(); // throw as RuntimeException, as this is a programming error
+		}
+		if( n_images > max_expo_bracketing_n_images ) {
+			n_images = max_expo_bracketing_n_images;
+			if( MyDebug.LOG )
+				Log.e(TAG, "limiting n_images to max of " + n_images);
+		}
+		this.expo_bracketing_n_images = n_images;
 	}
-	
+
 	@Override
 	public void setExpoBracketingStops(double stops) {
-		// not supported for CameraController1
+		if( MyDebug.LOG )
+			Log.d(TAG, "setExpoBracketingStops: " + stops);
+		if( stops <= 0.0 ) {
+			if( MyDebug.LOG )
+				Log.e(TAG, "stops should be positive");
+			throw new RuntimeException(); // throw as RuntimeException, as this is a programming error
+		}
+		this.expo_bracketing_stops = stops;
 	}
 
 	@Override
@@ -691,14 +756,16 @@ public class CameraController1 extends CameraController {
 	}
 	
 	public int getZoom() {
-		Camera.Parameters parameters = this.getParameters();
-		return parameters.getZoom();
+		/*Camera.Parameters parameters = this.getParameters();
+		return parameters.getZoom();*/
+		return this.current_zoom_value;
 	}
 	
 	public void setZoom(int value) {
 		Camera.Parameters parameters = this.getParameters();
 		if( MyDebug.LOG )
 			Log.d(TAG, "zoom was: " + parameters.getZoom());
+		this.current_zoom_value = value;
 		parameters.setZoom(value);
     	setCameraParameters(parameters);
 	}
@@ -706,6 +773,22 @@ public class CameraController1 extends CameraController {
 	public int getExposureCompensation() {
 		Camera.Parameters parameters = this.getParameters();
 		return parameters.getExposureCompensation();
+	}
+
+	private float getExposureCompensationStep() {
+		float exposure_step;
+		Camera.Parameters parameters = this.getParameters();
+        try {
+        	exposure_step = parameters.getExposureCompensationStep();
+        }
+        catch(Exception e) {
+        	// received a NullPointerException from StringToReal.parseFloat() beneath getExposureCompensationStep() on Google Play!
+    		if( MyDebug.LOG )
+    			Log.e(TAG, "exception from getExposureCompensationStep()");
+        	e.printStackTrace();
+        	exposure_step = 1.0f/3.0f; // make up a typical example
+        }
+        return exposure_step;
 	}
 	
 	// Returns whether exposure was modified
@@ -725,9 +808,17 @@ public class CameraController1 extends CameraController {
 	public void setPreviewFpsRange(int min, int max) {
     	if( MyDebug.LOG )
     		Log.d(TAG, "setPreviewFpsRange: " + min + " to " + max);
-		Camera.Parameters parameters = this.getParameters();
-        parameters.setPreviewFpsRange(min, max);
-    	setCameraParameters(parameters);
+		try {
+			Camera.Parameters parameters = this.getParameters();
+			parameters.setPreviewFpsRange(min, max);
+			setCameraParameters(parameters);
+		}
+		catch(RuntimeException e) {
+			// can get RuntimeException from getParameters - we don't catch within that function because callers may not be able to recover,
+			// but here it doesn't really matter if we fail to set the fps range
+    		Log.e(TAG, "setPreviewFpsRange failed to get parameters");
+			e.printStackTrace();
+		}
 	}
 	
 	public List<int []> getSupportedPreviewFpsRange() {
@@ -1008,7 +1099,6 @@ public class CameraController1 extends CameraController {
     	setCameraParameters(parameters);
 	}
 
-	@TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR1)
 	public void enableShutterSound(boolean enabled) {
         if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 ) {
         	camera.enableShutterSound(enabled);
@@ -1270,7 +1360,6 @@ public class CameraController1 extends CameraController {
 	}
 	
 	@Override
-	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 	public void setContinuousFocusMoveCallback(final ContinuousFocusMoveCallback cb) {
 		if( MyDebug.LOG )
 			Log.d(TAG, "setContinuousFocusMoveCallback");
@@ -1313,15 +1402,91 @@ public class CameraController1 extends CameraController {
         }
 	}
 	
+	private void clearPending() {
+		if( MyDebug.LOG )
+			Log.d(TAG, "clearPending");
+		pending_burst_images.clear();
+		burst_exposures = null;
+		n_burst = 0;
+	}
+
 	private void takePictureNow(final CameraController.PictureCallback picture, final ErrorCallback error) {
 		if( MyDebug.LOG )
 			Log.d(TAG, "takePictureNow");
-    	Camera.ShutterCallback shutter = new TakePictureShutterCallback();
-        Camera.PictureCallback camera_jpeg = picture == null ? null : new Camera.PictureCallback() {
+
+    	final Camera.ShutterCallback shutter = new TakePictureShutterCallback();
+        final Camera.PictureCallback camera_jpeg = picture == null ? null : new Camera.PictureCallback() {
     	    public void onPictureTaken(byte[] data, Camera cam) {
+				if( MyDebug.LOG )
+					Log.d(TAG, "onPictureTaken");
     	    	// n.b., this is automatically run in a different thread
-    	    	picture.onPictureTaken(data);
-    	    	picture.onCompleted();
+
+				if( want_expo_bracketing && n_burst > 1 ) {
+					pending_burst_images.add(data);
+					if( pending_burst_images.size() >= n_burst ) { // shouldn't ever be greater, but just in case
+						if( MyDebug.LOG )
+							Log.d(TAG, "all burst images available");
+						if( pending_burst_images.size() > n_burst ) {
+							Log.e(TAG, "pending_burst_images size " + pending_burst_images.size() + " is greater than n_burst " + n_burst);
+						}
+
+						// set exposure compensation back to original
+						setExposureCompensation(burst_exposures.get(0));
+
+						// take a copy, so that we can clear pending_burst_images
+						// also allows us to reorder from dark to light
+						// since we took the images with the base exposure being first
+						int n_half_images = pending_burst_images.size()/2;
+						List<byte []> images = new ArrayList<>();
+						// darker images
+						for(int i=0;i<n_half_images;i++) {
+							images.add(pending_burst_images.get(i+1));
+						}
+						// base image
+						images.add(pending_burst_images.get(0));
+						// lighter images
+						for(int i=0;i<n_half_images;i++) {
+							images.add(pending_burst_images.get(n_half_images+1));
+						}
+
+						picture.onBurstPictureTaken(images);
+						pending_burst_images.clear();
+						picture.onCompleted();
+					}
+					else {
+						if( MyDebug.LOG )
+							Log.d(TAG, "number of burst images is now: " + pending_burst_images.size());
+						// set exposure compensation for next image
+						setExposureCompensation(burst_exposures.get(pending_burst_images.size()));
+
+						// need to start preview again: otherwise fail to take subsequent photos on Nexus 6
+						// and Nexus 7; on Galaxy Nexus we succeed, but exposure compensation has no effect
+						try {
+							startPreview();
+						}
+						catch(CameraControllerException e) {
+							if( MyDebug.LOG )
+								Log.d(TAG, "CameraControllerException trying to startPreview");
+							e.printStackTrace();
+						}
+
+						Handler handler = new Handler();
+						handler.postDelayed(new Runnable(){
+							@Override
+							public void run(){
+								if( MyDebug.LOG )
+									Log.d(TAG, "take picture after delay for next expo");
+								if( camera != null ) { // make sure camera wasn't released in the meantime
+									takePictureNow(picture, error);
+								}
+						   }
+						}, 1000);
+					}
+				}
+				else {
+					picture.onPictureTaken(data);
+					picture.onCompleted();
+				}
     	    }
         };
 
@@ -1345,6 +1510,59 @@ public class CameraController1 extends CameraController {
 	public void takePicture(final CameraController.PictureCallback picture, final ErrorCallback error) {
 		if( MyDebug.LOG )
 			Log.d(TAG, "takePicture");
+
+		clearPending();
+        if( want_expo_bracketing ) {
+			if( MyDebug.LOG )
+				Log.d(TAG, "set up expo bracketing");
+			Camera.Parameters parameters = this.getParameters();
+			int n_half_images = expo_bracketing_n_images/2;
+			int min_exposure = parameters.getMinExposureCompensation();
+			int max_exposure = parameters.getMaxExposureCompensation();
+			float exposure_step = getExposureCompensationStep();
+			if( exposure_step == 0.0f ) // just in case?
+	        	exposure_step = 1.0f/3.0f; // make up a typical example
+			int exposure_current = getExposureCompensation();
+			double stops_per_image = expo_bracketing_stops / (double)n_half_images;
+			int steps = (int)((stops_per_image+1.0e-5) / exposure_step); // need to add a small amount, otherwise we can round down
+			steps = Math.max(steps, 1);
+			if( MyDebug.LOG ) {
+				Log.d(TAG, "steps: " + steps);
+				Log.d(TAG, "exposure_current: " + exposure_current);
+			}
+
+			List<Integer> requests = new ArrayList<>();
+
+			// do the current exposure first, so we can take the first shot immediately
+			// if we change the order, remember to update the code that re-orders for passing resultant images back to picture.onBurstPictureTaken()
+			requests.add(exposure_current);
+
+			// darker images
+			for(int i=0;i<n_half_images;i++) {
+				int exposure = exposure_current - (n_half_images-i)*steps;
+				exposure = Math.max(exposure, min_exposure);
+				requests.add(exposure);
+				if( MyDebug.LOG ) {
+					Log.d(TAG, "add burst request for " + i + "th dark image:");
+					Log.d(TAG, "exposure: " + exposure);
+				}
+			}
+
+			// lighter images
+			for(int i=0;i<n_half_images;i++) {
+				int exposure = exposure_current + (i+1)*steps;
+				exposure = Math.min(exposure, max_exposure);
+				requests.add(exposure);
+				if( MyDebug.LOG ) {
+					Log.d(TAG, "add burst request for " + i + "th light image:");
+					Log.d(TAG, "exposure: " + exposure);
+				}
+			}
+
+			burst_exposures = requests;
+			n_burst = requests.size();
+		}
+
 		if( frontscreen_flash ) {
 			if( MyDebug.LOG )
 				Log.d(TAG, "front screen flash");

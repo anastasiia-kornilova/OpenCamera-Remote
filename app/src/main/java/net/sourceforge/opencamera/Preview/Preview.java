@@ -51,6 +51,7 @@ import android.media.CamcorderProfile;
 import android.media.Image;
 import android.media.MediaRecorder;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.BatteryManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -108,6 +109,13 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 	private double aspect_ratio;
 	private final CameraControllerManager camera_controller_manager;
 	private CameraController camera_controller;
+	enum CameraOpenState {
+		CAMERAOPENSTATE_CLOSED, // have yet to attempt to open the camera (either at all, or since the camera was closed)
+		CAMERAOPENSTATE_OPENING, // the camera is currently being opened (on a background thread)
+		CAMERAOPENSTATE_OPENED // either the camera is open (if camera_controller!=null) or we failed to open the camera (if camera_controller==null)
+	}
+	private CameraOpenState camera_open_state = CameraOpenState.CAMERAOPENSTATE_CLOSED;
+	private AsyncTask<Void, Void, CameraController> open_camera_task; // background task used for opening camera
 	private boolean has_permissions = true; // whether we have permissions necessary to operate the camera (camera, storage); assume true until we've been denied one of them
 	private boolean is_video;
 	private volatile MediaRecorder video_recorder; // must be volatile for test project reading the state
@@ -175,6 +183,9 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 	private List<String> scene_modes;
 	private List<String> white_balances;
 	private List<String> isos;
+	private boolean supports_white_balance_temperature;
+	private int min_temperature;
+	private int max_temperature;
 	private boolean supports_iso_range;
 	private int min_iso;
 	private int max_iso;
@@ -186,6 +197,7 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 	private int max_exposure;
 	private float exposure_step;
 	private boolean supports_expo_bracketing;
+	private int max_expo_bracketing_n_images;
 	private boolean supports_raw;
 	private float view_angle_x;
 	private float view_angle_y;
@@ -275,7 +287,7 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 				Log.d(TAG, "is_test: " + is_test);
 		}
 
-		this.using_android_l = applicationInterface.useCamera2();
+		this.using_android_l = Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && applicationInterface.useCamera2();
 		if( MyDebug.LOG ) {
 			Log.d(TAG, "using_android_l?: " + using_android_l);
 		}
@@ -442,8 +454,7 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
         scaleGestureDetector.onTouchEvent(event);
         if( camera_controller == null ) {
     		if( MyDebug.LOG )
-    			Log.d(TAG, "try to reopen camera due to touch");
-    		this.openCamera();
+    			Log.d(TAG, "received touch event, but camera not available");
     		return true;
         }
         applicationInterface.touchEvent(event);
@@ -690,7 +701,6 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 		this.textureview_w = width;
 		this.textureview_h = height;
 		mySurfaceCreated();
-		configureTransform();
 	}
 
 	@Override
@@ -722,26 +732,29 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
     private void configureTransform() { 
 		if( MyDebug.LOG )
 			Log.d(TAG, "configureTransform");
-    	if( camera_controller == null || !this.set_preview_size || !this.set_textureview_size )
-    		return;
+    	if( camera_controller == null || !this.set_preview_size || !this.set_textureview_size ) {
+			if( MyDebug.LOG )
+				Log.d(TAG, "nothing to do");
+			return;
+		}
 		if( MyDebug.LOG )
 			Log.d(TAG, "textureview size: " + textureview_w + ", " + textureview_h);
     	int rotation = getDisplayRotation();
-    	Matrix matrix = new Matrix(); 
-		RectF viewRect = new RectF(0, 0, this.textureview_w, this.textureview_h); 
-		RectF bufferRect = new RectF(0, 0, this.preview_h, this.preview_w); 
-		float centerX = viewRect.centerX(); 
-		float centerY = viewRect.centerY(); 
-        if( Surface.ROTATION_90 == rotation || Surface.ROTATION_270 == rotation ) { 
-            bufferRect.offset(centerX - bufferRect.centerX(), centerY - bufferRect.centerY()); 
-	        matrix.setRectToRect(viewRect, bufferRect, Matrix.ScaleToFit.FILL); 
+    	Matrix matrix = new Matrix();
+		RectF viewRect = new RectF(0, 0, this.textureview_w, this.textureview_h);
+		RectF bufferRect = new RectF(0, 0, this.preview_h, this.preview_w);
+		float centerX = viewRect.centerX();
+		float centerY = viewRect.centerY();
+        if( Surface.ROTATION_90 == rotation || Surface.ROTATION_270 == rotation ) {
+            bufferRect.offset(centerX - bufferRect.centerX(), centerY - bufferRect.centerY());
+	        matrix.setRectToRect(viewRect, bufferRect, Matrix.ScaleToFit.FILL);
 	        float scale = Math.max(
-	        		(float) textureview_h / preview_h, 
-                    (float) textureview_w / preview_w); 
-            matrix.postScale(scale, scale, centerX, centerY); 
-            matrix.postRotate(90 * (rotation - 2), centerX, centerY); 
-        } 
-        cameraSurface.setTransform(matrix); 
+	        		(float) textureview_h / preview_h,
+                    (float) textureview_w / preview_w);
+            matrix.postScale(scale, scale, centerX, centerY);
+            matrix.postRotate(90 * (rotation - 2), centerX, centerY);
+        }
+        cameraSurface.setTransform(matrix);
     }
 
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
@@ -925,6 +938,7 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
     			}
     			camera_controller.release();
     			camera_controller = null;
+				camera_open_state = CameraOpenState.CAMERAOPENSTATE_CLOSED;
     			openCamera();
     		}
 		}
@@ -975,6 +989,7 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 				}
 				camera_controller.release();
 				camera_controller = null;
+				camera_open_state = CameraOpenState.CAMERAOPENSTATE_CLOSED;
 			}
 		}
 		if( MyDebug.LOG ) {
@@ -1035,12 +1050,20 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 	//private int debug_count_opencamera = 0; // see usage below
 
 	/** Try to open the camera. Should only be called if camera_controller==null.
+	 *  The camera will be opened on a background thread, so won't be available upon
+	 *  exit of this function.
+	 *  If camera_open_state is already CAMERAOPENSTATE_OPENING, this method does nothing.
 	 */
 	private void openCamera() {
 		long debug_time = 0;
 		if( MyDebug.LOG ) {
 			Log.d(TAG, "openCamera()");
 			debug_time = System.currentTimeMillis();
+		}
+		if( camera_open_state == CameraOpenState.CAMERAOPENSTATE_OPENING ) {
+			if( MyDebug.LOG )
+				Log.d(TAG, "already opening camera in background thread");
+			return;
 		}
 		// need to init everything now, in case we don't open the camera (but these may already be initialised from an earlier call - e.g., if we are now switching to another camera)
 		// n.b., don't reset has_set_location, as we can remember the location when switching camera
@@ -1072,6 +1095,9 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 		color_effects = null;
 		white_balances = null;
 		isos = null;
+		supports_white_balance_temperature = false;
+		min_temperature = 0;
+		max_temperature = 0;
 		supports_iso_range = false;
 		min_iso = 0;
 		max_iso = 0;
@@ -1083,6 +1109,7 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 		max_exposure = 0;
 		exposure_step = 0.0f;
 		supports_expo_bracketing = false;
+		max_expo_bracketing_n_images = 0;
 		supports_raw = false;
 		view_angle_x = 55.0f; // set a sensible default
 		view_angle_y = 43.0f; // set a sensible default
@@ -1144,14 +1171,103 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 				return;
 			}
 		}*/
-		try {
-			int cameraId = applicationInterface.getCameraIdPref();
-			if( cameraId < 0 || cameraId >= camera_controller_manager.getNumberOfCameras() ) {
-				if( MyDebug.LOG )
-					Log.d(TAG, "invalid cameraId: " + cameraId);
-				cameraId = 0;
-				applicationInterface.setCameraIdPref(cameraId);
+
+		camera_open_state = CameraOpenState.CAMERAOPENSTATE_OPENING;
+		int cameraId = applicationInterface.getCameraIdPref();
+		if( cameraId < 0 || cameraId >= camera_controller_manager.getNumberOfCameras() ) {
+			if( MyDebug.LOG )
+				Log.d(TAG, "invalid cameraId: " + cameraId);
+			cameraId = 0;
+			applicationInterface.setCameraIdPref(cameraId);
+		}
+
+		//final boolean use_background_thread = false;
+		//final boolean use_background_thread = true;
+		final boolean use_background_thread = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N;
+		/* Opening camera on background thread is important so that we don't block the UI thread:
+		 *   - For old Camera API, this is recommended behaviour by Google for Camera.open().
+		     - For Camera2, the manager.openCamera() call is asynchronous, but CameraController2
+		       waits for it to open, so it's still important that we run that in a background thread.
+		 * In theory this works for all Android versions, but this caused problems of Galaxy Nexus
+		 * with tests testTakePhotoAutoLevel(), testTakePhotoAutoLevelAngles() (various camera
+		 * errors/exceptions, failing to taking photos). Since this is a significant change, this is
+		 * for now limited to modern devices.
+		 */
+		if( use_background_thread ) {
+			final int cameraId_f = cameraId;
+
+			open_camera_task = new AsyncTask<Void, Void, CameraController>() {
+				private static final String TAG = "Preview/openCamera";
+
+				@Override
+				protected CameraController doInBackground(Void... voids) {
+					if( MyDebug.LOG )
+						Log.d(TAG, "doInBackground, async task: " + this);
+					return openCameraCore(cameraId_f);
+				}
+
+				/** The system calls this to perform work in the UI thread and delivers
+				 * the result from doInBackground() */
+				protected void onPostExecute(CameraController camera_controller) {
+					if( MyDebug.LOG )
+						Log.d(TAG, "onPostExecute, async task: " + this);
+					// see note in openCameraCore() for why we set camera_controller here
+					Preview.this.camera_controller = camera_controller;
+					cameraOpened();
+					// set camera_open_state after cameraOpened, just in case a non-UI thread is listening for this - also
+					// important for test code waitUntilCameraOpened(), as test code runs on a different thread
+					camera_open_state = CameraOpenState.CAMERAOPENSTATE_OPENED;
+					open_camera_task = null; // just to be safe
+					if( MyDebug.LOG )
+						Log.d(TAG, "onPostExecute done, async task: " + this);
+				}
+
+				protected void onCancelled(CameraController camera_controller) {
+					if( MyDebug.LOG ) {
+						Log.d(TAG, "onCancelled, async task: " + this);
+						Log.d(TAG, "camera_controller: " + camera_controller);
+					}
+					// this typically means the application has paused whilst we were opening camera in background - so should just
+					// dispose of the camera controller
+					if( camera_controller != null ) {
+						// this is the local camera_controller, not Preview.this.camera_controller!
+						camera_controller.release();
+					}
+					camera_open_state = CameraOpenState.CAMERAOPENSTATE_OPENED; // n.b., still set OPENED state - important for test thread to know that this callback is complete
+					open_camera_task = null; // just to be safe
+					if( MyDebug.LOG )
+						Log.d(TAG, "onCancelled done, async task: " + this);
+				}
+			}.execute();
+		}
+		else {
+			this.camera_controller = openCameraCore(cameraId);
+			if( MyDebug.LOG ) {
+				Log.d(TAG, "openCamera: time after opening camera: " + (System.currentTimeMillis() - debug_time));
 			}
+
+			cameraOpened();
+			camera_open_state = CameraOpenState.CAMERAOPENSTATE_OPENED;
+		}
+
+		if( MyDebug.LOG ) {
+			Log.d(TAG, "openCamera: total time to open camera: " + (System.currentTimeMillis() - debug_time));
+		}
+	}
+
+	/** Open the camera - this should be called from background thread, to avoid hogging the UI thread.
+	 */
+	private CameraController openCameraCore(int cameraId) {
+		long debug_time = 0;
+		if( MyDebug.LOG ) {
+			Log.d(TAG, "openCameraCore()");
+			debug_time = System.currentTimeMillis();
+		}
+		// We pass a camera controller back to the UI thread rather than assigning to camera_controller here, because:
+		// * If we set camera_controller directly, we'd need to synchronize, otherwise risk of memory barrier issues
+		// * Risk of race conditions if UI thread accesses camera_controller before we have called cameraOpened().
+		CameraController camera_controller_local = null;
+		try {
 			if( MyDebug.LOG ) {
 				Log.d(TAG, "try to open camera: " + cameraId);
 				Log.d(TAG, "openCamera: time before opening camera: " + (System.currentTimeMillis() - debug_time));
@@ -1167,6 +1283,7 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 						Log.e(TAG, "error from CameraController: camera device failed");
 					if( camera_controller != null ) {
 						camera_controller = null;
+						camera_open_state = CameraOpenState.CAMERAOPENSTATE_CLOSED;
 						applicationInterface.onCameraError();
 					}
 				}
@@ -1179,27 +1296,39 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 						applicationInterface.onFailedStartPreview();
 					}
 				};
-	        	camera_controller = new CameraController2(this.getContext(), cameraId, previewErrorCallback, cameraErrorCallback);
+	        	camera_controller_local = new CameraController2(Preview.this.getContext(), cameraId, previewErrorCallback, cameraErrorCallback);
 	    		if( applicationInterface.useCamera2FakeFlash() ) {
-	    			camera_controller.setUseCamera2FakeFlash(true);
+	    			camera_controller_local.setUseCamera2FakeFlash(true);
 	    		}
 	        }
 	        else
-				camera_controller = new CameraController1(cameraId, cameraErrorCallback);
+				camera_controller_local = new CameraController1(cameraId, cameraErrorCallback);
 			//throw new CameraControllerException(); // uncomment to test camera not opening
 		}
 		catch(CameraControllerException e) {
 			if( MyDebug.LOG )
 				Log.e(TAG, "Failed to open camera: " + e.getMessage());
 			e.printStackTrace();
-			camera_controller = null;
+			camera_controller_local = null;
 		}
+
 		if( MyDebug.LOG ) {
-			Log.d(TAG, "openCamera: time after opening camera: " + (System.currentTimeMillis() - debug_time));
+			Log.d(TAG, "openCamera: total time for openCameraCore: " + (System.currentTimeMillis() - debug_time));
+		}
+		return camera_controller_local;
+	}
+
+	/** Called from UI thread after openCameraCore() completes on the background thread.
+	 */
+	private void cameraOpened() {
+		long debug_time = 0;
+		if( MyDebug.LOG ) {
+			Log.d(TAG, "cameraOpened()");
+			debug_time = System.currentTimeMillis();
 		}
 		boolean take_photo = false;
 		if( camera_controller != null ) {
-			Activity activity = (Activity)this.getContext();
+			Activity activity = (Activity)Preview.this.getContext();
 			if( MyDebug.LOG )
 				Log.d(TAG, "intent: " + activity.getIntent());
 			if( activity.getIntent() != null && activity.getIntent().getExtras() != null ) {
@@ -1213,13 +1342,13 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 			if( MyDebug.LOG )
 				Log.d(TAG, "take_photo?: " + take_photo);
 
-	        this.setCameraDisplayOrientation();
-	        new OrientationEventListener(activity) {
+			setCameraDisplayOrientation();
+			new OrientationEventListener(activity) {
 				@Override
 				public void onOrientationChanged(int orientation) {
 					Preview.this.onOrientationChanged(orientation);
 				}
-	        }.enable();
+			}.enable();
 			if( MyDebug.LOG ) {
 				Log.d(TAG, "openCamera: time after setting orientation: " + (System.currentTimeMillis() - debug_time));
 			}
@@ -1231,15 +1360,23 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 				Log.d(TAG, "openCamera: time after setting preview display: " + (System.currentTimeMillis() - debug_time));
 			}
 
-		    setupCamera(take_photo);
+			setupCamera(take_photo);
+			if( this.using_android_l ) {
+				configureTransform();
+			}
 		}
 
 		if( MyDebug.LOG ) {
-			Log.d(TAG, "openCamera: total time to open camera: " + (System.currentTimeMillis() - debug_time));
+			Log.d(TAG, "openCamera: total time for cameraOpened: " + (System.currentTimeMillis() - debug_time));
 		}
 	}
 
+
 	/** Try to reopen the camera, if not currently open (e.g., permission wasn't granted, but now it is).
+	 *  The camera will be opened on a background thread, so won't be available upon
+	 *  exit of this function.
+	 *  If camera_open_state is already CAMERAOPENSTATE_OPENING, or the camera is already open,
+	 *  this method does nothing.
 	 */
 	public void retryOpenCamera() {
 		if( MyDebug.LOG )
@@ -1260,7 +1397,26 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 	public boolean hasPermissions() {
 		return has_permissions;
 	}
-	
+
+	/** Returns true iff the camera is currently being opened on background thread (openCamera() called, but
+	 *  camera not yet available).
+	 */
+	public boolean isOpeningCamera() {
+		return camera_open_state == CameraOpenState.CAMERAOPENSTATE_OPENING;
+	}
+
+	/** Returns true iff we've tried to open the camera (whether or not it was successful).
+	 */
+	public boolean openCameraAttempted() {
+		return camera_open_state == CameraOpenState.CAMERAOPENSTATE_OPENED;
+	}
+
+	/** Returns true iff we've tried to open the camera, and were unable to do so.
+	 */
+	public boolean openCameraFailed() {
+		return camera_open_state == CameraOpenState.CAMERAOPENSTATE_OPENED && camera_controller == null;
+	}
+
 	/* Should only be called after camera first opened, or after preview is paused.
 	 * take_photo is true if we have been called from the TakePhoto widget (which means
 	 * we'll take a photo immediately after startup).
@@ -1296,8 +1452,18 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 		if( MyDebug.LOG ) {
 			Log.d(TAG, "saved_is_video: " + saved_is_video);
 		}
+		// must switch video before starting preview
 		if( saved_is_video != this.is_video ) {
-			this.switchVideo(true);
+			if( MyDebug.LOG )
+				Log.d(TAG, "switch video mode as not in correct mode");
+			this.switchVideo(true, false);
+		}
+	    if( take_photo ) {
+			if( this.is_video ) {
+				if( MyDebug.LOG )
+					Log.d(TAG, "switch to video for take_photo widget");
+				this.switchVideo(true, true);
+			}
 		}
 
 		if( do_startup_focus && using_android_l && camera_controller.supportsAutoFocus() ) {
@@ -1354,11 +1520,13 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 			}
 		}
 		
-	    if( take_photo ) {
+	    /*if( take_photo ) {
 			if( this.is_video ) {
+				if( MyDebug.LOG )
+					Log.d(TAG, "switch to video for take_photo widget");
 				this.switchVideo(false); // set during_startup to false, as we now need to reset the preview
 			}
-		}
+		}*/
 
 		applicationInterface.cameraSetup(); // must call this after the above take_photo code for calling switchVideo
 	    if( MyDebug.LOG ) {
@@ -1454,6 +1622,9 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 	        this.is_exposure_lock_supported = camera_features.is_exposure_lock_supported;
 	        this.supports_video_stabilization = camera_features.is_video_stabilization_supported;
 	        this.can_disable_shutter_sound = camera_features.can_disable_shutter_sound;
+			this.supports_white_balance_temperature = camera_features.supports_white_balance_temperature;
+			this.min_temperature = camera_features.min_temperature;
+			this.max_temperature = camera_features.max_temperature;
 	        this.supports_iso_range = camera_features.supports_iso_range;
 	        this.min_iso = camera_features.min_iso;
 	        this.max_iso = camera_features.max_iso;
@@ -1464,6 +1635,7 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 			this.max_exposure = camera_features.max_exposure;
 			this.exposure_step = camera_features.exposure_step;
 			this.supports_expo_bracketing = camera_features.supports_expo_bracketing;
+			this.max_expo_bracketing_n_images = camera_features.max_expo_bracketing_n_images;
 			this.supports_raw = camera_features.supports_raw;
 			this.view_angle_x = camera_features.view_angle_x;
 			this.view_angle_y = camera_features.view_angle_y;
@@ -1554,6 +1726,13 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 				white_balances = supported_values.values;
 	    		// now save, so it's available for PreferenceActivity
 				applicationInterface.setWhiteBalancePref(supported_values.selected_value);
+
+				if( supported_values.selected_value.equals("manual") && this.supports_white_balance_temperature ) {
+					int temperature = applicationInterface.getWhiteBalanceTemperaturePref();
+					camera_controller.setWhiteBalanceTemperature(temperature);
+					if( MyDebug.LOG )
+						Log.d(TAG, "saved white balance: " + value);
+				}
 			}
 			else {
 				// delete key in case it's present (e.g., if feature no longer available due to change in OS, or switching APIs)
@@ -1971,7 +2150,6 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 		this.video_quality_handler.sortVideoSizes();
 	}
 
-	@TargetApi(Build.VERSION_CODES.LOLLIPOP)
 	private void initialiseVideoQuality() {
 		int cameraId = camera_controller.getCameraId();
 		List<Integer> profiles = new ArrayList<>();
@@ -2195,7 +2373,7 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 		return width + ":" + height;
 	}
 	
-	public static String getMPString(int width, int height) {
+	private static String getMPString(int width, int height) {
 		float mp = (width*height)/1000000.0f;
 		return formatFloatToString(mp) + "MP";
 	}
@@ -2208,7 +2386,9 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 		if( camera_controller == null )
 			return "";
 		CamcorderProfile profile = getCamcorderProfile(quality);
-		return profile.videoFrameWidth + "x" + profile.videoFrameHeight + " " + getMPString(profile.videoFrameWidth, profile.videoFrameHeight);
+		// don't display MP here, as call to Preview.getMPString() here would contribute to poor performance (in PopupView)!
+		// this is meant to be a quick simple string
+		return profile.videoFrameWidth + "x" + profile.videoFrameHeight;
 	}
 
 	public String getCamcorderProfileDescription(String quality) {
@@ -2641,7 +2821,7 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 				Log.d(TAG, "    old zoom_factor " + zoom_factor + " ratio " + zoom_ratios.get(zoom_factor)/100.0f);
 				Log.d(TAG, "    chosen new zoom_factor " + new_zoom_factor + " ratio " + zoom_ratios.get(new_zoom_factor)/100.0f);
 			}
-			zoomTo(new_zoom_factor);
+			// n.b., don't call zoomTo; this should be called indirectly by applicationInterface.multitouchZoom()
 			applicationInterface.multitouchZoom(new_zoom_factor);
 		}
 	}
@@ -2706,7 +2886,22 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 			}
 		}
 	}
-	
+
+	/** Set a manual white balance temperature. The white balance mode must be set to "manual" for
+	 *  this to have an effect.
+	 */
+	public void setWhiteBalanceTemperature(int new_temperature) {
+		if( MyDebug.LOG )
+			Log.d(TAG, "seWhiteBalanceTemperature(): " + new_temperature);
+		if( camera_controller != null ) {
+			if( camera_controller.setWhiteBalanceTemperature(new_temperature) ) {
+				// now save
+				applicationInterface.setWhiteBalanceTemperaturePref(new_temperature);
+				showToast(seekbar_toast, getResources().getString(R.string.white_balance) + " " + new_temperature, 96);
+			}
+		}
+	}
+
 	public void setISO(int new_iso) {
 		if( MyDebug.LOG )
 			Log.d(TAG, "setISO(): " + new_iso);
@@ -2801,11 +2996,16 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 	
 	public void setCamera(int cameraId) {
 		if( MyDebug.LOG )
-			Log.d(TAG, "setCamera()");
+			Log.d(TAG, "setCamera(): " + cameraId);
 		if( cameraId < 0 || cameraId >= camera_controller_manager.getNumberOfCameras() ) {
 			if( MyDebug.LOG )
 				Log.d(TAG, "invalid cameraId: " + cameraId);
 			cameraId = 0;
+		}
+		if( camera_open_state == CameraOpenState.CAMERAOPENSTATE_OPENING ) {
+			if( MyDebug.LOG )
+				Log.d(TAG, "already opening camera in background thread");
+			return;
 		}
 		if( canSwitchCamera() ) {
 			closeCamera();
@@ -2970,7 +3170,7 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
         camera_controller.setPreviewFpsRange(selected_fps[0], selected_fps[1]);
 	}
 	
-	public void switchVideo(boolean during_startup) {
+	public void switchVideo(boolean during_startup, boolean change_user_pref) {
 		if( MyDebug.LOG )
 			Log.d(TAG, "switchVideo()");
 		if( camera_controller == null ) {
@@ -3008,7 +3208,7 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 				setFocusPref(false); // first restore the saved focus for the new photo/video mode; don't do autofocus, as it'll be cancelled when restarting preview
 			}*/
 
-			if( !during_startup ) {
+			if( change_user_pref ) {
 				// now save
 				applicationInterface.setVideoPref(is_video);
 	    	}
@@ -4078,7 +4278,6 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 	/** Pauses the video recording - or unpauses if already paused.
 	 *  This does nothing if isVideoRecording() returns false, or not on Android 7 or higher.
 	 */
-	@TargetApi(Build.VERSION_CODES.N)
 	public void pauseVideo() {
 		if( MyDebug.LOG )
 			Log.d(TAG, "pauseVideo");
@@ -4980,6 +5179,30 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
     	return camera_controller == null ? "" : camera_controller.getISOKey();
     }
 
+	/** Whether manual white balance temperatures can be specified via setWhiteBalanceTemperature().
+	 */
+	public boolean supportsWhiteBalanceTemperature() {
+		if( MyDebug.LOG )
+			Log.d(TAG, "supportsWhiteBalanceTemperature");
+		return this.supports_white_balance_temperature;
+	}
+
+	/** Minimum allowed white balance temperature.
+	 */
+	public int getMinimumWhiteBalanceTemperature() {
+		if( MyDebug.LOG )
+			Log.d(TAG, "getMinimumWhiteBalanceTemperature");
+		return this.min_temperature;
+	}
+
+	/** Maximum allowed white balance temperature.
+	 */
+	public int getMaximumWhiteBalanceTemperature() {
+		if( MyDebug.LOG )
+			Log.d(TAG, "getMaximumWhiteBalanceTemperature");
+		return this.max_temperature;
+	}
+
 	/** Returns whether a range of manual ISO values can be set. If this returns true, use
 	 *  getMinimumISO() and getMaximumISO() to return the valid range of values. If this returns
 	 *  false, getSupportedISOs() to find allowed ISO values.
@@ -5077,21 +5300,31 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
     }*/
 
     public boolean supportsExpoBracketing() {
-		if( MyDebug.LOG )
-			Log.d(TAG, "supportsExpoBracketing");
+		/*if( MyDebug.LOG )
+			Log.d(TAG, "supportsExpoBracketing");*/
     	return this.supports_expo_bracketing;
     }
     
+    public int maxExpoBracketingNImages() {
+		if( MyDebug.LOG )
+			Log.d(TAG, "maxExpoBracketingNImages");
+    	return this.max_expo_bracketing_n_images;
+    }
+
     public boolean supportsRaw() {
 		if( MyDebug.LOG )
 			Log.d(TAG, "supportsRaw");
     	return this.supports_raw;
     }
 
+	/** Returns the horizontal angle of view in degrees (when unzoomed).
+	 */
 	public float getViewAngleX() {
 		return this.view_angle_x;
 	}
 
+	/** Returns the vertical angle of view in degrees (when unzoomed).
+	 */
 	public float getViewAngleY() {
 		return this.view_angle_y;
 	}
@@ -5162,6 +5395,16 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 		if( MyDebug.LOG )
 			Log.d(TAG, "onPause");
 		this.app_is_paused = true;
+		if( camera_open_state == CameraOpenState.CAMERAOPENSTATE_OPENING ) {
+			if( MyDebug.LOG )
+				Log.d(TAG, "cancel open_camera_task");
+			if( open_camera_task != null ) { // just to be safe
+				this.open_camera_task.cancel(true);
+			}
+			else {
+				Log.e(TAG, "onPause: state is CAMERAOPENSTATE_OPENING, but open_camera_task is null");
+			}
+		}
 		this.closeCamera();
 		cameraSurface.onPause();
 		if( canvasView != null )

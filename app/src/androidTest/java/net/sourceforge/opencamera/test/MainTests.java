@@ -10,7 +10,11 @@ public class MainTests {
         .includeAllPackagesUnderHere()
         .build();*/
 		TestSuite suite = new TestSuite(MainTests.class.getName());
+		// put these tests first as they require various permissions be allowed, that can only be set by user action
+		suite.addTest(TestSuite.createTest(MainActivityTest.class, "testSwitchVideo"));
+		// other tests:
 		suite.addTest(TestSuite.createTest(MainActivityTest.class, "testPause"));
+		suite.addTest(TestSuite.createTest(MainActivityTest.class, "testImmediatelyQuit"));
 		suite.addTest(TestSuite.createTest(MainActivityTest.class, "testStartCameraPreviewCount"));
 		suite.addTest(TestSuite.createTest(MainActivityTest.class, "testSaveVideoMode"));
 		suite.addTest(TestSuite.createTest(MainActivityTest.class, "testSaveFocusMode"));
@@ -26,7 +30,6 @@ public class MainTests {
 		suite.addTest(TestSuite.createTest(MainActivityTest.class, "testSwitchResolution"));
 		suite.addTest(TestSuite.createTest(MainActivityTest.class, "testFaceDetection"));
 		suite.addTest(TestSuite.createTest(MainActivityTest.class, "testFocusFlashAvailability"));
-		suite.addTest(TestSuite.createTest(MainActivityTest.class, "testSwitchVideo"));
 		suite.addTest(TestSuite.createTest(MainActivityTest.class, "testFocusSwitchVideoSwitchCameras"));
 		suite.addTest(TestSuite.createTest(MainActivityTest.class, "testFocusRemainMacroSwitchCamera"));
 		suite.addTest(TestSuite.createTest(MainActivityTest.class, "testFocusRemainMacroSwitchPhoto"));
@@ -43,6 +46,8 @@ public class MainTests {
 		suite.addTest(TestSuite.createTest(MainActivityTest.class, "testZoomIdle"));
 		suite.addTest(TestSuite.createTest(MainActivityTest.class, "testZoomSwitchCamera"));
 		suite.addTest(TestSuite.createTest(MainActivityTest.class, "testSwitchCameraIdle"));
+		suite.addTest(TestSuite.createTest(MainActivityTest.class, "testSwitchCameraRepeat"));
+		suite.addTest(TestSuite.createTest(MainActivityTest.class, "testTouchFocusQuick"));
 		suite.addTest(TestSuite.createTest(MainActivityTest.class, "testGallery"));
 		suite.addTest(TestSuite.createTest(MainActivityTest.class, "testSettings"));
 		suite.addTest(TestSuite.createTest(MainActivityTest.class, "testFolderChooserNew"));
