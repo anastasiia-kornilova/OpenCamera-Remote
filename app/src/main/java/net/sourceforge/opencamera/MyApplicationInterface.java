@@ -1,6 +1,7 @@
 package net.sourceforge.opencamera;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -23,8 +24,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.hardware.camera2.DngCreator;
@@ -98,7 +101,10 @@ public class MyApplicationInterface implements ApplicationInterface {
 		}
 	}
 	private final List<LastImage> last_images = new ArrayList<>();
-	
+	private Bitmap backgroundBitmap = null;
+	private Matrix transformationBackground = null;
+	private Paint alphaBackground = null;
+
 	// camera properties which are saved in bundle, but not stored in preferences (so will be remembered if the app goes into background, but not after restart)
 	private int cameraId = 0;
 	private int zoom_factor = 0;
@@ -163,6 +169,63 @@ public class MyApplicationInterface implements ApplicationInterface {
 			imageSaver.onDestroy();
 		}
 	}
+
+	// Andy Modla begin
+	private Bitmap decodeFile(String path){
+		//Log.d(TAG, "decodeFile "+ path);
+		Bitmap bitmap = null;
+		File f = new File(path);
+		//Decode image size
+		try {
+			FileInputStream fis = new FileInputStream(f);
+			BitmapFactory.Options o2 = new BitmapFactory.Options();
+			fis = new FileInputStream(f);
+			bitmap = BitmapFactory.decodeStream(fis, null, o2);
+			fis.close();
+		} catch (IOException ioe) {
+			bitmap = null;
+		}
+		return bitmap;
+	}
+
+	public void drawBackground (Canvas canvas) {
+		String background = getBackgroundImage();
+		if (background != null) {
+			if (backgroundBitmap == null) {
+				backgroundBitmap = decodeFile(background);
+				if (backgroundBitmap == null) {
+					return;
+				}
+				float bscale = (float) canvas.getWidth() / (float) backgroundBitmap.getWidth();
+
+				float xTranslation = 0.0f;
+				float yTranslation = (canvas.getHeight() - backgroundBitmap.getHeight() * bscale) / 2.0f;
+
+				transformationBackground = new Matrix();
+				transformationBackground.postTranslate(xTranslation, yTranslation);
+				transformationBackground.preScale(bscale, bscale);
+				alphaBackground = new Paint();
+				alphaBackground.setAlpha(128);
+			}
+			canvas.drawBitmap(backgroundBitmap, transformationBackground, alphaBackground);
+		}
+	}
+
+	private String getBackgroundImage() {
+		boolean image_capture_intent = isImageCaptureIntent();
+		String background_image = null;
+		if( image_capture_intent ) {
+			Bundle myExtras = main_activity.getIntent().getExtras();
+			if (myExtras != null) {
+				// this image appears under the preview screen for 3D photography
+				background_image = myExtras.getString("background");  //getParcelable("background");
+			}
+		}
+		if( MyDebug.LOG )
+			Log.d(TAG, "getBackgroundImage()="+ background_image);
+		return background_image;
+	}
+	// Andy Modla end
 
 	LocationSupplier getLocationSupplier() {
 		return locationSupplier;
@@ -1773,13 +1836,13 @@ public class MyApplicationInterface implements ApplicationInterface {
 		boolean image_capture_intent = false;
 		String action = main_activity.getIntent().getAction();
 		if( MediaStore.ACTION_IMAGE_CAPTURE.equals(action) || MediaStore.ACTION_IMAGE_CAPTURE_SECURE.equals(action) ) {
-			if( MyDebug.LOG )
+			if( MyDebug.LOG && MyDebug.DETAIL_LOG)
 				Log.d(TAG, "from image capture intent");
 			image_capture_intent = true;
 		}
 		return image_capture_intent;
 	}
-	
+
 	private boolean saveImage(boolean is_hdr, boolean save_expo, List<byte []> images, Date current_date) {
 		if( MyDebug.LOG )
 			Log.d(TAG, "saveImage");
@@ -1790,12 +1853,12 @@ public class MyApplicationInterface implements ApplicationInterface {
         Uri image_capture_intent_uri = null;
         if( image_capture_intent ) {
 			if( MyDebug.LOG )
-				Log.d(TAG, "from image capture intent");
+				Log.d(TAG, "saveImage(): from image capture intent");
 	        Bundle myExtras = main_activity.getIntent().getExtras();
 	        if (myExtras != null) {
 	        	image_capture_intent_uri = myExtras.getParcelable(MediaStore.EXTRA_OUTPUT);
     			if( MyDebug.LOG )
-    				Log.d(TAG, "save to: " + image_capture_intent_uri);
+    				Log.d(TAG, "image capture intent uri save to: " + image_capture_intent_uri);
 	        }
         }
 

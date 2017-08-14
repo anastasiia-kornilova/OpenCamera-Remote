@@ -1131,7 +1131,7 @@ public class ImageSaver extends Thread {
     			{
     			    // Save the bitmap to the specified URI (use a try/catch block)
         			if( MyDebug.LOG )
-        				Log.d(TAG, "save to: " + request.image_capture_intent_uri);
+        				Log.d(TAG, "image capture intent save to: " + request.image_capture_intent_uri);
         			saveUri = request.image_capture_intent_uri;
     			}
     			else
@@ -1199,7 +1199,7 @@ public class ImageSaver extends Thread {
 			else {
     			picFile = storageUtils.createOutputMediaFile(StorageUtils.MEDIA_TYPE_IMAGE, filename_suffix, "jpg", current_date);
 	    		if( MyDebug.LOG )
-	    			Log.d(TAG, "save to: " + picFile.getAbsolutePath());
+	    			Log.d(TAG, "jpg save to: " + picFile.getAbsolutePath());
 			}
 			
 			if( saveUri != null && picFile == null ) {
@@ -1817,7 +1817,7 @@ public class ImageSaver extends Thread {
 			else {
         		picFile = storageUtils.createOutputMediaFile(StorageUtils.MEDIA_TYPE_IMAGE, "", "dng", current_date);
 	    		if( MyDebug.LOG )
-	    			Log.d(TAG, "save to: " + picFile.getAbsolutePath());
+	    			Log.d(TAG, "raw image save to: " + picFile.getAbsolutePath());
 			}
 
     		if( picFile != null ) {

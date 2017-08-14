@@ -272,6 +272,11 @@ public class DrawPreview {
 		String preference_grid = sharedPreferences.getString(PreferenceKeys.getShowGridPreferenceKey(), "preference_grid_none");
 		final float scale = getContext().getResources().getDisplayMetrics().density;
 
+		// Andy Modla begin
+		// draw background image if available
+		applicationInterface.drawBackground(canvas);
+		// Andy Modla end
+
 		if( camera_controller != null && preference_grid.equals("preference_grid_3x3") ) {
 			p.setColor(Color.WHITE);
 			canvas.drawLine(canvas.getWidth()/3.0f, 0.0f, canvas.getWidth()/3.0f, canvas.getHeight()-1.0f, p);
