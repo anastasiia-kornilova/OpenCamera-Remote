@@ -264,6 +264,19 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 		View pauseVideoButton = findViewById(R.id.pause_video);
 		pauseVideoButton.setVisibility(View.INVISIBLE);
 
+		// We initialise optional controls to invisible, so they don't show while the camera is opening - the actual visibility is
+		// set in cameraSetup().
+		// Note that ideally we'd set this in the xml, but doing so for R.id.zoom causes a crash on Galaxy Nexus startup beneath
+		// setContentView()!
+		// To be safe, we also do so for take_photo and zoom_seekbar (we already know we've had no reported crashes for focus_seekbar,
+		// however).
+	    View takePhotoButton = findViewById(R.id.take_photo);
+		takePhotoButton.setVisibility(View.INVISIBLE);
+	    View zoomControls = findViewById(R.id.zoom);
+		zoomControls.setVisibility(View.INVISIBLE);
+	    View zoomSeekbar = findViewById(R.id.zoom_seekbar);
+		zoomSeekbar.setVisibility(View.INVISIBLE);
+
 		// listen for orientation event change
 	    orientationEventListener = new OrientationEventListener(this) {
 			@Override
@@ -338,7 +351,15 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 				AlertDialog.Builder alertDialog = new AlertDialog.Builder(this);
 				alertDialog.setTitle(R.string.app_name);
 				alertDialog.setMessage(R.string.intro_text);
-				alertDialog.setPositiveButton(R.string.intro_ok, null);
+				alertDialog.setPositiveButton(android.R.string.ok, null);
+				alertDialog.setNegativeButton(R.string.preference_online_help, new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						if( MyDebug.LOG )
+							Log.d(TAG, "online help");
+						launchOnlineHelp();
+					}
+				});
 				alertDialog.show();
 			}
 
@@ -476,7 +497,6 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 
 	/** Determine whether we support Camera2 API.
 	 */
-	@TargetApi(Build.VERSION_CODES.LOLLIPOP)
 	private void initCamera2Support() {
 		if( MyDebug.LOG )
 			Log.d(TAG, "initCamera2Support");
@@ -633,6 +653,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
         freeAudioListener(false);
         freeSpeechRecognizer();
         applicationInterface.getLocationSupplier().freeLocationListeners();
+		applicationInterface.getGyroSensor().stopRecording();
         releaseSound();
         applicationInterface.clearLastImages(); // this should happen when pausing the preview, but call explicitly just to be safe
         preview.onPause();
@@ -647,7 +668,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 	}
 	// Andy Modla end block
 
-    @TargetApi(Build.VERSION_CODES.M)
+
 	@Override
 	protected void onDestroy() {
 		if( MyDebug.LOG ) {
@@ -693,6 +714,13 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 		SharedPreferences.Editor editor = sharedPreferences.edit();
 		editor.putBoolean(PreferenceKeys.getFirstTimePreferenceKey(), true);
 		editor.apply();
+	}
+
+	void launchOnlineHelp() {
+		if( MyDebug.LOG )
+			Log.d(TAG, "launchOnlineHelp");
+		Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://opencamera.sourceforge.net/"));
+		startActivity(browserIntent);
 	}
 
 	// for audio "noise" trigger option
@@ -810,8 +838,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 		}
 	}
 	
-	@SuppressWarnings("deprecation")
-	public boolean onKeyDown(int keyCode, KeyEvent event) { 
+	public boolean onKeyDown(int keyCode, KeyEvent event) {
 		if( MyDebug.LOG )
 			Log.d(TAG, "onKeyDown: " + keyCode);
 		boolean handled = mainUI.onKeyDown(keyCode, event);
@@ -925,13 +952,14 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 		}
 		waitUntilImageQueueEmpty(); // so we don't risk losing any images
         super.onPause(); // docs say to call this before freeing other things
-//        mainUI.destroyPopup();
+//        mainUI.destroyPopup(); // important as user could change/reset settings from Android settings when pausing
 //        mSensorManager.unregisterListener(accelerometerListener);
 //        mSensorManager.unregisterListener(magneticListener);
 //        orientationEventListener.disable();
 //        freeAudioListener(false);
 //        freeSpeechRecognizer();
 //        applicationInterface.getLocationSupplier().freeLocationListeners();
+//		applicationInterface.getGyroSensor().stopRecording();
 //		releaseSound();
 //		applicationInterface.clearLastImages(); // this should happen when pausing the preview, but call explicitly just to be safe
 //		preview.onPause();
@@ -1041,6 +1069,11 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
     public void clickedSwitchCamera(View view) {
 		if( MyDebug.LOG )
 			Log.d(TAG, "clickedSwitchCamera");
+		if( preview.isOpeningCamera() ) {
+			if( MyDebug.LOG )
+				Log.d(TAG, "already opening camera in background thread");
+			return;
+		}
 		this.closePopup();
 		if( this.preview.canSwitchCamera() ) {
 			int cameraId = getNextCameraId();
@@ -1048,7 +1081,8 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 		    switchCameraButton.setEnabled(false); // prevent slowdown if user repeatedly clicks
 			this.preview.setCamera(cameraId);
 		    switchCameraButton.setEnabled(true);
-			mainUI.setSwitchCameraContentDescription();
+			// no need to call mainUI.setSwitchCameraContentDescription - this will be called from PreviewcameraSetup when the
+			// new camera is opened
 		}
     }
 
@@ -1058,7 +1092,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 		this.closePopup();
 	    View switchVideoButton = findViewById(R.id.switch_video);
 	    switchVideoButton.setEnabled(false); // prevent slowdown if user repeatedly clicks
-		this.preview.switchVideo(false);
+		this.preview.switchVideo(false, true);
 		switchVideoButton.setEnabled(true);
 
 		mainUI.setTakePhotoIcon();
@@ -1067,7 +1101,6 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 		}
     }
 
-    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     public void clickedExposure(View view) {
 		if( MyDebug.LOG )
 			Log.d(TAG, "clickedExposure");
@@ -1095,6 +1128,33 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 		seekBar.setProgress(new_value);
 	}
     
+    private static double exponentialScaling(double frac, double min, double max) {
+		/* We use S(frac) = A * e^(s * frac)
+		 * We want S(0) = min, S(1) = max
+		 * So A = min
+		 * and Ae^s = max
+		 * => s = ln(max/min)
+		 */
+		double s = Math.log(max / min);
+		return min * Math.exp(s * frac);
+	}
+
+    private static double exponentialScalingInverse(double value, double min, double max) {
+		double s = Math.log(max / min);
+		return Math.log(value / min) / s;
+	}
+
+	public void setProgressSeekbarExponential(SeekBar seekBar, double min_value, double max_value, double value) {
+		seekBar.setMax(manual_n);
+		double frac = exponentialScalingInverse(value, min_value, max_value);
+		int new_value = (int)(frac*manual_n + 0.5); // add 0.5 for rounding
+		if( new_value < 0 )
+			new_value = 0;
+		else if( new_value > manual_n )
+			new_value = manual_n;
+		seekBar.setProgress(new_value);
+	}
+
     public void clickedExposureLock(View view) {
 		if( MyDebug.LOG )
 			Log.d(TAG, "clickedExposureLock");
@@ -1144,6 +1204,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 		
 		Bundle bundle = new Bundle();
 		bundle.putInt("cameraId", this.preview.getCameraId());
+		bundle.putInt("nCameras", preview.getCameraControllerManager().getNumberOfCameras());
 		bundle.putString("camera_api", this.preview.getCameraAPI());
 		bundle.putBoolean("using_android_l", this.preview.usingCamera2API());
 		bundle.putBoolean("supports_auto_stabilise", this.supports_auto_stabilise);
@@ -1153,6 +1214,11 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 		bundle.putBoolean("supports_raw", this.preview.supportsRaw());
 		bundle.putBoolean("supports_hdr", this.supportsHDR());
 		bundle.putBoolean("supports_expo_bracketing", this.supportsExpoBracketing());
+		bundle.putInt("max_expo_bracketing_n_images", this.maxExpoBracketingNImages());
+		bundle.putBoolean("supports_exposure_compensation", this.preview.supportsExposures());
+		bundle.putBoolean("supports_iso_range", this.preview.supportsISORange());
+		bundle.putBoolean("supports_exposure_time", this.preview.supportsExposureTime());
+		bundle.putBoolean("supports_white_balance_temperature", this.preview.supportsWhiteBalanceTemperature());
 		bundle.putBoolean("supports_video_stabilization", this.preview.supportsVideoStabilization());
 		bundle.putBoolean("can_disable_shutter_sound", this.preview.canDisableShutterSound());
 
@@ -1247,10 +1313,19 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
     }
 
     public void updateForSettings() {
-    	updateForSettings(null);
+    	updateForSettings(null, false);
     }
 
-    public void updateForSettings(String toast_message) {
+	public void updateForSettings(String toast_message) {
+		updateForSettings(toast_message, false);
+	}
+
+	/** Must be called when an settings (as stored in SharedPreferences) are made, so we can update the
+	 *  camera, and make any other necessary changes.
+     * @param keep_popup If false, the popup will be closed and destroyed. Set to true if you're sure
+	 *                   that the changed setting isn't one that requires the PopupView to be recreated
+	 */
+	public void updateForSettings(String toast_message, boolean keep_popup) {
 		if( MyDebug.LOG ) {
 			Log.d(TAG, "updateForSettings()");
 			if( toast_message != null ) {
@@ -1268,6 +1343,10 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 			Log.d(TAG, "update folder history");
 		save_location_history.updateFolderHistory(getStorageUtils().getSaveLocation(), true);
 		// no need to update save_location_history_saf, as we always do this in onActivityResult()
+
+		if( !keep_popup ) {
+			mainUI.destroyPopup(); // important as we don't want to use a cached popup
+		}
 
 		// update camera for changes made in prefs - do this without closing and reopening the camera app if possible for speed!
 		// but need workaround for Nexus 7 bug, where scene mode doesn't take effect unless the camera is restarted - I can reproduce this with other 3rd party camera apps, so may be a Nexus 7 issue...
@@ -1324,11 +1403,12 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 		if( toast_message != null && toast_message.length() > 0 )
 			preview.showToast(null, toast_message);
 
-    	if( saved_focus_value != null ) {
+		// don't need to reset to saved_focus_value, as we'll have done this when setting up the camera (or will do so when the camera is reopened, if need_reopen)
+    	/*if( saved_focus_value != null ) {
 			if( MyDebug.LOG )
 				Log.d(TAG, "switch focus back to: " + saved_focus_value);
     		preview.updateFocus(saved_focus_value, true, false);
-    	}
+    	}*/
     }
 
 	private MyPreferenceFragment getPreferenceFragment() {
@@ -1408,7 +1488,6 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
         }
     }
 
-    @TargetApi(Build.VERSION_CODES.KITKAT)
 	void setImmersiveMode(boolean on) {
 		if( MyDebug.LOG )
 			Log.d(TAG, "setImmersiveMode: " + on);
@@ -1588,10 +1667,11 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 			    			  thumbnail = MediaStore.Images.Thumbnails.getThumbnail(getContentResolver(), media.id, MediaStore.Images.Thumbnails.MINI_KIND, null);
 			    		}
 		    		}
-		    		catch(NoClassDefFoundError exception) {
-		    			// have had Google Play crashes from new ExifInterface() for Galaxy Ace4 (vivalto3g), Galaxy S Duos3 (vivalto3gvn)
-		    			if( MyDebug.LOG )
-		    				Log.e(TAG, "exif orientation NoClassDefFoundError");
+		    		catch(Throwable exception) {
+		    			// have had Google Play NoClassDefFoundError crashes from new ExifInterface() for Galaxy Ace4 (vivalto3g), Galaxy S Duos3 (vivalto3gvn)
+						// also NegativeArraySizeException - best to catch everything
+ 		    			if( MyDebug.LOG )
+		    				Log.e(TAG, "exif orientation exception");
 		    			exception.printStackTrace();
 		    		}
 		    		if( thumbnail != null ) {
@@ -1783,20 +1863,40 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 	    		final int takeFlags = resultData.getFlags()
 	    	            & (Intent.FLAG_GRANT_READ_URI_PERMISSION
 	    	            | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-		    	// Check for the freshest data.
-		    	getContentResolver().takePersistableUriPermission(treeUri, takeFlags);
-				SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-				SharedPreferences.Editor editor = sharedPreferences.edit();
-				editor.putString(PreferenceKeys.getSaveLocationSAFPreferenceKey(), treeUri.toString());
-				editor.apply();
-	
-				if( MyDebug.LOG )
-					Log.d(TAG, "update folder history for saf");
-				updateFolderHistorySAF(treeUri.toString());
+				try {
+					/*if( true )
+						throw new SecurityException(); // test*/
+					// Check for the freshest data.
+					getContentResolver().takePersistableUriPermission(treeUri, takeFlags);
 
-				File file = applicationInterface.getStorageUtils().getImageFolder();
-				if( file != null ) {
-					preview.showToast(null, getResources().getString(R.string.changed_save_location) + "\n" + file.getAbsolutePath());
+					SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+					SharedPreferences.Editor editor = sharedPreferences.edit();
+					editor.putString(PreferenceKeys.getSaveLocationSAFPreferenceKey(), treeUri.toString());
+					editor.apply();
+
+					if( MyDebug.LOG )
+						Log.d(TAG, "update folder history for saf");
+					updateFolderHistorySAF(treeUri.toString());
+
+					File file = applicationInterface.getStorageUtils().getImageFolder();
+					if( file != null ) {
+						preview.showToast(null, getResources().getString(R.string.changed_save_location) + "\n" + file.getAbsolutePath());
+					}
+				}
+				catch(SecurityException e) {
+					Log.e(TAG, "SecurityException failed to take permission");
+					e.printStackTrace();
+					// failed - if the user had yet to set a save location, make sure we switch SAF back off
+					SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+					String uri = sharedPreferences.getString(PreferenceKeys.getSaveLocationSAFPreferenceKey(), "");
+					if( uri.length() == 0 ) {
+						if( MyDebug.LOG )
+							Log.d(TAG, "no SAF save location was set");
+						SharedPreferences.Editor editor = sharedPreferences.edit();
+						editor.putBoolean(PreferenceKeys.getUsingSAFPreferenceKey(), false);
+						editor.apply();
+						preview.showToast(null, R.string.saf_permission_failed);
+					}
 				}
 	        }
 	        else {
@@ -2049,12 +2149,45 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 		applicationInterface.trashLastImage();
     }
 
+    private final boolean test_panorama = false;
+
+	/** User has pressed the take picture button, or done an equivalent action to request this (e.g.,
+	 *  volume buttons, audio trigger).
+	 */
     public void takePicture() {
 		if( MyDebug.LOG )
 			Log.d(TAG, "takePicture");
-		closePopup();
-    	this.preview.takePicturePressed();
+
+		if( test_panorama ) {
+			if (applicationInterface.getGyroSensor().isRecording()) {
+				if (MyDebug.LOG)
+					Log.d(TAG, "panorama complete");
+				applicationInterface.stopPanorama();
+				return;
+			} else {
+				if (MyDebug.LOG)
+					Log.d(TAG, "start panorama");
+				applicationInterface.startPanorama();
+			}
+		}
+
+		this.takePicturePressed();
     }
+
+    void takePicturePressed() {
+		if( MyDebug.LOG )
+			Log.d(TAG, "takePicturePressed");
+
+		closePopup();
+
+		if( applicationInterface.getGyroSensor().isRecording() ) {
+			if (MyDebug.LOG)
+				Log.d(TAG, "set next panorama point");
+			applicationInterface.setNextPanoramaPoint();
+		}
+
+    	this.preview.takePicturePressed();
+	}
     
     /** Lock the screen - this is Open Camera's own lock to guard against accidental presses,
      *  not the standard Android lock.
@@ -2209,7 +2342,9 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 					public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
 						if( MyDebug.LOG )
 							Log.d(TAG, "zoom onProgressChanged: " + progress);
-						preview.zoomTo(preview.getMaxZoom()-progress);
+						// note we zoom even if !fromUser, as various other UI controls (multitouch, volume key zoom, -/+ zoomcontrol)
+						// indirectly set zoom via this method, from setting the zoom slider
+						preview.zoomTo(preview.getMaxZoom() - progress);
 					}
 
 					@Override
@@ -2281,7 +2416,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 					Log.d(TAG, "set up iso");
 				SeekBar iso_seek_bar = ((SeekBar)findViewById(R.id.iso_seekbar));
 			    iso_seek_bar.setOnSeekBarChangeListener(null); // clear an existing listener - don't want to call the listener when setting up the progress bar to match the existing state
-				setProgressSeekbarScaled(iso_seek_bar, preview.getMinimumISO(), preview.getMaximumISO(), preview.getCameraController().getISO());
+				setProgressSeekbarExponential(iso_seek_bar, preview.getMinimumISO(), preview.getMaximumISO(), preview.getCameraController().getISO());
 				iso_seek_bar.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
 					@Override
 					public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
@@ -2290,12 +2425,15 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 						double frac = progress/(double)manual_n;
 						if( MyDebug.LOG )
 							Log.d(TAG, "exposure_time frac: " + frac);
-						double scaling = MainActivity.seekbarScaling(frac);
+						/*double scaling = MainActivity.seekbarScaling(frac);
 						if( MyDebug.LOG )
 							Log.d(TAG, "exposure_time scaling: " + scaling);
 						int min_iso = preview.getMinimumISO();
 						int max_iso = preview.getMaximumISO();
-						int iso = min_iso + (int)(scaling * (max_iso - min_iso));
+						int iso = min_iso + (int)(scaling * (max_iso - min_iso));*/
+						int min_iso = preview.getMinimumISO();
+						int max_iso = preview.getMaximumISO();
+						int iso = (int)exponentialScaling(frac, min_iso, max_iso);
 						preview.setISO(iso);
 					}
 
@@ -2312,7 +2450,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 						Log.d(TAG, "set up exposure time");
 					SeekBar exposure_time_seek_bar = ((SeekBar)findViewById(R.id.exposure_time_seekbar));
 					exposure_time_seek_bar.setOnSeekBarChangeListener(null); // clear an existing listener - don't want to call the listener when setting up the progress bar to match the existing state
-					setProgressSeekbarScaled(exposure_time_seek_bar, preview.getMinimumExposureTime(), preview.getMaximumExposureTime(), preview.getCameraController().getExposureTime());
+					setProgressSeekbarExponential(exposure_time_seek_bar, preview.getMinimumExposureTime(), preview.getMaximumExposureTime(), preview.getCameraController().getExposureTime());
 					exposure_time_seek_bar.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
 						@Override
 						public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
@@ -2325,12 +2463,15 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 							//double exposure_time_r = min_exposure_time_r + (frac * (max_exposure_time_r - min_exposure_time_r));
 							//long exposure_time = (long)(1.0 / exposure_time_r);
 							// we use the formula: [100^(percent/100) - 1]/99.0 rather than a simple linear scaling
-							double scaling = MainActivity.seekbarScaling(frac);
+							/*double scaling = MainActivity.seekbarScaling(frac);
 							if( MyDebug.LOG )
 								Log.d(TAG, "exposure_time scaling: " + scaling);
 							long min_exposure_time = preview.getMinimumExposureTime();
 							long max_exposure_time = preview.getMaximumExposureTime();
-							long exposure_time = min_exposure_time + (long)(scaling * (max_exposure_time - min_exposure_time));
+							long exposure_time = min_exposure_time + (long)(scaling * (max_exposure_time - min_exposure_time));*/
+							long min_exposure_time = preview.getMinimumExposureTime();
+							long max_exposure_time = preview.getMaximumExposureTime();
+							long exposure_time = (long)exponentialScaling(frac, min_exposure_time, max_exposure_time);
 							preview.setExposureTime(exposure_time);
 						}
 
@@ -2344,6 +2485,34 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 					});
 				}
 			}
+		}
+		if( preview.getSupportedWhiteBalances() != null && preview.supportsWhiteBalanceTemperature() ) {
+			if( MyDebug.LOG )
+				Log.d(TAG, "set up manual white balance");
+			SeekBar white_balance_seek_bar = ((SeekBar)findViewById(R.id.white_balance_seekbar));
+			white_balance_seek_bar.setOnSeekBarChangeListener(null); // clear an existing listener - don't want to call the listener when setting up the progress bar to match the existing state
+			final int minimum_temperature = preview.getMinimumWhiteBalanceTemperature();
+			final int maximum_temperature = preview.getMaximumWhiteBalanceTemperature();
+			// white balance should use linear scaling
+			white_balance_seek_bar.setMax(maximum_temperature - minimum_temperature);
+			white_balance_seek_bar.setProgress(preview.getCameraController().getWhiteBalanceTemperature() - minimum_temperature);
+			white_balance_seek_bar.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
+				@Override
+				public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+					if( MyDebug.LOG )
+						Log.d(TAG, "white balance seekbar onProgressChanged: " + progress);
+					int temperature = minimum_temperature + progress;
+					preview.setWhiteBalanceTemperature(temperature);
+				}
+
+				@Override
+				public void onStartTrackingTouch(SeekBar seekBar) {
+				}
+
+				@Override
+				public void onStopTrackingTouch(SeekBar seekBar) {
+				}
+			});
 		}
 		if( MyDebug.LOG )
 			Log.d(TAG, "cameraSetup: time after setting up iso: " + (System.currentTimeMillis() - debug_time));
@@ -2422,24 +2591,23 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 
 	public boolean supportsDRO() {
 		// require at least Android 5, for the Renderscript support in HDRProcessor
-		if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP )
-			return true;
-		return false;
+		return( Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP );
 	}
 
     public boolean supportsHDR() {
     	// we also require the device have sufficient memory to do the processing, simplest to use the same test as we do for auto-stabilise...
-		if( this.supportsAutoStabilise() && preview.supportsExpoBracketing() )
-			return true;
-		return false;
+		// also require at least Android 5, for the Renderscript support in HDRProcessor
+		return( Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && this.supportsAutoStabilise() && preview.supportsExpoBracketing() );
     }
     
     public boolean supportsExpoBracketing() {
-		if( preview.supportsExpoBracketing() )
-			return true;
-		return false;
+		return preview.supportsExpoBracketing();
     }
-    
+
+    private int maxExpoBracketingNImages() {
+		return preview.maxExpoBracketingNImages();
+    }
+
     public boolean supportsForceVideo4K() {
     	return this.supports_force_video_4k;
     }
@@ -2456,6 +2624,8 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
      */
     @SuppressWarnings("deprecation")
 	public long freeMemory() { // return free memory in MB
+		if( MyDebug.LOG )
+			Log.d(TAG, "freeMemory");
     	try {
     		File folder = applicationInterface.getStorageUtils().getImageFolder();
     		if( folder == null ) {
@@ -2650,6 +2820,9 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 		String white_balance = camera_controller.getWhiteBalance();
     	if( white_balance != null && !white_balance.equals(camera_controller.getDefaultWhiteBalance()) ) {
     		toast_string += "\n" + getResources().getString(R.string.white_balance) + ": " + white_balance;
+			if( white_balance.equals("manual") && preview.supportsWhiteBalanceTemperature() ) {
+				toast_string += " " + camera_controller.getWhiteBalanceTemperature();
+			}
 			simple = false;
     	}
 		String color_effect = camera_controller.getColorEffect();
@@ -2913,7 +3086,6 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 	}
 	
 	@SuppressWarnings("deprecation")
-	@TargetApi(Build.VERSION_CODES.LOLLIPOP)
 	private void initSound() {
 		if( sound_pool == null ) {
     		if( MyDebug.LOG )
