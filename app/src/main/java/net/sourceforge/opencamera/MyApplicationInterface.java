@@ -101,10 +101,13 @@ public class MyApplicationInterface implements ApplicationInterface {
 		}
 	}
 	private final List<LastImage> last_images = new ArrayList<>();
+	// Andy Modla begin
 	private Bitmap backgroundBitmap = null;
 	private Matrix transformationBackground = null;
 	private Paint alphaBackground = null;
-
+	private int canvasWidth;
+	private int canvasHeight;
+	// Andy Modla end
 	// camera properties which are saved in bundle, but not stored in preferences (so will be remembered if the app goes into background, but not after restart)
 	private int cameraId = 0;
 	private int zoom_factor = 0;
@@ -189,25 +192,40 @@ public class MyApplicationInterface implements ApplicationInterface {
 	}
 
 	public void drawBackground (Canvas canvas) {
+		if (MyDebug.DETAIL_LOG)
+			Log.d(TAG, "canvas width="+canvas.getWidth()+ " height="+canvas.getHeight());
 		String background = getBackgroundImage();
 		if (background != null) {
+            int width = canvas.getWidth();
+            int height = canvas.getHeight();
 			if (backgroundBitmap == null) {
 				backgroundBitmap = decodeFile(background);
 				if (backgroundBitmap == null) {
 					return;
 				}
-				float bscale = (float) canvas.getWidth() / (float) backgroundBitmap.getWidth();
-
+				float bscale = (float) width / (float) backgroundBitmap.getWidth();
 				float xTranslation = 0.0f;
-				float yTranslation = (canvas.getHeight() - backgroundBitmap.getHeight() * bscale) / 2.0f;
-
+				float yTranslation = (height - backgroundBitmap.getHeight() * bscale) / 2.0f;
 				transformationBackground = new Matrix();
 				transformationBackground.postTranslate(xTranslation, yTranslation);
 				transformationBackground.preScale(bscale, bscale);
 				alphaBackground = new Paint();
 				alphaBackground.setAlpha(128);
 			}
-			canvas.drawBitmap(backgroundBitmap, transformationBackground, alphaBackground);
+			else {
+                // did canvas size change?
+                if (canvasWidth != width || canvasHeight != height) {
+                    canvasWidth = width;
+                    canvasHeight = height;
+                    float bscale = (float) width / (float) backgroundBitmap.getWidth();
+                    float xTranslation = 0.0f;
+                    float yTranslation = (height - backgroundBitmap.getHeight() * bscale) / 2.0f;
+                    transformationBackground = new Matrix();
+                    transformationBackground.postTranslate(xTranslation, yTranslation);
+                    transformationBackground.preScale(bscale, bscale);
+                }
+                canvas.drawBitmap(backgroundBitmap, transformationBackground, alphaBackground);
+            }
 		}
 	}
 
