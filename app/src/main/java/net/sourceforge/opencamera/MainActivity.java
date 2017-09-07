@@ -9,8 +9,12 @@ import net.sourceforge.opencamera.UI.MainUI;
 import java.io.File;
 import java.io.IOException;
 import java.net.DatagramSocket;
+import java.net.InterfaceAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Locale;
@@ -81,6 +85,8 @@ import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.ZoomControls;
 
+import org.nanohttpd.webserver.SimpleWebServer;
+
 import netP5.*; // network library for UDP Server (Andy Modla change)
 
 /** The main Activity for Open Camera.
@@ -139,7 +145,9 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 
 	// begin Andy Modla addition
 	private UdpServer udpServer; 	// Broadcast receiver
+	private SimpleWebServer httpServer;
 	private int port = 8000;  // Broadcast port
+	private int serverPort = 8080;  // HTTP server port
 	public static String sCount = ""; // Photo counter received from Broadcast message
 	public static String sSuffix = "_1"; // filename suffix working storage
 	// end Andy Modla addition
@@ -336,6 +344,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
                 }
             }
         });
+
 		if( MyDebug.LOG )
 			Log.d(TAG, "onCreate: time after setting immersive mode listener: " + (System.currentTimeMillis() - debug_time));
 
@@ -349,7 +358,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
         if( !has_done_first_time ) {
 			if( !is_test ) {
 				AlertDialog.Builder alertDialog = new AlertDialog.Builder(this);
-				alertDialog.setTitle(R.string.app_name);
+				alertDialog.setTitle("Open Camera Remote");
 				alertDialog.setMessage(R.string.intro_text);
 				alertDialog.setPositiveButton(android.R.string.ok, null);
 				alertDialog.setNegativeButton(R.string.preference_online_help, new DialogInterface.OnClickListener() {
@@ -570,7 +579,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 						}
 					}
 					else {
-						preview.showToast(null, "Remote NotIn Photo Mode");
+						preview.showToast(null, "Remote Not In Photo Mode");
 					}
 				}
 				else if (command.startsWith("S") || command.startsWith("C")) {
@@ -625,17 +634,107 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 						preview.showToast(null, "Remote Not In Video Mode");
 					}
 				}
+				else if (command.startsWith("R")) { // reset / information request
+					if (httpServer != null) {
+						String hostname = getHostnameAddress();
+						Log.d(TAG, "information request " + hostname);
+						preview.showToast(null, "http://" + hostname + ":" + httpServer.getListeningPort());
+					}
+				}
 			}
 			public void netStatus(NetStatus s) {
 				Log.d(TAG, "netStatus (UDP Server) : "+s);
 			}
 		};
+		// UDP server for receiving Broadcast messages
 		udpServer = new UdpServer( nl1 , port );
 		if (udpServer == null) {
 			Log.d(TAG, "UdpServer error");
 			preview.showToast(null, "Remote Message Server not started");
 		}
+		// HTTP server for receiving GET image requests
+		if (applicationInterface.getHttpServerPref()) {
+			try {
+				if (httpServer == null) {
+					SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+					if (applicationInterface.getStorageUtils().isUsingSAF()) {
+						// TODO not tested
+						String save_location_saf = sharedPreferences.getString(PreferenceKeys.getSaveLocationSAFPreferenceKey(), "");
+						File file = getStorageUtils().getFileFromDocumentUriSAF(Uri.parse(save_location_saf), false);
+						httpServer = new SimpleWebServer(null, serverPort, file, true);
+					} else {
+						String folder_name = sharedPreferences.getString(PreferenceKeys.getSaveLocationPreferenceKey(), "OpenCamera");
+						httpServer = new SimpleWebServer(null, serverPort, StorageUtils.getImageFolder(folder_name), true);
+					}
+				}
+				httpServer.setApplicationInterface(applicationInterface);
+				httpServer.start();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
 	}
+
+	public String getHostnameAddress() {
+		try {
+			for (Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en
+					.hasMoreElements(); ) {
+				NetworkInterface intf = en.nextElement();
+				Enumeration<NetworkInterface> niEnum = NetworkInterface.getNetworkInterfaces();
+				String last = null;
+				while (niEnum.hasMoreElements())
+				{
+					NetworkInterface ni = niEnum.nextElement();
+					if(!ni.isLoopback()){
+						for (InterfaceAddress interfaceAddress : ni.getInterfaceAddresses())
+						{
+							if (interfaceAddress.getAddress()!= null) {
+								Log.d(TAG, interfaceAddress.getAddress().getHostAddress());
+								last =  (interfaceAddress.getAddress().getHostAddress());
+								if (last.matches("\\d*\\.\\d*\\.\\d*\\.\\d*")) {
+									return last;
+								}
+							}
+						}
+					}
+				}
+			}
+		} catch (SocketException ex) {
+			if( MyDebug.LOG ) {
+				Log.d(TAG, "Socket Exception");
+			}
+		}
+		return null;
+	}
+
+	public String getBroadcastAddress() {
+		try {
+			for (Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en
+					.hasMoreElements(); ) {
+				NetworkInterface intf = en.nextElement();
+				Enumeration<NetworkInterface> niEnum = NetworkInterface.getNetworkInterfaces();
+				while (niEnum.hasMoreElements())
+				{
+					NetworkInterface ni = niEnum.nextElement();
+					if(!ni.isLoopback()){
+						for (InterfaceAddress interfaceAddress : ni.getInterfaceAddresses())
+						{
+							if (interfaceAddress.getBroadcast()!= null) {
+								//println(interfaceAddress.getBroadcast().toString());
+								return (interfaceAddress.getBroadcast().toString().substring(1));
+							}
+						}
+					}
+				}
+			}
+		} catch (SocketException ex) {
+			if( MyDebug.LOG ) {
+				Log.d(TAG, "Socket Exception");
+			}
+		}
+		return null;
+	}
+
 	// Andy Modla end block
 
 	// Andy Modla begin block
@@ -665,6 +764,10 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 				ds.disconnect();
 			}
 		}
+		if(httpServer != null) {
+			httpServer.stop();
+		}
+
 	}
 	// Andy Modla end block
 
@@ -697,6 +800,9 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 	    	textToSpeech.shutdown();
 	    	textToSpeech = null;
 	    }
+	    // Andy Modla begin
+	    httpServer = null;
+		// Andy Modla end
 	    super.onDestroy();
 	}
 	
@@ -951,7 +1057,8 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 			debug_time = System.currentTimeMillis();
 		}
 		waitUntilImageQueueEmpty(); // so we don't risk losing any images
-        super.onPause(); // docs say to call this before freeing other things
+		applicationInterface.setStitchPreviewImage(null);
+		super.onPause(); // docs say to call this before freeing other things
 //        mainUI.destroyPopup(); // important as user could change/reset settings from Android settings when pausing
 //        mSensorManager.unregisterListener(accelerometerListener);
 //        mSensorManager.unregisterListener(magneticListener);
@@ -963,6 +1070,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 //		releaseSound();
 //		applicationInterface.clearLastImages(); // this should happen when pausing the preview, but call explicitly just to be safe
 //		preview.onPause();
+
 		if( MyDebug.LOG ) {
 			Log.d(TAG, "onPause: total time to pause: " + (System.currentTimeMillis() - debug_time));
 		}
@@ -1069,6 +1177,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
     public void clickedSwitchCamera(View view) {
 		if( MyDebug.LOG )
 			Log.d(TAG, "clickedSwitchCamera");
+		applicationInterface.setStitchPreviewImage(null);
 		if( preview.isOpeningCamera() ) {
 			if( MyDebug.LOG )
 				Log.d(TAG, "already opening camera in background thread");
@@ -1089,6 +1198,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
     public void clickedSwitchVideo(View view) {
 		if( MyDebug.LOG )
 			Log.d(TAG, "clickedSwitchVideo");
+		applicationInterface.setStitchPreviewImage(null);
 		this.closePopup();
 	    View switchVideoButton = findViewById(R.id.switch_video);
 	    switchVideoButton.setEnabled(false); // prevent slowdown if user repeatedly clicks
@@ -1758,6 +1868,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
     public void clickedGallery(View view) {
 		if( MyDebug.LOG )
 			Log.d(TAG, "clickedGallery");
+		applicationInterface.setStitchPreviewImage(null);
 		//Intent intent = new Intent(Intent.ACTION_VIEW, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
 		Uri uri = applicationInterface.getStorageUtils().getLastMediaScanned();
 		if( uri == null ) {
@@ -1975,6 +2086,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
     private void longClickedGallery() {
 		if( MyDebug.LOG )
 			Log.d(TAG, "longClickedGallery");
+		applicationInterface.setStitchPreviewImage(null);
 		if( applicationInterface.getStorageUtils().isUsingSAF() ) {
 			if( save_location_history_saf == null || save_location_history_saf.size() <= 1 ) {
 				if( MyDebug.LOG )

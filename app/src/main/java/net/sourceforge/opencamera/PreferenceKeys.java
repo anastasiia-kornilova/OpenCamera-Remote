@@ -272,6 +272,14 @@ public class PreferenceKeys {
     }
 
     // Andy Modla start block
+    public static String getStitchPreviewPreferenceKey() {
+        return "preference_stitch_preview";
+    }
+
+    public static String getHttpServerPreferenceKey() {
+        return "preference_http_server";
+    }
+
     public static String getSavePhotoSuffixPreferenceKey() {
         return "preference_save_photo_suffix";
     }

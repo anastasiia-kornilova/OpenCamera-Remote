@@ -4,6 +4,6 @@ package net.sourceforge.opencamera;
  *  released versions.
  */
 public class MyDebug {
-	public static final boolean LOG = false;
-	public static final boolean DETAIL_LOG = false;
+	public static final boolean LOG = BuildConfig.DEBUG;
+	public static final boolean LOG_DETAIL = false;
 }

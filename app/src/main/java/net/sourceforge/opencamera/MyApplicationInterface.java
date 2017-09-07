@@ -102,6 +102,8 @@ public class MyApplicationInterface implements ApplicationInterface {
 	}
 	private final List<LastImage> last_images = new ArrayList<>();
 	// Andy Modla begin
+	LastImage last_image;
+	private LastImage stitchPreviewImage = null;
 	private Bitmap backgroundBitmap = null;
 	private Matrix transformationBackground = null;
 	private Paint alphaBackground = null;
@@ -171,13 +173,17 @@ public class MyApplicationInterface implements ApplicationInterface {
 		if( imageSaver != null ) {
 			imageSaver.onDestroy();
 		}
+		setStitchPreviewImage(null);
 	}
 
-	// Andy Modla begin
-	private Bitmap decodeFile(String path){
-		//Log.d(TAG, "decodeFile "+ path);
+	// Andy Modla begin block
+	//BitmapFactory.Options options = new BitmapFactory.Options();
+	//options.inJustDecodeBounds = true;
+    //    BitmapFactory.decodeFile(new File(uri.getPath()).getAbsolutePath(), options);
+
+	private Bitmap decodeFile(File f){
+		//Log.d(TAG, "decodeFile "+ f.getAbsolutePath());
 		Bitmap bitmap = null;
-		File f = new File(path);
 		//Decode image size
 		try {
 			FileInputStream fis = new FileInputStream(f);
@@ -192,16 +198,42 @@ public class MyApplicationInterface implements ApplicationInterface {
 	}
 
 	public void drawBackground (Canvas canvas) {
-		if (MyDebug.DETAIL_LOG)
+		if (MyDebug.LOG_DETAIL)
 			Log.d(TAG, "canvas width="+canvas.getWidth()+ " height="+canvas.getHeight());
-		String background = getBackgroundImage();
+		LastImage background = getBackgroundImage(stitchPreviewImage);
 		if (background != null) {
             int width = canvas.getWidth();
             int height = canvas.getHeight();
 			if (backgroundBitmap == null) {
-				backgroundBitmap = decodeFile(background);
+				File file = null;
+				if (storageUtils.isUsingSAF()) {
+					file = storageUtils.getFileFromDocumentUriSAF(background.uri, false);
+				}
+				else {
+					file = new File(background.name);
+				}
+				backgroundBitmap = decodeFile(file);
 				if (backgroundBitmap == null) {
 					return;
+				}
+				// front facing selfie camera photo needs mirror flip
+				boolean is_front_facing = main_activity.getPreview().getCameraController() != null && main_activity.getPreview().getCameraController().isFrontFacing();
+				SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getContext());
+				boolean mirror = is_front_facing && sharedPreferences.getString(PreferenceKeys.getFrontCameraMirrorKey(), "preference_front_camera_mirror_no").equals("preference_front_camera_mirror_photo");
+
+				if (is_front_facing) {
+					Matrix matrix = new Matrix();
+					matrix.preScale(-1.0f, 1.0f);
+					if (mirror)
+						matrix.setRotate(270, backgroundBitmap.getWidth() * 0.5f, backgroundBitmap.getHeight() * 0.5f);
+					Bitmap new_bitmap = Bitmap.createBitmap(backgroundBitmap, 0, 0, backgroundBitmap.getWidth(), backgroundBitmap.getHeight(), matrix, true);
+					if( new_bitmap != backgroundBitmap ) {
+						backgroundBitmap.recycle();
+						backgroundBitmap = new_bitmap;
+					}
+					if (backgroundBitmap == null) {
+						return;
+					}
 				}
 				float bscale = (float) width / (float) backgroundBitmap.getWidth();
 				float xTranslation = 0.0f;
@@ -229,21 +261,57 @@ public class MyApplicationInterface implements ApplicationInterface {
 		}
 	}
 
-	private String getBackgroundImage() {
+	public String getLastImage() {
+		if (last_image != null)
+			if (last_image.uri != null) {
+				return last_image.uri.getLastPathSegment();
+			}
+		return null;
+	}
+
+	private LastImage getBackgroundImage(LastImage previewImage) {
 		boolean image_capture_intent = isImageCaptureIntent();
-		String background_image = null;
+		String backgroundImage = null;
+		LastImage lImage = null;
 		if( image_capture_intent ) {
 			Bundle myExtras = main_activity.getIntent().getExtras();
 			if (myExtras != null) {
 				// this image appears under the preview screen for 3D photography
-				background_image = myExtras.getString("background");  //getParcelable("background");
+				backgroundImage = myExtras.getString("background");  //getParcelable("background");
+				lImage = previewImage;
+				if (backgroundImage != null && lImage == null) {
+					lImage = new LastImage(backgroundImage, false);
+				}
 			}
 		}
-		if( MyDebug.LOG )
-			Log.d(TAG, "getBackgroundImage()="+ background_image);
-		return background_image;
+		else if (isStitchPreviewMode()) {
+			if (previewImage != null) {
+				lImage = previewImage;
+			}
+		}
+		if( MyDebug.LOG_DETAIL )
+			Log.d(TAG, "getBackgroundImage()="+ backgroundImage);
+		return lImage;
 	}
-	// Andy Modla end
+
+	// return true if stitch/composite preview mode set in Settigs
+	public boolean isStitchPreviewMode() {
+		return getStitchPreviewPref();
+	}
+
+	@Override
+	public boolean getStitchPreviewPref() {
+		SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getContext());
+		return sharedPreferences.getBoolean(PreferenceKeys.getStitchPreviewPreferenceKey(), false);
+	}
+
+	@Override
+	public boolean getHttpServerPref() {
+		SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getContext());
+		return sharedPreferences.getBoolean(PreferenceKeys.getHttpServerPreferenceKey(), false);
+	}
+
+	// Andy Modla end block
 
 	LocationSupplier getLocationSupplier() {
 		return locationSupplier;
@@ -1854,7 +1922,7 @@ public class MyApplicationInterface implements ApplicationInterface {
 		boolean image_capture_intent = false;
 		String action = main_activity.getIntent().getAction();
 		if( MediaStore.ACTION_IMAGE_CAPTURE.equals(action) || MediaStore.ACTION_IMAGE_CAPTURE_SECURE.equals(action) ) {
-			if( MyDebug.LOG && MyDebug.DETAIL_LOG)
+			if( MyDebug.LOG && MyDebug.LOG_DETAIL)
 				Log.d(TAG, "from image capture intent");
 			image_capture_intent = true;
 		}
@@ -2013,8 +2081,11 @@ public class MyApplicationInterface implements ApplicationInterface {
 			Log.d(TAG, "share?: " + share);
 		}
     	last_images_saf = false;
-    	LastImage last_image = new LastImage(file.getAbsolutePath(), share);
+    	last_image = new LastImage(file.getAbsolutePath(), share);
     	last_images.add(last_image);
+		// Andy Modla begin
+        setStitchPreviewImage(last_image);
+		// Andy Modla end
     }
     
     void addLastImageSAF(Uri uri, boolean share) {
@@ -2025,7 +2096,20 @@ public class MyApplicationInterface implements ApplicationInterface {
 		last_images_saf = true;
     	LastImage last_image = new LastImage(uri, share);
     	last_images.add(last_image);
+		// Andy Modla begin
+        setStitchPreviewImage(last_image);
+		// Andy Modla end
     }
+
+    // Andy Modla begin
+	void setStitchPreviewImage(LastImage lastImage) {
+		stitchPreviewImage = lastImage;
+		if (backgroundBitmap != null) {
+			backgroundBitmap.recycle();
+			backgroundBitmap = null;
+		}
+	}
+	// Andy Modla end
 
 	void clearLastImages() {
 		if( MyDebug.LOG )
