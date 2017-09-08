@@ -84,12 +84,20 @@
 			android:defaultValue="false"
 			/>
 
-		<SwitchPreference
-			android:key="preference_http_server"
-			android:title="HTTP Server"
-			android:summary="Turn on HTTP Server to allow remote viewing photos stored in Save location folder. Requires App Restart."
-			android:defaultValue="false"
-			/>
+        <SwitchPreference
+            android:key="preference_http_server"
+            android:title="HTTP Server"
+            android:summary="Turn on HTTP Server to allow remote viewing photos stored in Save location folder. Requires App Restart."
+            android:defaultValue="false"
+            />
+
+        <SwitchPreference
+            android:key="preference_chacha_3D"
+            android:title="3D ChaCha Mode"
+            android:summary="Append _l or _r to photo filenames taken in sequence for left/right eye photos using the single camera 3D ChaCha method"
+            android:defaultValue="false"
+            />
+
 		<!-- Andy Modla end addition -->
 
 		<ListPreference

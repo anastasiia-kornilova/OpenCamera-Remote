@@ -490,7 +490,7 @@ public class StorageUtils {
             index = "_" + count; // try to find a unique filename
         }
 		SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
-		// Andy Modla
+		// Andy Modla begin block
 		String sfnFormat = sharedPreferences.getString(PreferenceKeys.getSaveZuluTimePreferenceKey(),"local");
 		FN_FORMAT fnFormat;
 		if (sfnFormat.equals("local"))
@@ -511,24 +511,34 @@ public class StorageUtils {
 		String mediaFilename;
         if( type == MEDIA_TYPE_IMAGE ) {
     		String prefix = sharedPreferences.getString(PreferenceKeys.getSavePhotoPrefixPreferenceKey(), "IMG_");
-			// Andy Modla start block -------
 			String sSuffix = sharedPreferences.getString(PreferenceKeys.getSavePhotoSuffixPreferenceKey(), "");
+			// sCount indicates remote capture filename creation
 			if (MainActivity.sCount != "") {
-				mediaFilename = prefix + MainActivity.sCount + index + sSuffix + "." + extension;
+				timeStamp = MainActivity.sCount;
 			}
 			else {
 				if (fnFormat == FN_FORMAT.number) {
 					timeStamp = getPhotoIndex();
-					mediaFilename = prefix + timeStamp + sSuffix + suffix + index + "." + extension;
-				} else {
-					mediaFilename = prefix + timeStamp + suffix + index + "." + extension;
 				}
 			}
-			// Andy Modla end block -------
+			// override sSuffix for 3D cha-cha mode
+			if (MainActivity.suffixSelection == MainActivity.Stereo.LEFT) {
+				sSuffix = "_l";
+				MainActivity.savedTimeStamp = timeStamp;
+				MainActivity.sCount = "";
+			}
+			else if (MainActivity.suffixSelection == MainActivity.Stereo.RIGHT) {
+				sSuffix = "_r";
+				timeStamp = MainActivity.savedTimeStamp;
+				MainActivity.suffixSelection = MainActivity.Stereo.MONO;
+				MainActivity.sCount = "";
+			}
+			mediaFilename = prefix + timeStamp + suffix + index + sSuffix + "." + extension;
+			// Andy Modla end block
         }
         else if( type == MEDIA_TYPE_VIDEO ) {
     		String prefix = sharedPreferences.getString(PreferenceKeys.getSaveVideoPrefixPreferenceKey(), "VID_");
-			// Andy Modla start block -------
+			// Andy Modla begin block
 			String sSuffix = sharedPreferences.getString(PreferenceKeys.getSaveVideoSuffixPreferenceKey(), "");
 			if (MainActivity.sCount != "") {
 				mediaFilename = prefix + MainActivity.sCount + index + sSuffix + "." + extension;
@@ -536,12 +546,10 @@ public class StorageUtils {
 			else {
 				if (fnFormat == FN_FORMAT.number) {
 					timeStamp = getVideoIndex();
-					mediaFilename = prefix + timeStamp + sSuffix + suffix + index + "." + extension;
-				} else {
-					mediaFilename = prefix + timeStamp + suffix + index + "." + extension;
 				}
+				mediaFilename = prefix + timeStamp + suffix + index + sSuffix + "." + extension;
 			}
-			// Andy Modla end block -------
+			// Andy Modla end block
         }
         else {
         	// throw exception as this is a programming error

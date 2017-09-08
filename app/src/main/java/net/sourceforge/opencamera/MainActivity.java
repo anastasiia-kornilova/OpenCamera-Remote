@@ -143,14 +143,16 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 	public volatile float test_angle;
 	public volatile String test_last_saved_image;
 
-	// begin Andy Modla addition
+	// Andy Modla begin block
 	private UdpServer udpServer; 	// Broadcast receiver
 	private SimpleWebServer httpServer;
 	private int port = 8000;  // Broadcast port
 	private int serverPort = 8080;  // HTTP server port
 	public static String sCount = ""; // Photo counter received from Broadcast message
-	public static String sSuffix = "_1"; // filename suffix working storage
-	// end Andy Modla addition
+	public enum Stereo {MONO, LEFT, RIGHT} // no suffix, left suffix, right suffix
+	public static Stereo suffixSelection = Stereo.MONO; // no suffix, left suffix, right suffix
+	public static String savedTimeStamp = null;
+	// Andy Modla end block
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -734,7 +736,6 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 		}
 		return null;
 	}
-
 	// Andy Modla end block
 
 	// Andy Modla begin block
@@ -2282,6 +2283,18 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 				applicationInterface.startPanorama();
 			}
 		}
+
+		// Andy Modla begin block
+		// is the cha cha method being used for 3D photo capture?
+		SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+		if( sharedPreferences.getBoolean(PreferenceKeys.getChaCha3DPreferenceKey(), false)) {
+			if (suffixSelection == Stereo.MONO) {
+				suffixSelection = Stereo.LEFT;
+			}
+			else if (suffixSelection == Stereo.LEFT)
+				suffixSelection = Stereo.RIGHT;
+		}
+		// Andy Modla end block
 
 		this.takePicturePressed();
     }

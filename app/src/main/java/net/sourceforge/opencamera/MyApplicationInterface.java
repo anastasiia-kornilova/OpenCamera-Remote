@@ -101,7 +101,7 @@ public class MyApplicationInterface implements ApplicationInterface {
 		}
 	}
 	private final List<LastImage> last_images = new ArrayList<>();
-	// Andy Modla begin
+	// Andy Modla begin block
 	LastImage last_image;
 	private LastImage stitchPreviewImage = null;
 	private Bitmap backgroundBitmap = null;
@@ -109,7 +109,7 @@ public class MyApplicationInterface implements ApplicationInterface {
 	private Paint alphaBackground = null;
 	private int canvasWidth;
 	private int canvasHeight;
-	// Andy Modla end
+	// Andy Modla end block
 	// camera properties which are saved in bundle, but not stored in preferences (so will be remembered if the app goes into background, but not after restart)
 	private int cameraId = 0;
 	private int zoom_factor = 0;
@@ -177,9 +177,6 @@ public class MyApplicationInterface implements ApplicationInterface {
 	}
 
 	// Andy Modla begin block
-	//BitmapFactory.Options options = new BitmapFactory.Options();
-	//options.inJustDecodeBounds = true;
-    //    BitmapFactory.decodeFile(new File(uri.getPath()).getAbsolutePath(), options);
 
 	private Bitmap decodeFile(File f){
 		//Log.d(TAG, "decodeFile "+ f.getAbsolutePath());
@@ -285,8 +282,16 @@ public class MyApplicationInterface implements ApplicationInterface {
 			}
 		}
 		else if (isStitchPreviewMode()) {
-			if (previewImage != null) {
-				lImage = previewImage;
+			SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(main_activity);
+			boolean cha = sharedPreferences.getBoolean(PreferenceKeys.getChaCha3DPreferenceKey(), false);
+
+			if (cha && MainActivity.suffixSelection == MainActivity.Stereo.MONO ) {
+				lImage = null;
+			}
+			else {
+				if (previewImage != null) {
+					lImage = previewImage;
+				}
 			}
 		}
 		if( MyDebug.LOG_DETAIL )

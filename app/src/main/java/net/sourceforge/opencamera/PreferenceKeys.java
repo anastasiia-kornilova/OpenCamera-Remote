@@ -277,12 +277,18 @@ public class PreferenceKeys {
     }
 
     public static String getHttpServerPreferenceKey() {
+
         return "preference_http_server";
     }
 
     public static String getSavePhotoSuffixPreferenceKey() {
         return "preference_save_photo_suffix";
     }
+
+    public static String getChaCha3DPreferenceKey() {
+        return "preference_chacha_3D";
+    }
+
     // Andy Modla end block
 
     public static String getSaveVideoPrefixPreferenceKey() {
