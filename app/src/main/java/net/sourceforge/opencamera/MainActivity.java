@@ -158,7 +158,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 	protected void onCreate(Bundle savedInstanceState) {
 		long debug_time = 0;
 		if( MyDebug.LOG ) {
-			Log.d(TAG, "onCreate");
+			Log.d(TAG, "onCreate: " + this);
 			debug_time = System.currentTimeMillis();
 		}
 		super.onCreate(savedInstanceState);
@@ -1303,6 +1303,104 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 			Log.d(TAG, "clickedPopupSettings");
 		mainUI.togglePopupSettings();
     }
+
+    private final PreferencesListener preferencesListener = new PreferencesListener();
+
+	/** Keeps track of changes to SharedPreferences.
+	 */
+	class PreferencesListener implements SharedPreferences.OnSharedPreferenceChangeListener {
+		private static final String TAG = "PreferencesListener";
+
+		private boolean any; // whether any changes that require update have been made since startListening()
+
+		void startListening() {
+			if( MyDebug.LOG )
+				Log.d(TAG, "startListening");
+			any = false;
+
+			SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(MainActivity.this);
+			// n.b., registerOnSharedPreferenceChangeListener warns that we must keep a reference to the listener (which
+			// is this class) as long as we want to listen for changes, otherwise the listener may be garbage collected!
+			sharedPreferences.registerOnSharedPreferenceChangeListener(this);
+		}
+
+		void stopListening() {
+			if( MyDebug.LOG )
+				Log.d(TAG, "stopListening");
+			SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(MainActivity.this);
+			sharedPreferences.unregisterOnSharedPreferenceChangeListener(this);
+		}
+
+		@Override
+		public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+			if( MyDebug.LOG )
+				Log.d(TAG, "onSharedPreferenceChanged: " + key);
+			switch( key ) {
+				// we whitelist preferences where we're sure that we don't need to call updateForSettings() if they've changed
+				case "preference_timer":
+				case "preference_touch_capture":
+				case "preference_pause_preview":
+				case "preference_shutter_sound":
+				case "preference_timer_beep":
+				case "preference_timer_speak":
+				case "preference_volume_keys":
+				case "preference_audio_noise_control_sensitivity":
+				case "preference_using_saf":
+				case "preference_save_photo_prefix":
+				case "preference_save_video_prefix":
+				case "preference_save_zulu_time":
+				case "preference_show_when_locked":
+				case "preference_startup_focus":
+				case "preference_show_zoom":
+				case "preference_show_angle":
+				case "preference_show_angle_line":
+				case "preference_show_pitch_lines":
+				case "preference_angle_highlight_color":
+				case "preference_show_geo_direction":
+				case "preference_show_geo_direction_lines":
+				case "preference_show_battery":
+				case "preference_show_time":
+				case "preference_free_memory":
+				case "preference_show_iso":
+				case "preference_grid":
+				case "preference_crop_guide":
+				case "preference_show_toasts":
+				case "preference_thumbnail_animation":
+				case "preference_take_photo_border":
+				case "preference_keep_display_on":
+				case "preference_max_brightness":
+				case "preference_hdr_save_expo":
+				case "preference_front_camera_mirror":
+				case "preference_stamp":
+				case "preference_stamp_dateformat":
+				case "preference_stamp_timeformat":
+				case "preference_stamp_gpsformat":
+				case "preference_textstamp":
+				case "preference_stamp_fontsize":
+				case "preference_stamp_font_color":
+				case "preference_stamp_style":
+				case "preference_background_photo_saving":
+				case "preference_record_audio":
+				case "preference_record_audio_src":
+				case "preference_record_audio_channels":
+				case "preference_lock_video":
+				case "preference_video_subtitle":
+				case "preference_require_location":
+					if( MyDebug.LOG )
+						Log.d(TAG, "this change doesn't require update");
+					break;
+				default:
+					if( MyDebug.LOG )
+						Log.d(TAG, "this change does require update");
+					any = true;
+					break;
+			}
+		}
+
+		boolean anyChanges() {
+			return any;
+		}
+	}
     
     public void openSettings() {
 		if( MyDebug.LOG )
@@ -1327,9 +1425,17 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 		bundle.putBoolean("supports_expo_bracketing", this.supportsExpoBracketing());
 		bundle.putInt("max_expo_bracketing_n_images", this.maxExpoBracketingNImages());
 		bundle.putBoolean("supports_exposure_compensation", this.preview.supportsExposures());
+		bundle.putInt("exposure_compensation_min", this.preview.getMinimumExposure());
+		bundle.putInt("exposure_compensation_max", this.preview.getMaximumExposure());
 		bundle.putBoolean("supports_iso_range", this.preview.supportsISORange());
+		bundle.putInt("iso_range_min", this.preview.getMinimumISO());
+		bundle.putInt("iso_range_max", this.preview.getMaximumISO());
 		bundle.putBoolean("supports_exposure_time", this.preview.supportsExposureTime());
+		bundle.putLong("exposure_time_min", this.preview.getMinimumExposureTime());
+		bundle.putLong("exposure_time_max", this.preview.getMaximumExposureTime());
 		bundle.putBoolean("supports_white_balance_temperature", this.preview.supportsWhiteBalanceTemperature());
+		bundle.putInt("white_balance_temperature_min", this.preview.getMinimumWhiteBalanceTemperature());
+		bundle.putInt("white_balance_temperature_max", this.preview.getMaximumWhiteBalanceTemperature());
 		bundle.putBoolean("supports_video_stabilization", this.preview.supportsVideoStabilization());
 		bundle.putBoolean("can_disable_shutter_sound", this.preview.canDisableShutterSound());
 
@@ -1415,6 +1521,8 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 		putBundleExtra(bundle, "flash_values", this.preview.getSupportedFlashValues());
 		putBundleExtra(bundle, "focus_values", this.preview.getSupportedFocusValues());
 
+		preferencesListener.startListening();
+
 		setWindowFlagsForSettings();
 		MyPreferenceFragment fragment = new MyPreferenceFragment();
 		fragment.setArguments(bundle);
@@ -1443,6 +1551,10 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 				Log.d(TAG, "toast_message: " + toast_message);
 			}
 		}
+		long debug_time = 0;
+		if( MyDebug.LOG ) {
+			debug_time = System.currentTimeMillis();
+		}
 		// make sure we're into continuous video mode
 		// workaround for bug on Samsung Galaxy S5 with UHD, where if the user switches to another (non-continuous-video) focus mode, then goes to Settings, then returns and records video, the preview freezes and the video is corrupted
 		// so to be safe, we always reset to continuous video mode, and then reset it afterwards
@@ -1454,13 +1566,21 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 			Log.d(TAG, "update folder history");
 		save_location_history.updateFolderHistory(getStorageUtils().getSaveLocation(), true);
 		// no need to update save_location_history_saf, as we always do this in onActivityResult()
+		if( MyDebug.LOG ) {
+			Log.d(TAG, "updateForSettings: time after update folder history: " + (System.currentTimeMillis() - debug_time));
+		}
 
 		if( !keep_popup ) {
 			mainUI.destroyPopup(); // important as we don't want to use a cached popup
+			if( MyDebug.LOG ) {
+				Log.d(TAG, "updateForSettings: time after destroy popup: " + (System.currentTimeMillis() - debug_time));
+			}
 		}
 
 		// update camera for changes made in prefs - do this without closing and reopening the camera app if possible for speed!
-		// but need workaround for Nexus 7 bug, where scene mode doesn't take effect unless the camera is restarted - I can reproduce this with other 3rd party camera apps, so may be a Nexus 7 issue...
+		// but need workaround for Nexus 7 bug on old camera API, where scene mode doesn't take effect unless the camera is restarted - I can reproduce this with other 3rd party camera apps, so may be a Nexus 7 issue...
+		// doesn't happen if we allow using Camera2 API on Nexus 7, but reopen for consistency (and changing scene modes via
+		// popup menu no longer should be calling updateForSettings() for Camera2, anyway)
 		boolean need_reopen = false;
 		if( preview.getCameraController() != null ) {
 			SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
@@ -1488,8 +1608,14 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 				}
 			}
 		}
+		if( MyDebug.LOG ) {
+			Log.d(TAG, "updateForSettings: time after check need_reopen: " + (System.currentTimeMillis() - debug_time));
+		}
 
 		mainUI.layoutUI(); // needed in case we've changed left/right handed UI
+		if( MyDebug.LOG ) {
+			Log.d(TAG, "updateForSettings: time after layoutUI: " + (System.currentTimeMillis() - debug_time));
+		}
 		SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
 		if( sharedPreferences.getString(PreferenceKeys.getAudioControlPreferenceKey(), "none").equals("none") ) {
 			// ensure icon is invisible if switching from audio control enabled to disabled
@@ -1499,18 +1625,32 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 		}
         initSpeechRecognizer(); // in case we've enabled or disabled speech recognizer
 		initLocation(); // in case we've enabled or disabled GPS
+		if( MyDebug.LOG ) {
+			Log.d(TAG, "updateForSettings: time after init speech and location: " + (System.currentTimeMillis() - debug_time));
+		}
 		if( toast_message != null )
 			block_startup_toast = true;
 		if( need_reopen || preview.getCameraController() == null ) { // if camera couldn't be opened before, might as well try again
-			preview.onPause();
-			preview.onResume();
+			preview.reopenCamera();
+			if( MyDebug.LOG ) {
+				Log.d(TAG, "updateForSettings: time after reopen: " + (System.currentTimeMillis() - debug_time));
+			}
 		}
 		else {
 			preview.setCameraDisplayOrientation(); // need to call in case the preview rotation option was changed
+			if( MyDebug.LOG ) {
+				Log.d(TAG, "updateForSettings: time after set display orientation: " + (System.currentTimeMillis() - debug_time));
+			}
 			preview.pausePreview();
+			if( MyDebug.LOG ) {
+				Log.d(TAG, "updateForSettings: time after pause: " + (System.currentTimeMillis() - debug_time));
+			}
 			preview.setupCamera(false);
+			if( MyDebug.LOG ) {
+				Log.d(TAG, "updateForSettings: time after setup: " + (System.currentTimeMillis() - debug_time));
+			}
 		}
-		block_startup_toast = false;
+		// don't set block_startup_toast to false yet, as camera might be closing/opening on background thread
 		if( toast_message != null && toast_message.length() > 0 )
 			preview.showToast(null, toast_message);
 
@@ -1520,6 +1660,10 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 				Log.d(TAG, "switch focus back to: " + saved_focus_value);
     		preview.updateFocus(saved_focus_value, true, false);
     	}*/
+
+		if( MyDebug.LOG ) {
+			Log.d(TAG, "updateForSettings: done: " + (System.currentTimeMillis() - debug_time));
+		}
     }
 
 	private MyPreferenceFragment getPreferenceFragment() {
@@ -1537,7 +1681,16 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 			if( MyDebug.LOG )
 				Log.d(TAG, "close settings");
 			setWindowFlagsForCamera();
-			updateForSettings();
+
+			preferencesListener.stopListening();
+			//updateForSettings();
+			if( preferencesListener.anyChanges() ) {
+				updateForSettings();
+			}
+			else {
+				if( MyDebug.LOG )
+					Log.d(TAG, "no need to call updateForSettings() for changes made to preferences");
+			}
         }
         else {
 			if( popupIsOpen() ) {
@@ -2611,34 +2764,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 				}
 			}
 		}
-		if( preview.getSupportedWhiteBalances() != null && preview.supportsWhiteBalanceTemperature() ) {
-			if( MyDebug.LOG )
-				Log.d(TAG, "set up manual white balance");
-			SeekBar white_balance_seek_bar = ((SeekBar)findViewById(R.id.white_balance_seekbar));
-			white_balance_seek_bar.setOnSeekBarChangeListener(null); // clear an existing listener - don't want to call the listener when setting up the progress bar to match the existing state
-			final int minimum_temperature = preview.getMinimumWhiteBalanceTemperature();
-			final int maximum_temperature = preview.getMaximumWhiteBalanceTemperature();
-			// white balance should use linear scaling
-			white_balance_seek_bar.setMax(maximum_temperature - minimum_temperature);
-			white_balance_seek_bar.setProgress(preview.getCameraController().getWhiteBalanceTemperature() - minimum_temperature);
-			white_balance_seek_bar.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
-				@Override
-				public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-					if( MyDebug.LOG )
-						Log.d(TAG, "white balance seekbar onProgressChanged: " + progress);
-					int temperature = minimum_temperature + progress;
-					preview.setWhiteBalanceTemperature(temperature);
-				}
-
-				@Override
-				public void onStartTrackingTouch(SeekBar seekBar) {
-				}
-
-				@Override
-				public void onStopTrackingTouch(SeekBar seekBar) {
-				}
-			});
-		}
+		setManualWBSeekbar();
 		if( MyDebug.LOG )
 			Log.d(TAG, "cameraSetup: time after setting up iso: " + (System.currentTimeMillis() - debug_time));
 		{
@@ -2706,9 +2832,43 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 		if( !block_startup_toast ) {
 			this.showPhotoVideoToast(false);
 		}
+		block_startup_toast = false;
 		if( MyDebug.LOG )
 			Log.d(TAG, "cameraSetup: total time for cameraSetup: " + (System.currentTimeMillis() - debug_time));
     }
+
+    public void setManualWBSeekbar() {
+		if( MyDebug.LOG )
+			Log.d(TAG, "setManualWBSeekbar");
+		if( preview.getSupportedWhiteBalances() != null && preview.supportsWhiteBalanceTemperature() ) {
+			if( MyDebug.LOG )
+				Log.d(TAG, "set up manual white balance");
+			SeekBar white_balance_seek_bar = ((SeekBar)findViewById(R.id.white_balance_seekbar));
+			white_balance_seek_bar.setOnSeekBarChangeListener(null); // clear an existing listener - don't want to call the listener when setting up the progress bar to match the existing state
+			final int minimum_temperature = preview.getMinimumWhiteBalanceTemperature();
+			final int maximum_temperature = preview.getMaximumWhiteBalanceTemperature();
+			// white balance should use linear scaling
+			white_balance_seek_bar.setMax(maximum_temperature - minimum_temperature);
+			white_balance_seek_bar.setProgress(preview.getCameraController().getWhiteBalanceTemperature() - minimum_temperature);
+			white_balance_seek_bar.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
+				@Override
+				public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+					if( MyDebug.LOG )
+						Log.d(TAG, "white balance seekbar onProgressChanged: " + progress);
+					int temperature = minimum_temperature + progress;
+					preview.setWhiteBalanceTemperature(temperature);
+				}
+
+				@Override
+				public void onStartTrackingTouch(SeekBar seekBar) {
+				}
+
+				@Override
+				public void onStopTrackingTouch(SeekBar seekBar) {
+				}
+			});
+		}
+	}
     
     public boolean supportsAutoStabilise() {
     	return this.supports_auto_stabilise;
@@ -2939,12 +3099,12 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 		}
 		String scene_mode = camera_controller.getSceneMode();
     	if( scene_mode != null && !scene_mode.equals(camera_controller.getDefaultSceneMode()) ) {
-    		toast_string += "\n" + getResources().getString(R.string.scene_mode) + ": " + scene_mode;
+    		toast_string += "\n" + getResources().getString(R.string.scene_mode) + ": " + mainUI.getEntryForSceneMode(scene_mode);
 			simple = false;
     	}
 		String white_balance = camera_controller.getWhiteBalance();
     	if( white_balance != null && !white_balance.equals(camera_controller.getDefaultWhiteBalance()) ) {
-    		toast_string += "\n" + getResources().getString(R.string.white_balance) + ": " + white_balance;
+    		toast_string += "\n" + getResources().getString(R.string.white_balance) + ": " + mainUI.getEntryForWhiteBalance(white_balance);
 			if( white_balance.equals("manual") && preview.supportsWhiteBalanceTemperature() ) {
 				toast_string += " " + camera_controller.getWhiteBalanceTemperature();
 			}
@@ -2952,7 +3112,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
     	}
 		String color_effect = camera_controller.getColorEffect();
     	if( color_effect != null && !color_effect.equals(camera_controller.getDefaultColorEffect()) ) {
-    		toast_string += "\n" + getResources().getString(R.string.color_effect) + ": " + color_effect;
+    		toast_string += "\n" + getResources().getString(R.string.color_effect) + ": " + mainUI.getEntryForColorEffect(color_effect);
 			simple = false;
     	}
 		String lock_orientation = sharedPreferences.getString(PreferenceKeys.getLockOrientationPreferenceKey(), "none");
@@ -3169,6 +3329,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
         	speechRecognizerStopped();
     	    View speechRecognizerButton = findViewById(R.id.audio_control);
     	    speechRecognizerButton.setVisibility(View.GONE);
+			speechRecognizer.cancel();
 			speechRecognizer.destroy();
 			speechRecognizer = null;
 		}

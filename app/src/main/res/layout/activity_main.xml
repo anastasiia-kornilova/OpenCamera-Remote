@@ -51,7 +51,7 @@
         android:layout_width="150dp"
         android:layout_height="50dp"
         android:layout_marginLeft="10dp"
-        android:layout_marginRight="10dp"
+        android:layout_marginRight="20dp"
         android:layout_marginTop="0dp"
         android:layout_marginBottom="0dp"
         />
@@ -117,6 +117,7 @@
         android:padding="10dp"
         android:scaleType="fitCenter"
         android:contentDescription="@string/exposure_lock"
+        android:src="@drawable/exposure_unlocked"
         android:onClick="clickedExposureLock"
         />
 

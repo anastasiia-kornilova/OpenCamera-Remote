@@ -135,6 +135,9 @@ public class MyApplicationInterface implements ApplicationInterface {
 		this.imageSaver.start();
 		
         if( savedInstanceState != null ) {
+			// load the things we saved in onSaveInstanceState().
+            if( MyDebug.LOG )
+                Log.d(TAG, "read from savedInstanceState");
     		cameraId = savedInstanceState.getInt("cameraId", 0);
 			if( MyDebug.LOG )
 				Log.d(TAG, "found cameraId: " + cameraId);
@@ -149,7 +152,11 @@ public class MyApplicationInterface implements ApplicationInterface {
 		if( MyDebug.LOG )
 			Log.d(TAG, "MyApplicationInterface: total time to create MyApplicationInterface: " + (System.currentTimeMillis() - debug_time));
 	}
-	
+
+	/** Here we save states which aren't saved in preferences (we don't want them to be saved if the
+	 *  application is restarted from scratch), but we do want to preserve if Android has to recreate
+	 *  the application (e.g., configuration change, or it's destroyed while in background).
+	 */
 	void onSaveInstanceState(Bundle state) {
 		if( MyDebug.LOG )
 			Log.d(TAG, "onSaveInstanceState");
@@ -868,19 +875,27 @@ public class MyApplicationInterface implements ApplicationInterface {
     	return sharedPreferences.getString(PreferenceKeys.getRecordAudioSourcePreferenceKey(), "audio_src_camcorder");
     }
 
-    public boolean getAutoStabilisePref() {
+    private boolean getAutoStabilisePref() {
 		SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getContext());
+		return getAutoStabilisePref(sharedPreferences);
+    }
+    
+    public boolean getAutoStabilisePref(SharedPreferences sharedPreferences) {
 		boolean auto_stabilise = sharedPreferences.getBoolean(PreferenceKeys.getAutoStabilisePreferenceKey(), false);
 		if( auto_stabilise && main_activity.supportsAutoStabilise() )
 			return true;
 		return false;
     }
-    
-    public String getStampPref() {
+
+    private String getStampPref() {
 		SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getContext());
-    	return sharedPreferences.getString(PreferenceKeys.getStampPreferenceKey(), "preference_stamp_no");
+    	return getStampPref(sharedPreferences);
     }
     
+    public String getStampPref(SharedPreferences sharedPreferences) {
+    	return sharedPreferences.getString(PreferenceKeys.getStampPreferenceKey(), "preference_stamp_no");
+    }
+
     private String getStampDateFormatPref() {
 		SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getContext());
     	return sharedPreferences.getString(PreferenceKeys.getStampDateFormatPreferenceKey(), "preference_stamp_dateformat_default");
@@ -1012,6 +1027,10 @@ public class MyApplicationInterface implements ApplicationInterface {
 
     public PhotoMode getPhotoMode() {
 		SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getContext());
+		return getPhotoMode(sharedPreferences);
+    }
+
+    public PhotoMode getPhotoMode(SharedPreferences sharedPreferences) {
 		String photo_mode_pref = sharedPreferences.getString(PreferenceKeys.getPhotoModePreferenceKey(), "preference_photo_mode_std");
 		boolean dro = photo_mode_pref.equals("preference_photo_mode_dro");
 		if( dro && main_activity.supportsDRO() )
@@ -1033,9 +1052,13 @@ public class MyApplicationInterface implements ApplicationInterface {
 
 	@Override
 	public boolean isRawPref() {
+		SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getContext());
+		return isRawPref(sharedPreferences);
+    }
+
+	public boolean isRawPref(SharedPreferences sharedPreferences) {
     	if( isImageCaptureIntent() )
     		return false;
-		SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getContext());
     	return sharedPreferences.getString(PreferenceKeys.getRawPreferenceKey(), "preference_raw_no").equals("preference_raw_yes");
     }
 

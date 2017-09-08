@@ -640,7 +640,7 @@ public class ImageSaver extends Thread {
 				Log.d(TAG, "before HDR first bitmap: " + bitmaps.get(0) + " is mutable? " + bitmaps.get(0).isMutable());
 			try {
 				if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP ) {
-					hdrProcessor.processHDR(bitmaps, true, null, true, null, 0.5f, HDRProcessor.TonemappingAlgorithm.TONEMAPALGORITHM_REINHARD); // this will recycle all the bitmaps except bitmaps.get(0), which will contain the hdr image
+					hdrProcessor.processHDR(bitmaps, true, null, true, null, 0.5f, 4, HDRProcessor.TonemappingAlgorithm.TONEMAPALGORITHM_REINHARD); // this will recycle all the bitmaps except bitmaps.get(0), which will contain the hdr image
 				}
 				else {
 					Log.e(TAG, "shouldn't have offered HDR as an option if not on Android 5");
@@ -1351,6 +1351,13 @@ public class ImageSaver extends Thread {
         catch(IOException e) {
     		if( MyDebug.LOG )
     			Log.e(TAG, "I/O error writing file: " + e.getMessage());
+            e.printStackTrace();
+            main_activity.getPreview().showToast(null, R.string.failed_to_save_photo);
+        }
+        catch(SecurityException e) {
+			// received security exception from copyFileToUri()->openOutputStream() from Google Play
+    		if( MyDebug.LOG )
+    			Log.e(TAG, "security exception writing file: " + e.getMessage());
             e.printStackTrace();
             main_activity.getPreview().showToast(null, R.string.failed_to_save_photo);
         }

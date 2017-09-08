@@ -74,6 +74,7 @@ public class HDRProcessor {
 	 *  using linear least squares.
 	 *  We use it to modify the pixels of images taken at the brighter or darker exposure
 	 *  levels, to estimate what the pixel should be at the "base" exposure.
+	 *  We estimate as y = parameter_A * x + parameter_B.
 	 */
 	private static class ResponseFunction {
 		float parameter_A;
@@ -284,11 +285,12 @@ public class HDRProcessor {
 	 *                      called to indicate the sort order when this is known.
 	 * @param hdr_alpha     A value from 0.0f to 1.0f indicating the "strength" of the HDR effect. Specifically,
 	 *                      this controls the level of the local contrast enhancement done in adjustHistogram().
+	 * @param n_tiles       A value of 1 or greater indicating how local the contrast enhancemnt algorithm should be.
 	 * @param tonemapping_algorithm
 	 *                      Algorithm to use for tonemapping (if multiple images are received).
 	 */
 	@RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-	public void processHDR(List<Bitmap> bitmaps, boolean release_bitmaps, Bitmap output_bitmap, boolean assume_sorted, SortCallback sort_cb, float hdr_alpha, TonemappingAlgorithm tonemapping_algorithm) throws HDRProcessorException {
+	public void processHDR(List<Bitmap> bitmaps, boolean release_bitmaps, Bitmap output_bitmap, boolean assume_sorted, SortCallback sort_cb, float hdr_alpha, int n_tiles, TonemappingAlgorithm tonemapping_algorithm) throws HDRProcessorException {
 		if( MyDebug.LOG )
 			Log.d(TAG, "processHDR");
 		if( !assume_sorted && !release_bitmaps ) {
@@ -326,10 +328,10 @@ public class HDRProcessor {
 				sort_order.add(0);
 				sort_cb.sortOrder(sort_order);
 			}
-			processSingleImage(bitmaps, release_bitmaps, output_bitmap, hdr_alpha);
+			processSingleImage(bitmaps, release_bitmaps, output_bitmap, hdr_alpha, n_tiles);
 			break;
 		case HDRALGORITHM_STANDARD:
-			processHDRCore(bitmaps, release_bitmaps, output_bitmap, assume_sorted, sort_cb, hdr_alpha, tonemapping_algorithm);
+			processHDRCore(bitmaps, release_bitmaps, output_bitmap, assume_sorted, sort_cb, hdr_alpha, n_tiles, tonemapping_algorithm);
 			break;
 		default:
 			if( MyDebug.LOG )
@@ -468,7 +470,7 @@ public class HDRProcessor {
 	 *  Android 5.0).
 	 */
 	@RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-	private void processHDRCore(List<Bitmap> bitmaps, boolean release_bitmaps, Bitmap output_bitmap, boolean assume_sorted, SortCallback sort_cb, float hdr_alpha, TonemappingAlgorithm tonemapping_algorithm) {
+	private void processHDRCore(List<Bitmap> bitmaps, boolean release_bitmaps, Bitmap output_bitmap, boolean assume_sorted, SortCallback sort_cb, float hdr_alpha, int n_tiles, TonemappingAlgorithm tonemapping_algorithm) {
 		if( MyDebug.LOG )
 			Log.d(TAG, "processHDRCore");
 		
@@ -498,9 +500,12 @@ public class HDRProcessor {
 
 		// perform auto-alignment
 		// if assume_sorted if false, this function will also sort the allocations and bitmaps from darkest to brightest.
-		autoAlignment(offsets_x, offsets_y, allocations, width, height, bitmaps, assume_sorted, sort_cb, time_s);
-		if( MyDebug.LOG )
+		BrightnessDetails brightnessDetails = autoAlignment(offsets_x, offsets_y, allocations, width, height, bitmaps, assume_sorted, sort_cb, time_s);
+		int median_brightness = brightnessDetails.median_brightness;
+		if( MyDebug.LOG ) {
 			Log.d(TAG, "### time after autoAlignment: " + (System.currentTimeMillis() - time_s));
+			Log.d(TAG, "median_brightness: " + median_brightness);
+		}
 
 		// compute response_functions
 		final int base_bitmap = 1; // index of the bitmap with the base exposure and offsets
@@ -512,8 +517,8 @@ public class HDRProcessor {
 			response_functions[i] = function;
 		}
 		if( MyDebug.LOG )
-			Log.d(TAG, "time after creating response functions: " + (System.currentTimeMillis() - time_s));
-		
+			Log.d(TAG, "### time after creating response functions: " + (System.currentTimeMillis() - time_s));
+
 		/*
 		// calculate average luminance by sampling
 		final int n_samples_c = 100;
@@ -600,14 +605,115 @@ public class HDRProcessor {
 				break;
 		}
 
+		float max_possible_value = response_functions[0].parameter_A * 255 + response_functions[0].parameter_B;
+		if( MyDebug.LOG )
+			Log.d(TAG, "max_possible_value: " + max_possible_value);
+		if( max_possible_value < 255.0f ) {
+			max_possible_value = 255.0f; // don't make dark images too bright, see below about linear_scale for more details
+			if( MyDebug.LOG )
+				Log.d(TAG, "clamp max_possible_value to: " + max_possible_value);
+		}
+
+		//hdr_alpha = 0.0f; // test
 		//final float tonemap_scale_c = avg_luminance / 0.8f; // lower values tend to result in too dark pictures; higher values risk over exposed bright areas
-		final float tonemap_scale_c = 255.0f;
+		//final float tonemap_scale_c = 255.0f;
+		//final float tonemap_scale_c = 255.0f - median_brightness;
+		float tonemap_scale_c = 255.0f;
+		if( MyDebug.LOG )
+			Log.d(TAG, "median_brightness: " + median_brightness);
+		if( 255.0f / max_possible_value < median_brightness / 255.0f ) {
+			// For Reinhard tonemapping:
+			// As noted below, we have f(V) = V.S / (V+C), where V is the HDR value, C is tonemap_scale_c
+			// and S = (Vmax + C)/Vmax (see below)
+			// Ideally we try to choose C such that we preserve the median value M:
+			// f(M) = M
+			// => M = M . (Vmax + C) / (Vmax . (M + C))
+			// => M + C = (Vmax + C) / Vmax = 1 + C/Vmax
+			// => C . ( 1 - 1/Vmax ) = 1 - M
+			// => C = (1-M) / (1 - 1/Vmax)
+			// Since we want C <= 1, we must have:
+			// 1-M <= 1 - 1/Vmax
+			// => 1/Vmax <= M
+			// If this isn't the case, we set C to 1 (to preserve the median as close as possible).
+			// Tests that enter this case (as of 20170726) are:
+			// testHDR9, testHDR18, testHDR26, testHDR30, testHDR31, testHDR32
+			// Note that if we weren't doing the linear scaling below, this would reduce to choosing
+			// C = 1-M. We also tend to that as max_possible_value tends to infinity. So even though
+			// we only sometimes enter this case, it's important for cases where max_possible_value
+			// might be estimated too large (also consider that if we ever support more than 3 images,
+			// we'd risk having too large values).
+			// I've tested that using "C = 1-M" always (and no linear scaling) also gives good results:
+			// much better compared to Open Camera 1.39, though not quite as good as doing both this
+			// and linear scaling (testHDR18, testHDR26, testHDR32 look too grey and/or bright).
+			final float tonemap_denom = 1.0f - (255.0f / max_possible_value);
+			if( MyDebug.LOG )
+				Log.d(TAG, "tonemap_denom: " + tonemap_denom);
+			tonemap_scale_c = (255.0f - median_brightness) / tonemap_denom;
+			//throw new RuntimeException(); // test
+		}
 		// Higher tonemap_scale_c values means darker results from the Reinhard tonemapping.
 		// Colours brighter than 255-tonemap_scale_c will be made darker, colours darker than 255-tonemap_scale_c will be made brighter
 		// (tonemap_scale_c==255 means therefore that colours will only be made darker).
 		if( MyDebug.LOG )
 			Log.d(TAG, "tonemap_scale_c: " + tonemap_scale_c);
 		processHDRScript.set_tonemap_scale(tonemap_scale_c);
+
+        // algorithm specific parameters
+		switch( tonemapping_algorithm ) {
+            case TONEMAPALGORITHM_EXPONENTIAL:
+            {
+                // The basic algorithm is f(V) = 1 - exp( - E * V ), where V is the HDR value, E is a
+                // constant. This maps [0, infinity] to [0, 1]. However we have an estimate of the maximum
+                // possible value, Vmax, so we can set a linear scaling S so that [0, Vmax] maps to [0, 1]
+                // f(V) = S . (1 - exp( - E * V ))
+                // so 1 = S . (1 - exp( - E * Vmax ))
+                // => S = 1 / (1 - exp( - E * Vmax ))
+                // Note that Vmax should be set to a minimum of 255, else we'll make darker images brighter.
+                float E = processHDRScript.get_exposure();
+                float linear_scale = (float)(1.0 / (1.0 - Math.exp(-E * max_possible_value / 255.0)));
+                if( MyDebug.LOG )
+                    Log.d(TAG, "linear_scale: " + linear_scale);
+                processHDRScript.set_linear_scale(linear_scale);
+                break;
+            }
+			case TONEMAPALGORITHM_REINHARD: {
+                // The basic algorithm is f(V) = V / (V+C), where V is the HDR value, C is tonemap_scale_c
+                // This was used until Open Camera 1.39, but has the problem of making images too dark: it
+                // maps [0, infinity] to [0, 1], but since in practice we never have very large V values, we
+                // won't use the full [0, 1] range. So we apply a linear scale S:
+                // f(V) = V.S / (V+C)
+                // S is chosen such that the maximum possible value, Vmax, maps to 1. So:
+                // 1 = Vmax . S / (Vmax + C)
+                // => S = (Vmax + C)/Vmax
+                // Note that we don't actually know the maximum HDR value, but instead we estimate it with
+                // max_possible_value, which gives the maximum value we'd have if even the darkest image was
+                // 255.0.
+                // Note that if max_possible_value was less than 255, we'd end up scaling a max value less than
+                // 1, to [0, 1], i.e., making dark images brighter, which we don't want, which is why above we
+                // set max_possible_value to a minimum of 255. In practice, this is unlikely to ever happen
+                // since max_possible_value is calculated as a maximum possible based on the response functions
+                // (as opposed to the real brightest HDR value), so even for dark photos we'd expect to have
+                // max_possible_value >= 255.
+                // Note that the original Reinhard tonemapping paper describes a non-linear scaling by (1 + CV/Vmax^2),
+                // though this is poorer performance (in terms of calculation time).
+                float linear_scale = (max_possible_value + tonemap_scale_c) / max_possible_value;
+                if( MyDebug.LOG )
+                    Log.d(TAG, "linear_scale: " + linear_scale);
+                processHDRScript.set_linear_scale(linear_scale);
+                break;
+            }
+			case TONEMAPALGORITHM_FILMIC:
+			{
+				// For filmic, we have f(V) = U(EV) / U(W), where V is the HDR value, U is a function.
+				// We want f(Vmax) = 1, so EVmax = W
+                float E = processHDRScript.get_filmic_exposure_bias();
+				float W = E * max_possible_value;
+				if( MyDebug.LOG )
+					Log.d(TAG, "filmic W: " + W);
+				processHDRScript.set_W(W);
+				break;
+			}
+		}
 
 		if( MyDebug.LOG )
 			Log.d(TAG, "call processHDRScript");
@@ -620,6 +726,8 @@ public class HDRProcessor {
 		else {
 			output_allocation = Allocation.createFromBitmap(rs, output_bitmap);
 		}
+		if( MyDebug.LOG )
+			Log.d(TAG, "### time before processHDRScript: " + (System.currentTimeMillis() - time_s));
 		processHDRScript.forEach_hdr(allocations[1], output_allocation);
 		if( MyDebug.LOG )
 			Log.d(TAG, "### time after processHDRScript: " + (System.currentTimeMillis() - time_s));
@@ -637,14 +745,16 @@ public class HDRProcessor {
 		}
 
 		if( hdr_alpha != 0.0f ) {
-			adjustHistogram(output_allocation, output_allocation, width, height, hdr_alpha, time_s);
+			adjustHistogram(output_allocation, output_allocation, width, height, hdr_alpha, n_tiles, time_s);
+			if( MyDebug.LOG )
+				Log.d(TAG, "### time after adjustHistogram: " + (System.currentTimeMillis() - time_s));
 		}
 
 		if( release_bitmaps ) {
 			// must be the base_bitmap we copy to - see note above about using allocations[base_bitmap] as the output
 			allocations[base_bitmap].copyTo(bitmaps.get(base_bitmap));
 			if (MyDebug.LOG)
-				Log.d(TAG, "time after copying to bitmap: " + (System.currentTimeMillis() - time_s));
+				Log.d(TAG, "### time after copying to bitmap: " + (System.currentTimeMillis() - time_s));
 
 			// make it so that we store the output bitmap as first in the list
 			bitmaps.set(0, bitmaps.get(base_bitmap));
@@ -655,15 +765,15 @@ public class HDRProcessor {
 		else {
 			output_allocation.copyTo(output_bitmap);
 			if (MyDebug.LOG)
-				Log.d(TAG, "time after copying to bitmap: " + (System.currentTimeMillis() - time_s));
+				Log.d(TAG, "### time after copying to bitmap: " + (System.currentTimeMillis() - time_s));
 		}
 
 		if( MyDebug.LOG )
-			Log.d(TAG, "time for processHDRCore: " + (System.currentTimeMillis() - time_s));
+			Log.d(TAG, "### time for processHDRCore: " + (System.currentTimeMillis() - time_s));
 	}
 
 	@RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-	private void processSingleImage(List<Bitmap> bitmaps, boolean release_bitmaps, Bitmap output_bitmap, float hdr_alpha) {
+	private void processSingleImage(List<Bitmap> bitmaps, boolean release_bitmaps, Bitmap output_bitmap, float hdr_alpha, int n_tiles) {
 		if (MyDebug.LOG)
 			Log.d(TAG, "processSingleImage");
 
@@ -687,7 +797,7 @@ public class HDRProcessor {
 			output_allocation = Allocation.createFromBitmap(rs, output_bitmap);
 		}
 
-		adjustHistogram(allocation, output_allocation, width, height, hdr_alpha, time_s);
+		adjustHistogram(allocation, output_allocation, width, height, hdr_alpha, n_tiles, time_s);
 
 		if( release_bitmaps ) {
 			allocation.copyTo(bitmaps.get(0));
@@ -715,11 +825,19 @@ public class HDRProcessor {
 		}
 	}
 
+	static class BrightnessDetails {
+		final int median_brightness; // median brightness value of the median image
+
+		BrightnessDetails(int median_brightness) {
+			this.median_brightness = median_brightness;
+		}
+	}
+
 	/**
 	 * If assume_sorted if false, this function will also sort the allocations and bitmaps from darkest to brightest.
      */
 	@RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-	private void autoAlignment(int [] offsets_x, int [] offsets_y, Allocation [] allocations, int width, int height, List<Bitmap> bitmaps, boolean assume_sorted, SortCallback sort_cb, long time_s) {
+	private BrightnessDetails autoAlignment(int [] offsets_x, int [] offsets_y, Allocation [] allocations, int width, int height, List<Bitmap> bitmaps, boolean assume_sorted, SortCallback sort_cb, long time_s) {
 		if( MyDebug.LOG )
 			Log.d(TAG, "autoAlignment");
 		Allocation [] mtb_allocations = new Allocation[allocations.length];
@@ -799,6 +917,9 @@ public class HDRProcessor {
 				sort_cb.sortOrder(sort_order);
 			}
 		}
+		int median_brightness = luminanceInfos[1].median_value;
+		if( MyDebug.LOG )
+			Log.d(TAG, "median_brightness: " + median_brightness);
 
 		for(int i=0;i<allocations.length;i++) {
 			int median_value = luminanceInfos[i].median_value;
@@ -890,7 +1011,7 @@ public class HDRProcessor {
 		if( mtb_allocations[1] == null ) {
 			if( MyDebug.LOG )
 				Log.d(TAG, "middle image not suitable for image alignment");
-			return;
+			return new BrightnessDetails(median_brightness);
 		}
 
 		// create RenderScript
@@ -982,6 +1103,7 @@ public class HDRProcessor {
 			offsets_x[i] = 0;
 			offsets_y[i] = 0;
 		}*/
+		return new BrightnessDetails(median_brightness);
 	}
 
 	private static class LuminanceInfo {
@@ -1065,7 +1187,7 @@ public class HDRProcessor {
 	}
 
 	@RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-	private void adjustHistogram(Allocation allocation_in, Allocation allocation_out, int width, int height, float hdr_alpha, long time_s) {
+	private void adjustHistogram(Allocation allocation_in, Allocation allocation_out, int width, int height, float hdr_alpha, int n_tiles, long time_s) {
 		if( MyDebug.LOG )
 			Log.d(TAG, "adjustHistogram");
 		final boolean adjust_histogram = false;
@@ -1153,19 +1275,19 @@ public class HDRProcessor {
 			histogramScript.bind_histogram(histogramAllocation);
 
 			//final int n_tiles_c = 8;
-			final int n_tiles_c = 4;
+			//final int n_tiles_c = 4;
 			//final int n_tiles_c = 1;
-			int [] c_histogram = new int[n_tiles_c*n_tiles_c*256];
-			for(int i=0;i<n_tiles_c;i++) {
-				double a0 = ((double)i)/(double)n_tiles_c;
-				double a1 = ((double)i+1.0)/(double)n_tiles_c;
+			int [] c_histogram = new int[n_tiles*n_tiles*256];
+			for(int i=0;i<n_tiles;i++) {
+				double a0 = ((double)i)/(double)n_tiles;
+				double a1 = ((double)i+1.0)/(double)n_tiles;
 				int start_x = (int)(a0 * width);
 				int stop_x = (int)(a1 * width);
 				if( stop_x == start_x )
 					continue;
-				for(int j=0;j<n_tiles_c;j++) {
-					double b0 = ((double)j)/(double)n_tiles_c;
-					double b1 = ((double)j+1.0)/(double)n_tiles_c;
+				for(int j=0;j<n_tiles;j++) {
+					double b0 = ((double)j)/(double)n_tiles;
+					double b1 = ((double)j+1.0)/(double)n_tiles;
 					int start_y = (int)(b0 * height);
 					int stop_y = (int)(b1 * height);
 					if( stop_y == start_y )
@@ -1254,7 +1376,7 @@ public class HDRProcessor {
 						histogram[x] += n_clipped_per_bucket;
 					}
 
-					int histogram_offset = 256*(i*n_tiles_c+j);
+					int histogram_offset = 256*(i*n_tiles+j);
 					c_histogram[histogram_offset] = histogram[0];
 					for(int x=1;x<256;x++) {
 						c_histogram[histogram_offset+x] = c_histogram[histogram_offset+x-1] + histogram[x];
@@ -1270,12 +1392,12 @@ public class HDRProcessor {
 			if( MyDebug.LOG )
 				Log.d(TAG, "time after creating histograms: " + (System.currentTimeMillis() - time_s));
 
-			Allocation c_histogramAllocation = Allocation.createSized(rs, Element.I32(rs), n_tiles_c*n_tiles_c*256);
+			Allocation c_histogramAllocation = Allocation.createSized(rs, Element.I32(rs), n_tiles*n_tiles*256);
 			c_histogramAllocation.copyFrom(c_histogram);
 			ScriptC_histogram_adjust histogramAdjustScript = new ScriptC_histogram_adjust(rs);
 			histogramAdjustScript.set_c_histogram(c_histogramAllocation);
 			histogramAdjustScript.set_hdr_alpha(hdr_alpha);
-			histogramAdjustScript.set_n_tiles(n_tiles_c);
+			histogramAdjustScript.set_n_tiles(n_tiles);
 			histogramAdjustScript.set_width(width);
 			histogramAdjustScript.set_height(height);
 
