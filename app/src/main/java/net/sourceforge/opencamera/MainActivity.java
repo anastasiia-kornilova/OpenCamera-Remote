@@ -687,11 +687,12 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 				while (niEnum.hasMoreElements())
 				{
 					NetworkInterface ni = niEnum.nextElement();
-					if(!ni.isLoopback()){
+					if(!ni.isLoopback() && !ni.isPointToPoint()){
 						for (InterfaceAddress interfaceAddress : ni.getInterfaceAddresses())
 						{
+							if( MyDebug.LOG ) Log.d(TAG, "network prefix length="+interfaceAddress.getNetworkPrefixLength());
 							if (interfaceAddress.getAddress()!= null) {
-								Log.d(TAG, interfaceAddress.getAddress().getHostAddress());
+								if( MyDebug.LOG ) Log.d(TAG, interfaceAddress.getAddress().getHostAddress());
 								last =  (interfaceAddress.getAddress().getHostAddress());
 								if (last.matches("\\d*\\.\\d*\\.\\d*\\.\\d*")) {
 									return last;
