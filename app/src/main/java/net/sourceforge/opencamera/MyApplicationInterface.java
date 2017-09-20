@@ -203,17 +203,16 @@ public class MyApplicationInterface implements ApplicationInterface {
 
 	public void drawBackground (Canvas canvas) {
 		if (MyDebug.LOG_DETAIL)
-			Log.d(TAG, "canvas width="+canvas.getWidth()+ " height="+canvas.getHeight());
+			Log.d(TAG, "canvas width=" + canvas.getWidth() + " height=" + canvas.getHeight());
 		LastImage background = getBackgroundImage(stitchPreviewImage);
 		if (background != null) {
-            int width = canvas.getWidth();
-            int height = canvas.getHeight();
+			int width = canvas.getWidth();
+			int height = canvas.getHeight();
 			if (backgroundBitmap == null) {
 				File file = null;
 				if (storageUtils.isUsingSAF()) {
 					file = storageUtils.getFileFromDocumentUriSAF(background.uri, false);
-				}
-				else {
+				} else {
 					file = new File(background.name);
 				}
 				backgroundBitmap = decodeFile(file);
@@ -231,7 +230,7 @@ public class MyApplicationInterface implements ApplicationInterface {
 					if (mirror)
 						matrix.setRotate(270, backgroundBitmap.getWidth() * 0.5f, backgroundBitmap.getHeight() * 0.5f);
 					Bitmap new_bitmap = Bitmap.createBitmap(backgroundBitmap, 0, 0, backgroundBitmap.getWidth(), backgroundBitmap.getHeight(), matrix, true);
-					if( new_bitmap != backgroundBitmap ) {
+					if (new_bitmap != backgroundBitmap) {
 						backgroundBitmap.recycle();
 						backgroundBitmap = new_bitmap;
 					}
@@ -247,21 +246,20 @@ public class MyApplicationInterface implements ApplicationInterface {
 				transformationBackground.preScale(bscale, bscale);
 				alphaBackground = new Paint();
 				alphaBackground.setAlpha(128);
+			} else {
+				// did canvas size change?
+				if (canvasWidth != width || canvasHeight != height) {
+					canvasWidth = width;
+					canvasHeight = height;
+					float bscale = (float) width / (float) backgroundBitmap.getWidth();
+					float xTranslation = 0.0f;
+					float yTranslation = (height - backgroundBitmap.getHeight() * bscale) / 2.0f;
+					transformationBackground = new Matrix();
+					transformationBackground.postTranslate(xTranslation, yTranslation);
+					transformationBackground.preScale(bscale, bscale);
+				}
+				canvas.drawBitmap(backgroundBitmap, transformationBackground, alphaBackground);
 			}
-			else {
-                // did canvas size change?
-                if (canvasWidth != width || canvasHeight != height) {
-                    canvasWidth = width;
-                    canvasHeight = height;
-                    float bscale = (float) width / (float) backgroundBitmap.getWidth();
-                    float xTranslation = 0.0f;
-                    float yTranslation = (height - backgroundBitmap.getHeight() * bscale) / 2.0f;
-                    transformationBackground = new Matrix();
-                    transformationBackground.postTranslate(xTranslation, yTranslation);
-                    transformationBackground.preScale(bscale, bscale);
-                }
-                canvas.drawBitmap(backgroundBitmap, transformationBackground, alphaBackground);
-            }
 		}
 	}
 

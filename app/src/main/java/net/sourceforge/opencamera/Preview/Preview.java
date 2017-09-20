@@ -515,8 +515,13 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 		if( !this.is_video ) {
 			startCameraPreview();
 		}
-		cancelAutoFocus();
-
+		try {
+			cancelAutoFocus();
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+			return false;
+		}
         if( camera_controller != null && !this.using_face_detection ) {
     		this.has_focus_area = false;
 			ArrayList<CameraController.Area> areas = getAreas(event.getX(), event.getY());
@@ -1030,7 +1035,12 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 					if( MyDebug.LOG ) {
 						Log.d(TAG, "closeCamera: about to release camera controller: " + (System.currentTimeMillis() - debug_time));
 					}
-					camera_controller_local.release();
+					try {
+						camera_controller_local.release();
+					}
+					catch (IllegalStateException ise) {
+						ise.printStackTrace();
+					}
 					camera_open_state = CameraOpenState.CAMERAOPENSTATE_CLOSED;
 				}
 			}
@@ -1407,9 +1417,11 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 				Log.d(TAG, "openCamera: time after setting preview display: " + (System.currentTimeMillis() - debug_time));
 			}
 
-			setupCamera(take_photo);
-			if( this.using_android_l ) {
-				configureTransform();
+			if (!is_preview_started) {
+				setupCamera(take_photo);
+				if (this.using_android_l) {
+					configureTransform();
+				}
 			}
 		}
 
@@ -5459,7 +5471,7 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
     
     public void onResume() {
 		if( MyDebug.LOG )
-			Log.d(TAG, "onResume");
+			Log.d(TAG, "Preview onResume");
 		this.app_is_paused = false;
 		cameraSurface.onResume();
 		if( canvasView != null )
@@ -5469,7 +5481,7 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 
     public void onPause() {
 		if( MyDebug.LOG )
-			Log.d(TAG, "onPause");
+			Log.d(TAG, "Preview onPause");
 		this.app_is_paused = true;
 		if( camera_open_state == CameraOpenState.CAMERAOPENSTATE_OPENING ) {
 			if( MyDebug.LOG )
@@ -5478,7 +5490,7 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 				this.open_camera_task.cancel(true);
 			}
 			else {
-				Log.e(TAG, "onPause: state is CAMERAOPENSTATE_OPENING, but open_camera_task is null");
+				Log.e(TAG, "Preview onPause: state is CAMERAOPENSTATE_OPENING, but open_camera_task is null");
 			}
 		}
 		this.closeCamera(false, null);

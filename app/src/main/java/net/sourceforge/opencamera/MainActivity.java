@@ -19,6 +19,7 @@ import java.util.Hashtable;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Vector;
 
 import android.Manifest;
 import android.graphics.Bitmap;
@@ -148,6 +149,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 	private SimpleWebServer httpServer;
 	private int port = 8000;  // Broadcast port
 	private int serverPort = 8080;  // HTTP server port
+	public static String httpUrl = "";
 	public static String sCount = ""; // Photo counter received from Broadcast message
 	public enum Stereo {MONO, LEFT, RIGHT} // no suffix, left suffix, right suffix
 	public static Stereo suffixSelection = Stereo.MONO; // no suffix, left suffix, right suffix
@@ -577,7 +579,11 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 					if (!preview.isVideo()) {
 						if (!preview.isFocusWaiting()) {
 							Log.d(TAG, "remote request focus");
-							preview.requestAutoFocus();
+							MainActivity.this.runOnUiThread(new Runnable() {
+								public void run() {
+									preview.requestAutoFocus();
+								}
+							});
 						}
 					}
 					else {
@@ -593,7 +599,11 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 					sCount = Bytes.getAsString(s);
 					Log.d(TAG, "remote takePicture() " + sCount);
 					if (!preview.isVideo()) {
-						takePicture();
+						MainActivity.this.runOnUiThread(new Runnable() {
+							public void run() {
+								takePicture();
+							}
+						});
 					}
 					else {
 						preview.showToast(null, "Remote Not In Photo Mode");
@@ -638,9 +648,9 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 				}
 				else if (command.startsWith("R")) { // reset / information request
 					if (httpServer != null) {
-						String hostname = getHostnameAddress();
-						Log.d(TAG, "information request " + hostname);
-						preview.showToast(null, "http://" + hostname + ":" + httpServer.getListeningPort());
+						httpUrl = getHostnameURL();
+						Log.d(TAG, "information request " + httpUrl);
+						preview.showToast(null, httpUrl);
 					}
 				}
 			}
@@ -654,7 +664,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 			Log.d(TAG, "UdpServer error");
 			preview.showToast(null, "Remote Message Server not started");
 		}
-		// HTTP server for receiving GET image requests
+		// HTTP server for receiving GET image requests over local network
 		if (applicationInterface.getHttpServerPref()) {
 			try {
 				if (httpServer == null) {
@@ -669,12 +679,22 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 						httpServer = new SimpleWebServer(null, serverPort, StorageUtils.getImageFolder(folder_name), true);
 					}
 				}
-				httpServer.setApplicationInterface(applicationInterface);
-				httpServer.start();
+				if (httpServer != null) {
+					if (!httpServer.wasStarted()) {
+						httpServer.setApplicationInterface(applicationInterface);
+						httpServer.start();
+					}
+				}
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
 		}
+	}
+
+	public String getHostnameURL() {
+		String hostname = getHostnameAddress();
+		httpUrl = "http://" + hostname + ":" + serverPort +"/";
+		return httpUrl;
 	}
 
 	public String getHostnameAddress() {
@@ -759,18 +779,16 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
         applicationInterface.clearLastImages(); // this should happen when pausing the preview, but call explicitly just to be safe
         preview.onPause();
 
-        if (udpServer != null) {
-			DatagramSocket ds = udpServer.socket();
-			if (ds!= null) {
-				ds.close();
-				ds.disconnect();
-			}
-		}
-		if(httpServer != null) {
-			httpServer.stop();
-		}
-
 	}
+
+	void destroyServer() {
+		if (httpServer != null) {
+			httpServer.closeAllConnections();
+			httpServer.stop();
+			httpServer = null;
+		}
+	}
+
 	// Andy Modla end block
 
 
@@ -803,7 +821,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 	    	textToSpeech = null;
 	    }
 	    // Andy Modla begin
-	    httpServer = null;
+		destroyServer();
 		// Andy Modla end
 	    super.onDestroy();
 	}
@@ -1073,6 +1091,15 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 //		applicationInterface.clearLastImages(); // this should happen when pausing the preview, but call explicitly just to be safe
 //		preview.onPause();
 
+		if (udpServer != null) {
+			udpServer.dispose();
+			Vector list = udpServer.getListeners();
+			for (int i=0; i<list.size(); i++) {
+				udpServer.removeListener((netP5.NetListener)list.get(i));
+			}
+			udpServer = null;
+		}
+
 		if( MyDebug.LOG ) {
 			Log.d(TAG, "onPause: total time to pause: " + (System.currentTimeMillis() - debug_time));
 		}
@@ -1302,7 +1329,12 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
     public void clickedPopupSettings(View view) {
 		if( MyDebug.LOG )
 			Log.d(TAG, "clickedPopupSettings");
-		mainUI.togglePopupSettings();
+        try {
+            mainUI.togglePopupSettings();
+        }
+        catch(Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private final PreferencesListener preferencesListener = new PreferencesListener();
@@ -2188,7 +2220,8 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
         }
     }
 
-	void updateSaveFolder(String new_save_location) {
+	boolean updateSaveFolder(String new_save_location) {
+		boolean changed=false;
 		if( MyDebug.LOG )
 			Log.d(TAG, "updateSaveFolder: " + new_save_location);
 		if( new_save_location != null ) {
@@ -2204,13 +2237,16 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 
 				this.save_location_history.updateFolderHistory(this.getStorageUtils().getSaveLocation(), true);
 				this.preview.showToast(null, getResources().getString(R.string.changed_save_location) + "\n" + this.applicationInterface.getStorageUtils().getSaveLocation());
+				changed = true;
 			}
 		}
+		return changed;
 	}
 
 	public static class MyFolderChooserDialog extends FolderChooserDialog {
 		@Override
 		public void onDismiss(DialogInterface dialog) {
+			boolean changed = false;
 			if( MyDebug.LOG )
 				Log.d(TAG, "FolderChooserDialog dismissed");
 			// n.b., fragments have to be static (as they might be inserted into a new Activity - see http://stackoverflow.com/questions/15571010/fragment-inner-class-should-be-static),
@@ -2219,8 +2255,17 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 			main_activity.setWindowFlagsForCamera();
 			main_activity.showPreview(true);
 			String new_save_location = this.getChosenFolder();
-			main_activity.updateSaveFolder(new_save_location);
+			changed = main_activity.updateSaveFolder(new_save_location);
 			super.onDismiss(dialog);
+            if (changed && main_activity.getApplicationInterface().getHttpServerPref()) {
+                if( MyDebug.LOG )
+                    Log.d(TAG, "change save location and http server - need to restart");
+				main_activity.destroyServer();
+                // see http://stackoverflow.com/questions/2470870/force-application-to-restart-on-first-activity
+                Intent i = getActivity().getBaseContext().getPackageManager().getLaunchIntentForPackage( getActivity().getBaseContext().getPackageName() );
+                i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                startActivity(i);
+            }
 		}
 	}
 

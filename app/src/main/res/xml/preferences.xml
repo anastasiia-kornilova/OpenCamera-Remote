@@ -78,25 +78,31 @@
 
 		<!-- Andy Modla addition -->
 		<SwitchPreference
-			android:key="preference_stitch_preview"
-			android:title="Align With Last Photo"
-			android:summary="Show last photo taken in background to help with alignment for creating composite or stitched photos."
+			android:key="preference_http_server"
+			android:title="HTTP Server"
+			android:summary="Turn on HTTP Server to allow remote viewing photos stored in Save location folder. Will cause a restart. Storage Access Framework not supported."
 			android:defaultValue="false"
 			/>
 
-        <SwitchPreference
-            android:key="preference_http_server"
-            android:title="HTTP Server"
-            android:summary="Turn on HTTP Server to allow remote viewing photos stored in Save location folder. Requires App Restart."
+		<Preference
+			android:key="preference_QR_Code_URL"
+			android:title="Pairing QR Code"
+			android:summary="Display QR Code URL Link to the HTTP Server."
+			/>
+
+		<SwitchPreference
+            android:key="preference_chacha_3D"
+            android:title="3D ChaCha Mode"
+            android:summary="Append _l or _r suffix to photo filenames taken in sequence for left/right eye using the single camera 3D ChaCha method."
             android:defaultValue="false"
             />
 
-        <SwitchPreference
-            android:key="preference_chacha_3D"
-            android:title="3D ChaCha Mode"
-            android:summary="Append _l or _r to photo filenames taken in sequence for left/right eye photos using the single camera 3D ChaCha method"
-            android:defaultValue="false"
-            />
+		<SwitchPreference
+			android:key="preference_stitch_preview"
+			android:title="Align With Last Photo"
+			android:summary="Show last photo taken in background to help with alignment while creating 3D, composite or stitched photos."
+			android:defaultValue="false"
+			/>
 
 		<!-- Andy Modla end addition -->
 

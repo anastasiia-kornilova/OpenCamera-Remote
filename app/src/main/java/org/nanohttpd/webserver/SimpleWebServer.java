@@ -32,9 +32,16 @@ package org.nanohttpd.webserver;
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  * #L%
  */
-import net.sourceforge.opencamera.MainActivity;
-import net.sourceforge.opencamera.MyApplicationInterface;
+
 import net.sourceforge.opencamera.Preview.ApplicationInterface;
+
+import org.nanohttpd.protocols.http.IHTTPSession;
+import org.nanohttpd.protocols.http.NanoHTTPD;
+import org.nanohttpd.protocols.http.request.Method;
+import org.nanohttpd.protocols.http.response.IStatus;
+import org.nanohttpd.protocols.http.response.Response;
+import org.nanohttpd.protocols.http.response.Status;
+import org.nanohttpd.util.ServerRunner;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -54,14 +61,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.StringTokenizer;
-
-import org.nanohttpd.protocols.http.IHTTPSession;
-import org.nanohttpd.protocols.http.NanoHTTPD;
-import org.nanohttpd.protocols.http.request.Method;
-import org.nanohttpd.protocols.http.response.IStatus;
-import org.nanohttpd.protocols.http.response.Response;
-import org.nanohttpd.protocols.http.response.Status;
-import org.nanohttpd.util.ServerRunner;
 
 public class SimpleWebServer extends NanoHTTPD {
 
@@ -364,19 +363,63 @@ public class SimpleWebServer extends NanoHTTPD {
         return msg.toString();
     }
 
+    protected String listLast(String uri, File f, String filename) {
+        String heading = "Open Camera Remote - Save Location Folder";
+        StringBuilder msg =
+                new StringBuilder("<html><head><title>" + heading + "</title><style><!--\n" + "span.dirname { font-weight: bold; }\n" + "span.filesize { font-size: 75%; }\n"
+                        + "// -->\n" + "</style>" + "</head><body><h1>" + heading + "</h1>");
+
+        String up = null;
+        if (uri.length() > 1) {
+            String u = uri.substring(0, uri.length() - 1);
+            int slash = u.lastIndexOf('/');
+            if (slash >= 0 && slash < u.length()) {
+                up = uri.substring(0, slash + 1);
+            }
+        }
+
+        if (filename != null) {
+            msg.append("<ul>");
+            msg.append("<section class=\"files\">");
+            msg.append("<li><a href=\"").append(encodeUri(uri + filename)).append("\"><span class=\"filename\">").append(filename).append("</span></a>");
+            File curFile = new File(f, filename);
+            long len = curFile.length();
+            msg.append("&nbsp;<span class=\"filesize\">(");
+            if (len < 1024) {
+                msg.append(len).append(" bytes");
+            } else if (len < 1024 * 1024) {
+                msg.append(len / 1024).append(".").append(len % 1024 / 10 % 100).append(" KB");
+            } else {
+                msg.append(len / (1024 * 1024)).append(".").append(len % (1024 * 1024) / 10000 % 100).append(" MB");
+            }
+            msg.append(")</span></li>");
+            msg.append("</section>");
+            msg.append("</ul>");
+        }
+
+//        msg.append("<img src=\"data:image/png;base64,iVBORw0KGgoAAA");
+//        msg.append("ANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4");
+//        msg.append("//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU");
+//        msg.append("5ErkJggg==\" alt=\"Red dot\" />");
+
+        //msg.append("<img height=100% src=\"." + uri.toString() + filename + "\" />");
+        msg.append("</body></html>");
+        return msg.toString();
+    }
+
     public static Response newFixedLengthResponse(IStatus status, String mimeType, String message) {
         Response response = Response.newFixedLengthResponse(status, mimeType, message);
         response.addHeader("Accept-Ranges", "bytes");
         return response;
     }
 
-    private Response respond(Map<String, String> headers, IHTTPSession session, String uri) {
+    private Response respond(Map<String, String> headers, Map<String, String> parms, IHTTPSession session, String uri) {
         // First let's handle CORS OPTION query
         Response r;
         if (cors != null && Method.OPTIONS.equals(session.getMethod())) {
             r = Response.newFixedLengthResponse(Status.OK, MIME_PLAINTEXT, null, 0);
         } else {
-            r = defaultRespond(headers, session, uri);
+            r = defaultRespond(headers, parms, session, uri);
         }
 
         if (cors != null) {
@@ -385,14 +428,13 @@ public class SimpleWebServer extends NanoHTTPD {
         return r;
     }
 
-    private Response defaultRespond(Map<String, String> headers, IHTTPSession session, String uri) {
-        String qParam=null;
+    private Response defaultRespond(Map<String, String> headers, Map<String, String> parms, IHTTPSession session, String uri) {
+        boolean last = false;
         // Remove URL arguments
         uri = uri.trim().replace(File.separatorChar, '/');
         if (uri.indexOf('?') >= 0) {
             uri = uri.substring(0, uri.indexOf('?'));
         }
-        qParam = uri.substring(uri.indexOf('/')+1);
 
         // Prohibit getting out of current directory
         if (uri.contains("../")) {
@@ -407,6 +449,12 @@ public class SimpleWebServer extends NanoHTTPD {
         }
         if (!canServeUri) {
             return getNotFoundResponse();
+        }
+
+        filename = null;
+        if (parms.containsKey("last")) {
+            filename = applicationInterface.getLastImage();
+            last = true;
         }
 
         // Browsers get confused without '/' after the directory, send a
@@ -426,12 +474,15 @@ public class SimpleWebServer extends NanoHTTPD {
             if (indexFile == null) {
                 if (f.canRead()) {
                     // No index file, list the directory if it is readable
-                    return newFixedLengthResponse(Status.OK, NanoHTTPD.MIME_HTML, listDirectory(uri, f));
+                    if (last)
+                        return newFixedLengthResponse(Status.OK, NanoHTTPD.MIME_HTML, listLast(uri, f, filename));
+                    else
+                        return newFixedLengthResponse(Status.OK, NanoHTTPD.MIME_HTML, listDirectory(uri, f));
                 } else {
                     return getForbiddenResponse("No directory listing.");
                 }
             } else {
-                return respond(headers, session, uri + indexFile);
+                return respond(headers, parms, session, uri + indexFile);
             }
         }
         String mimeTypeForFile = getMimeTypeForFile(uri);
@@ -441,7 +492,7 @@ public class SimpleWebServer extends NanoHTTPD {
             response = plugin.serveFile(uri, headers, session, f, mimeTypeForFile);
             if (response != null && response instanceof InternalRewrite) {
                 InternalRewrite rewrite = (InternalRewrite) response;
-                return respond(rewrite.getHeaders(), session, rewrite.getUri());
+                return respond(rewrite.getHeaders(), parms, session, rewrite.getUri());
             }
         } else {
             response = serveFile(uri, headers, f, mimeTypeForFile);
@@ -454,13 +505,6 @@ public class SimpleWebServer extends NanoHTTPD {
         Map<String, String> header = session.getHeaders();
         Map<String, String> parms = session.getParms();
         String uri = session.getUri();
-        filename = null;
-        if (uri.startsWith("/last")) {
-            filename = applicationInterface.getLastImage();
-            if (filename != null) {
-                uri = "/" + filename;
-            }
-        }
 
         if (!this.quiet) {
             System.out.println(session.getMethod() + " '" + uri + "' ");
@@ -483,7 +527,7 @@ public class SimpleWebServer extends NanoHTTPD {
                 return getInternalErrorResponse("given path is not a directory (" + homeDir + ").");
             }
         }
-        return respond(Collections.unmodifiableMap(header), session, uri);
+        return respond(Collections.unmodifiableMap(header), Collections.unmodifiableMap(parms), session, uri);
     }
 
     /**

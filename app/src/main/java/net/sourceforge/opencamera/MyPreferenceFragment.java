@@ -16,6 +16,7 @@ import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.TypedArray;
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Point;
 import android.net.Uri;
@@ -31,9 +32,19 @@ import android.preference.PreferenceManager;
 import android.preference.TwoStatePreference;
 import android.util.Log;
 import android.view.Display;
+import android.view.View;
+import android.view.WindowManager;
+import android.widget.ImageView;
 import android.widget.Toast;
 
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.WriterException;
+import com.google.zxing.client.android.Contents;
+import com.google.zxing.client.android.Intents;
+import com.google.zxing.client.android.encode.QRCodeEncoder;
 import java.util.Locale;
+
+import static android.content.Context.WINDOW_SERVICE;
 
 /** Fragment to handle the Settings UI. Note that originally this was a
  *  PreferenceActivity rather than a PreferenceFragment which required all
@@ -327,6 +338,81 @@ public class MyPreferenceFragment extends PreferenceFragment implements OnShared
 			pg.removePreference(pref);
         }
 
+        // Andy Modla begin block
+		final Preference httpPref = findPreference("preference_http_server");
+		httpPref.setOnPreferenceClickListener(new OnPreferenceClickListener() {
+			@Override
+			public boolean onPreferenceClick(Preference arg0) {
+				if( httpPref.getKey().equals("preference_http_server") ) {
+					if( MyDebug.LOG )
+						Log.d(TAG, "user clicked Http Server - need to restart");
+					// see http://stackoverflow.com/questions/2470870/force-application-to-restart-on-first-activity
+					Intent i = getActivity().getBaseContext().getPackageManager().getLaunchIntentForPackage( getActivity().getBaseContext().getPackageName() );
+					i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+					startActivity(i);
+					return false;
+				}
+				return false;
+			}
+		});
+
+			final Preference qrpref = findPreference("preference_QR_Code_URL");
+			qrpref.setOnPreferenceClickListener(new OnPreferenceClickListener() {
+				@Override
+				public boolean onPreferenceClick(Preference arg0) {
+					if( qrpref.getKey().equals("preference_QR_Code_URL") ) {
+						if( MyDebug.LOG )
+							Log.d(TAG, "user clicked QR Code");
+						MainActivity activity = (MainActivity)MyPreferenceFragment.this.getActivity();
+						//Find screen size
+						WindowManager manager = (WindowManager) activity.getSystemService(WINDOW_SERVICE);
+						Display display = manager.getDefaultDisplay();
+						Point point = new Point();
+						display.getSize(point);
+						int width = point.x;
+						int height = point.y;
+						int smallerDimension = width < height ? width : height;
+						//smallerDimension = smallerDimension * 3/4;
+						smallerDimension = smallerDimension/2;
+						if (smallerDimension < 400)
+							smallerDimension = 400;
+						String hostname = activity.getHostnameURL();
+						//Encode with a QR Code image
+						Intent intent = new Intent();
+						intent.putExtra(Intents.Encode.FORMAT, BarcodeFormat.QR_CODE.toString());
+						intent.putExtra(Intents.Encode.DATA, hostname);
+						intent.putExtra(Intents.Encode.TYPE, Contents.Type.TEXT);
+						intent.setAction(Intents.Encode.ACTION);
+						ImageView qrImage = null;
+						try {
+							QRCodeEncoder qrCodeEncoder = new QRCodeEncoder(activity, intent, smallerDimension, false);
+							Bitmap bitmap = qrCodeEncoder.encodeAsBitmap();
+							qrImage = new ImageView(activity);
+							qrImage.setImageBitmap(bitmap);
+						}
+						catch (WriterException we) {
+							we.printStackTrace();
+						}
+
+						AlertDialog.Builder builder =
+								new AlertDialog.Builder(MyPreferenceFragment.this.getActivity()).
+										setMessage(hostname).
+										setPositiveButton(android.R.string.ok, new OnClickListener() {
+											@Override
+											public void onClick(DialogInterface dialog, int which) {
+												dialog.dismiss();
+											}
+										}).
+										setView(qrImage);
+						builder.create().show();
+						return false;
+					}
+					return false;
+				}
+			});
+
+		// Andy Modla end block
+
 		final boolean supports_camera2 = bundle.getBoolean("supports_camera2");
 		if( MyDebug.LOG )
 			Log.d(TAG, "supports_camera2: " + supports_camera2);
@@ -540,16 +626,21 @@ public class MyPreferenceFragment extends PreferenceFragment implements OnShared
 	                			Log.d(TAG, "NameNotFoundException exception trying to get version number");
 							e.printStackTrace();
 						}
-                        about_string.append("Open Camera Remote v");
-                        about_string.append(version);
+                        about_string.append("Open Camera Remote");
+                        about_string.append("\nv"+ version);
+						if (MyDebug.LOG) {
+							about_string.append(" Debug");
+						}
                         about_string.append("\nCode: ");
                         about_string.append(version_code);
                         about_string.append("\n(c) 2013-2017 Mark Harman");
-						about_string.append("\nModifications for WiFi remote control:");
+						about_string.append("\nModifications for WiFi remote control by Andy Modla");
 						about_string.append("\n(c) 2016-2017 Andy Modla");
 						about_string.append("\nReleased under the GPL v3 or later");
 						about_string.append("\nNanoHTTPD web server license:");
 						about_string.append("\nhttps://github.com/NanoHttpd/nanohttpd/blob/master/LICENSE.md");
+						about_string.append("\nGoogle Zxing QRCODE license:");
+						about_string.append("\nhttp://www.apache.org/licenses/LICENSE-2.0");
 						about_string.append("\nPackage: ");
                         about_string.append(MyPreferenceFragment.this.getActivity().getPackageName());
                         about_string.append("\nAndroid API version: ");
@@ -872,8 +963,17 @@ public class MyPreferenceFragment extends PreferenceFragment implements OnShared
 			// so we access the MainActivity via the fragment's getActivity().
 			MainActivity main_activity = (MainActivity)this.getActivity();
 			String new_save_location = this.getChosenFolder();
-			main_activity.updateSaveFolder(new_save_location);
+			boolean changed = main_activity.updateSaveFolder(new_save_location);
 			super.onDismiss(dialog);
+			if (changed && main_activity.getApplicationInterface().getHttpServerPref()) {
+				if( MyDebug.LOG )
+					Log.d(TAG, "change save location and http server - need to restart");
+				main_activity.destroyServer();
+				// see http://stackoverflow.com/questions/2470870/force-application-to-restart-on-first-activity
+				Intent i = getActivity().getBaseContext().getPackageManager().getLaunchIntentForPackage( getActivity().getBaseContext().getPackageName() );
+				i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+				startActivity(i);
+			}
 		}
 	}
 

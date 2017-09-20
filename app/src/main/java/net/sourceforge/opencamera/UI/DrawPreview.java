@@ -283,6 +283,28 @@ public class DrawPreview {
 		// Andy Modla begin
 		// draw background image if available
 		applicationInterface.drawBackground(canvas);
+		// draw left or right lines for 3D cha-cha
+		SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(main_activity);
+		if (sharedPreferences.getBoolean(PreferenceKeys.getChaCha3DPreferenceKey(), false)) {
+			p.setColor(Color.MAGENTA);
+			int ui_rotation = preview.getUIRotation();
+			if (main_activity.suffixSelection == MainActivity.Stereo.LEFT) {
+				if( ui_rotation == 0 || ui_rotation == 180 ) {
+					canvas.drawLine(7.0f * canvas.getWidth() / 8.0f, 0.0f, 7.0f * canvas.getWidth() / 8.0f, canvas.getHeight() - 1.0f, p);
+				}
+				else {
+					canvas.drawLine(0.0f, canvas.getHeight() / 8.0f, canvas.getWidth() - 1.0f, canvas.getHeight() / 8.0f, p);
+				}
+			}
+			else if (main_activity.suffixSelection == MainActivity.Stereo.MONO) {
+				if( ui_rotation == 0 || ui_rotation == 180 ) {
+					canvas.drawLine(canvas.getWidth() / 8.0f, 0.0f, canvas.getWidth() / 8.0f, canvas.getHeight() - 1.0f, p);
+				}
+				else {
+					canvas.drawLine(0.0f, 7.0f * canvas.getHeight() / 8.0f, canvas.getWidth() - 1.0f, 7.0f * canvas.getHeight() / 8.0f, p);
+				}
+			}
+		}
 		// Andy Modla end
 
 		switch( preference_grid ) {

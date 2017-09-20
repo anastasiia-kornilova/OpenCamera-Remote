@@ -3268,7 +3268,19 @@ public class CameraController2 extends CameraController {
 				e.printStackTrace();
 				// do via CameraControllerException instead of preview_error_cb, so caller immediately knows preview has failed
 				throw new CameraControllerException();
-			} 
+			}
+			catch(IllegalStateException ise) {
+				if( MyDebug.LOG )
+					Log.d(TAG, "CameraControllerException trying to startPreview");
+				ise.printStackTrace();
+				throw new CameraControllerException();
+			}
+			catch(RuntimeException rte) {
+				if( MyDebug.LOG )
+					Log.d(TAG, "CameraControllerException trying to startPreview");
+				rte.printStackTrace();
+				throw new CameraControllerException();
+			}
 			return;
 		}
 		createCaptureSession(null);
@@ -3300,6 +3312,13 @@ public class CameraController2 extends CameraController {
 				Log.e(TAG, "message: " + e.getMessage());
 			}
 			e.printStackTrace();
+		}
+		catch(IllegalStateException ise) {
+			if( MyDebug.LOG ) {
+				Log.e(TAG, "failed to stop repeating");
+				Log.e(TAG, "message: " + ise.getMessage());
+			}
+			ise.printStackTrace();
 		}
 		// simulate CameraController1 behaviour where face detection is stopped when we stop preview
 		if( camera_settings.has_face_detect_mode ) {
@@ -3348,7 +3367,14 @@ public class CameraController2 extends CameraController {
 				Log.e(TAG, "message: " + e.getMessage());
 			}
 			e.printStackTrace();
-		} 
+		}
+		catch(IllegalStateException ise) {
+			if( MyDebug.LOG ) {
+				Log.e(TAG, "failed to stop repeating");
+				Log.e(TAG, "message: " + ise.getMessage());
+			}
+			ise.printStackTrace();
+		}
 		return true;
 	}
 	
@@ -4418,8 +4444,14 @@ public class CameraController2 extends CameraController {
 					Log.d(TAG, "exposure time: " + request.get(CaptureRequest.SENSOR_EXPOSURE_TIME));
 				}
 			}
-			process(request, result);
-			processCompleted(request, result);
+			try {
+				process(request, result);
+				processCompleted(request, result);
+			}
+			catch (Exception e)
+			{
+				e.printStackTrace();
+			}
 			super.onCaptureCompleted(session, request, result); // API docs say this does nothing, but call it just to be safe (as with Google Camera)
 		}
 

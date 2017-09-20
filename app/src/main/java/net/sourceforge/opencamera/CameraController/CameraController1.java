@@ -1114,7 +1114,12 @@ public class CameraController1 extends CameraController {
 
 	public void enableShutterSound(boolean enabled) {
         if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 ) {
-        	camera.enableShutterSound(enabled);
+			try {
+				camera.enableShutterSound(enabled);
+			}
+			catch (Exception e) {
+				e.printStackTrace();
+			}
         }
 	}
 	
@@ -1275,7 +1280,7 @@ public class CameraController1 extends CameraController {
 		try {
 			camera.startPreview();
 		}
-		catch(RuntimeException e) {
+		catch(Exception e) {
 			if( MyDebug.LOG )
 				Log.e(TAG, "failed to start preview");
 			e.printStackTrace();
