@@ -570,15 +570,16 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 		//
 		NetListener nl1 = new NetListener() {
 			public void netEvent(NetMessage m) {
+				if( MyDebug.LOG ) Log.d(TAG, "netEvent from ip addr="+ m.getDatagramPacket().getAddress());
 				byte[] data = m.getData();
 				byte[] b = new byte[1];
 				b[0] = data[0];
 				String command = Bytes.getAsString(b);
-				Log.d(TAG, "netEvent (UDP Server) command=" + command);
+				if( MyDebug.LOG ) Log.d(TAG, "netEvent (UDP Server) command=" + command);
 				if (command.startsWith("F")) {
 					if (!preview.isVideo()) {
 						if (!preview.isFocusWaiting()) {
-							Log.d(TAG, "remote request focus");
+							if( MyDebug.LOG ) Log.d(TAG, "remote request focus");
 							MainActivity.this.runOnUiThread(new Runnable() {
 								public void run() {
 									preview.requestAutoFocus();
@@ -597,7 +598,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 					s[2] = data[3];
 					s[3] = data[4];
 					sCount = Bytes.getAsString(s);
-					Log.d(TAG, "remote takePicture() " + sCount);
+					if( MyDebug.LOG ) Log.d(TAG, "remote takePicture() " + sCount);
 					if (!preview.isVideo()) {
 						MainActivity.this.runOnUiThread(new Runnable() {
 							public void run() {
@@ -616,7 +617,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 					s[2] = data[3];
 					s[3] = data[4];
 					sCount = Bytes.getAsString(s);
-					Log.d(TAG, "remote record video " + sCount);
+					if( MyDebug.LOG ) Log.d(TAG, "remote record video " + sCount);
 					if (preview.isVideo()) {
 						MainActivity.this.runOnUiThread(new Runnable() {
 							public void run() {
@@ -632,7 +633,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 					}
 				}
 				else if (command.startsWith("P")) { // pause
-					Log.d(TAG, "remote pause Video " );
+					if( MyDebug.LOG ) Log.d(TAG, "remote pause Video " );
 					if (preview.isVideo()) {
 						MainActivity.this.runOnUiThread(new Runnable() {
 							public void run() {
@@ -649,19 +650,19 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 				else if (command.startsWith("R")) { // reset / information request
 					if (httpServer != null) {
 						httpUrl = getHostnameURL();
-						Log.d(TAG, "information request " + httpUrl);
+						if( MyDebug.LOG ) Log.d(TAG, "information request " + httpUrl);
 						preview.showToast(null, httpUrl);
 					}
 				}
 			}
 			public void netStatus(NetStatus s) {
-				Log.d(TAG, "netStatus (UDP Server) : "+s);
+				if( MyDebug.LOG ) Log.d(TAG, "netStatus (UDP Server) : "+s);
 			}
 		};
 		// UDP server for receiving Broadcast messages
 		udpServer = new UdpServer( nl1 , port );
 		if (udpServer == null) {
-			Log.d(TAG, "UdpServer error");
+			if( MyDebug.LOG ) Log.d(TAG, "UdpServer error");
 			preview.showToast(null, "Remote Message Server not started");
 		}
 		// HTTP server for receiving GET image requests over local network
