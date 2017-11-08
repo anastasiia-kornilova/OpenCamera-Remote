@@ -37,6 +37,7 @@ import android.media.ExifInterface;
 import android.media.Image;
 import android.net.Uri;
 import android.os.Build;
+import android.renderscript.Allocation;
 import android.support.annotation.RequiresApi;
 import android.util.Log;
 
@@ -64,19 +65,29 @@ public class ImageSaver extends Thread {
 	private int n_images_to_save = 0;
 	private final BlockingQueue<Request> queue = new ArrayBlockingQueue<>(1); // since we remove from the queue and then process in the saver thread, in practice the number of background photos - including the one being processed - is one more than the length of this queue
 	
-	private static class Request {
+	static class Request {
 		enum Type {
 			JPEG,
 			RAW,
 			DUMMY
 		}
 		Type type = Type.JPEG;
-		final boolean is_hdr; // for jpeg
-		final boolean save_expo; // for is_hdr
+		enum ProcessType {
+			NORMAL,
+			HDR,
+			AVERAGE
+		}
+		final ProcessType process_type; // for jpeg
+		enum SaveBase {
+			SAVEBASE_NONE,
+			SAVEBASE_FIRST,
+			SAVEBASE_ALL
+		}
+		final SaveBase save_base; // whether to save the base images, for process_type HDR or AVERAGE
 		/* jpeg_images: for jpeg (may be null otherwise).
-		 * If is_hdr==true, this should be 1 or 3 images, and the images are combined/converted to a HDR image (if there's only 1
+		 * If process_type==HDR, this should be 1 or 3 images, and the images are combined/converted to a HDR image (if there's only 1
 		 * image, this uses fake HDR or "DRO").
-		 * If is_hdr==false, then multiple images are saved sequentially.
+		 * If process_type==NORMAL, then multiple images are saved sequentially.
 		 */
 		final List<byte []> jpeg_images;
 		final DngCreator dngCreator; // for raw
@@ -105,8 +116,8 @@ public class ImageSaver extends Thread {
 		int sample_factor = 1; // sampling factor for thumbnail, higher means lower quality
 		
 		Request(Type type,
-			boolean is_hdr,
-			boolean save_expo,
+			ProcessType process_type,
+			SaveBase save_base,
 			List<byte []> jpeg_images,
 			DngCreator dngCreator, Image image,
 			boolean image_capture_intent, Uri image_capture_intent_uri,
@@ -119,8 +130,8 @@ public class ImageSaver extends Thread {
 			boolean store_location, Location location, boolean store_geo_direction, double geo_direction,
 			int sample_factor) {
 			this.type = type;
-			this.is_hdr = is_hdr;
-			this.save_expo = save_expo;
+			this.process_type = process_type;
+			this.save_base = save_base;
 			this.jpeg_images = jpeg_images;
 			this.dngCreator = dngCreator;
 			this.image = image;
@@ -296,6 +307,73 @@ public class ImageSaver extends Thread {
 				1);
 	}
 
+	private Request pending_image_average_request = null;
+
+	void startImageAverage(boolean do_in_background,
+			Request.SaveBase save_base,
+			boolean image_capture_intent, Uri image_capture_intent_uri,
+			boolean using_camera2, int image_quality,
+			boolean do_auto_stabilise, double level_angle,
+			boolean is_front_facing,
+			boolean mirror,
+			Date current_date,
+			String preference_stamp, String preference_textstamp, int font_size, int color, String pref_style, String preference_stamp_dateformat, String preference_stamp_timeformat, String preference_stamp_gpsformat,
+			boolean store_location, Location location, boolean store_geo_direction, double geo_direction,
+			int sample_factor) {
+		if( MyDebug.LOG ) {
+			Log.d(TAG, "startImageAverage");
+			Log.d(TAG, "do_in_background? " + do_in_background);
+		}
+		pending_image_average_request = new Request(Request.Type.JPEG,
+				Request.ProcessType.AVERAGE,
+				save_base,
+				new ArrayList<byte[]>(),
+				null, null,
+				image_capture_intent, image_capture_intent_uri,
+				using_camera2, image_quality,
+				do_auto_stabilise, level_angle,
+				is_front_facing,
+				mirror,
+				current_date,
+				preference_stamp, preference_textstamp, font_size, color, pref_style, preference_stamp_dateformat, preference_stamp_timeformat, preference_stamp_gpsformat,
+				store_location, location, store_geo_direction, geo_direction,
+				sample_factor);
+	}
+
+	void addImageAverage(byte [] image) {
+		if( MyDebug.LOG )
+			Log.d(TAG, "addImageAverage");
+		if( pending_image_average_request == null ) {
+			Log.e(TAG, "addImageAverage called but no pending_image_average_request");
+			return;
+		}
+		pending_image_average_request.jpeg_images.add(image);
+		if( MyDebug.LOG )
+			Log.d(TAG, "image average request images: " + pending_image_average_request.jpeg_images.size());
+	}
+
+	void finishImageAverage(boolean do_in_background) {
+		if( MyDebug.LOG )
+			Log.d(TAG, "finishImageAverage");
+		if( pending_image_average_request == null ) {
+			if( MyDebug.LOG )
+				Log.d(TAG, "finishImageAverage called but no pending_image_average_request");
+			return;
+		}
+		if( do_in_background ) {
+			if( MyDebug.LOG )
+				Log.d(TAG, "add background request");
+			addRequest(pending_image_average_request);
+			addDummyRequest();
+		}
+		else {
+			// wait for queue to be empty
+			waitUntilDone();
+			saveImageNow(pending_image_average_request);
+		}
+		pending_image_average_request = null;
+	}
+
 	/** Internal saveImage method to handle both JPEG and RAW.
 	 */
 	private boolean saveImage(boolean do_in_background,
@@ -322,8 +400,8 @@ public class ImageSaver extends Thread {
 		//do_in_background = false;
 		
 		Request request = new Request(is_raw ? Request.Type.RAW : Request.Type.JPEG,
-				is_hdr,
-				save_expo,
+				is_hdr ? Request.ProcessType.HDR : Request.ProcessType.NORMAL,
+				save_expo ? Request.SaveBase.SAVEBASE_ALL : Request.SaveBase.SAVEBASE_NONE,
 				jpeg_images,
 				dngCreator, image,
 				image_capture_intent, image_capture_intent_uri,
@@ -340,28 +418,12 @@ public class ImageSaver extends Thread {
 			if( MyDebug.LOG )
 				Log.d(TAG, "add background request");
 			addRequest(request);
-			if( ( request.is_hdr && request.jpeg_images.size() > 1 ) || ( !is_raw && request.jpeg_images.size() > 1 ) ) {
+			if( ( request.process_type == Request.ProcessType.HDR && request.jpeg_images.size() > 1 ) || ( !is_raw && request.jpeg_images.size() > 1 ) ) {
 				// For (multi-image) HDR, we also add a dummy request, effectively giving it a cost of 2 - to reflect the fact that HDR is more memory intensive
 				// (arguably it should have a cost of 3, to reflect the 3 JPEGs, but one can consider this comparable to RAW+JPEG, which have a cost
 				// of 2, due to RAW and JPEG each needing their own request).
 				// Similarly for saving multiple images (expo-bracketing)
-				Request dummy_request = new Request(Request.Type.DUMMY,
-					false,
-					false,
-					null,
-					null, null,
-					false, null,
-					false, 0,
-					false, 0.0,
-					false,
-					false,
-					null,
-					null, null, 0, 0, null, null, null, null,
-					false, null, false, 0.0,
-					1);
-				if( MyDebug.LOG )
-					Log.d(TAG, "add dummy request");
-				addRequest(dummy_request);
+				addDummyRequest();
 			}
 			success = true; // always return true when done in background
 		}
@@ -414,6 +476,26 @@ public class ImageSaver extends Thread {
 					Log.e(TAG, "interrupted while trying to add to ImageSaver queue");
 			}
 		}
+	}
+
+	private void addDummyRequest() {
+		Request dummy_request = new Request(Request.Type.DUMMY,
+			Request.ProcessType.NORMAL,
+            Request.SaveBase.SAVEBASE_NONE,
+			null,
+			null, null,
+			false, null,
+			false, 0,
+			false, 0.0,
+			false,
+			false,
+			null,
+			null, null, 0, 0, null, null, null, null,
+			false, null, false, 0.0,
+			1);
+		if( MyDebug.LOG )
+			Log.d(TAG, "add dummy request");
+		addRequest(dummy_request);
 	}
 
 	/** Wait until the queue is empty and all pending images have been saved.
@@ -585,7 +667,100 @@ public class ImageSaver extends Thread {
 		}
 
 		boolean success;
-		if( request.is_hdr ) {
+		if( request.process_type == Request.ProcessType.AVERAGE ) {
+			if( MyDebug.LOG )
+				Log.d(TAG, "average");
+
+			saveBaseImages(request, "_");
+			main_activity.savingImage(true);
+
+			/*List<Bitmap> bitmaps = loadBitmaps(request.jpeg_images, 0);
+			if (bitmaps == null) {
+				if (MyDebug.LOG)
+					Log.e(TAG, "failed to load bitmaps");
+				main_activity.savingImage(false);
+				return false;
+			}*/
+			/*Bitmap nr_bitmap = loadBitmap(request.jpeg_images.get(0), true);
+
+			if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP ) {
+				try {
+					for(int i = 1; i < request.jpeg_images.size(); i++) {
+						Log.d(TAG, "processAvg for image: " + i);
+						Bitmap new_bitmap = loadBitmap(request.jpeg_images.get(i), false);
+						float avg_factor = (float) i;
+						hdrProcessor.processAvg(nr_bitmap, new_bitmap, avg_factor, true);
+						// processAvg recycles new_bitmap
+					}
+					//hdrProcessor.processAvgMulti(bitmaps, hdr_strength, 4);
+					//hdrProcessor.avgBrighten(nr_bitmap);
+				}
+				catch(HDRProcessorException e) {
+					e.printStackTrace();
+					throw new RuntimeException();
+				}
+			}
+			else {
+				Log.e(TAG, "shouldn't have offered NoiseReduction as an option if not on Android 5");
+				throw new RuntimeException();
+			}*/
+			Bitmap nr_bitmap;
+			if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP ) {
+				try {
+					// initialise allocation from first two bitmaps
+					Bitmap bitmap0 = loadBitmap(request.jpeg_images.get(0), false);
+					Bitmap bitmap1 = loadBitmap(request.jpeg_images.get(1), false);
+					int width = bitmap0.getWidth();
+					int height = bitmap0.getHeight();
+					float avg_factor = 1.0f;
+					int iso = 800;
+					if( main_activity.getPreview().getCameraController() != null ) {
+						if( main_activity.getPreview().getCameraController().captureResultHasIso() ) {
+							iso = main_activity.getPreview().getCameraController().captureResultIso();
+							if( MyDebug.LOG )
+								Log.d(TAG, "iso: " + iso);
+						}
+					}
+					Allocation allocation = hdrProcessor.processAvg(bitmap0, bitmap1, avg_factor, iso, true);
+					// processAvg recycles both bitmaps
+
+					for(int i=2;i<request.jpeg_images.size();i++) {
+						if( MyDebug.LOG )
+							Log.d(TAG, "processAvg for image: " + i);
+
+						Bitmap new_bitmap = loadBitmap(request.jpeg_images.get(i), false);
+						avg_factor = (float)i;
+						hdrProcessor.updateAvg(allocation, width, height, new_bitmap, avg_factor, iso, true);
+						// updateAvg recycles new_bitmap
+					}
+
+					nr_bitmap = hdrProcessor.avgBrighten(allocation, width, height, iso);
+				}
+				catch(HDRProcessorException e) {
+					e.printStackTrace();
+					throw new RuntimeException();
+				}
+			}
+			else {
+				Log.e(TAG, "shouldn't have offered NoiseReduction as an option if not on Android 5");
+				throw new RuntimeException();
+			}
+
+			if( MyDebug.LOG )
+				Log.d(TAG, "nr_bitmap: " + nr_bitmap + " is mutable? " + nr_bitmap.isMutable());
+	        System.gc();
+			main_activity.savingImage(false);
+
+			if( MyDebug.LOG )
+				Log.d(TAG, "save HDR image");
+			String suffix = "_NR";
+			success = saveSingleImageNow(request, request.jpeg_images.get(0), nr_bitmap, suffix, true, true);
+			if( MyDebug.LOG && !success )
+				Log.e(TAG, "saveSingleImageNow failed for nr image");
+			nr_bitmap.recycle();
+	        System.gc();
+		}
+		else if( request.process_type == Request.ProcessType.HDR ) {
 			if( MyDebug.LOG )
 				Log.d(TAG, "hdr");
 			if( request.jpeg_images.size() != 1 && request.jpeg_images.size() != 3 ) {
@@ -596,21 +771,9 @@ public class ImageSaver extends Thread {
 			}
 
         	long time_s = System.currentTimeMillis();
-			if( request.jpeg_images.size() > 1 && !request.image_capture_intent && request.save_expo ) {
-				if( MyDebug.LOG )
-					Log.e(TAG, "save exposures");
-				for(int i=0;i<request.jpeg_images.size();i++) {
-					// note, even if one image fails, we still try saving the other images - might as well give the user as many images as we can...
-					byte [] image = request.jpeg_images.get(i);
-					String filename_suffix = "_EXP" + i;
-					// don't update the thumbnails, only do this for the final HDR image - so user doesn't think it's complete, click gallery, then wonder why the final image isn't there
-					// also don't mark these images as being shared
-					if( !saveSingleImageNow(request, image, null, filename_suffix, false, false) ) {
-						if( MyDebug.LOG )
-							Log.e(TAG, "saveSingleImageNow failed for exposure image");
-						// we don't set success to false here - as for deciding whether to pause preview or not (which is all we use the success return for), all that matters is whether we saved the final HDR image
-					}
-				}
+			if( request.jpeg_images.size() > 1 ) {
+				// if there's only 1 image, we're in DRO mode, and shouldn't save the base image
+				saveBaseImages(request, "_EXP");
 				if( MyDebug.LOG ) {
 					Log.d(TAG, "HDR performance: time after saving base exposures: " + (System.currentTimeMillis() - time_s));
 				}
@@ -631,6 +794,7 @@ public class ImageSaver extends Thread {
 			if( bitmaps == null ) {
 				if( MyDebug.LOG )
 					Log.e(TAG, "failed to load bitmaps");
+				main_activity.savingImage(false);
 		        return false;
 			}
     		if( MyDebug.LOG ) {
@@ -717,6 +881,31 @@ public class ImageSaver extends Thread {
 		return success;
 	}
 
+	/** Saves all the images in request.jpeg_images, depending on the save_base option.
+	 */
+	private void saveBaseImages(Request request, String suffix) {
+		if( MyDebug.LOG )
+			Log.d(TAG, "saveBaseImages");
+		if( !request.image_capture_intent && request.save_base != Request.SaveBase.SAVEBASE_NONE ) {
+			if( MyDebug.LOG )
+				Log.d(TAG, "save base images");
+			for(int i=0;i<request.jpeg_images.size();i++) {
+				// note, even if one image fails, we still try saving the other images - might as well give the user as many images as we can...
+				byte [] image = request.jpeg_images.get(i);
+				String filename_suffix = suffix + i;
+				// don't update the thumbnails, only do this for the final image - so user doesn't think it's complete, click gallery, then wonder why the final image isn't there
+				// also don't mark these images as being shared
+				if( !saveSingleImageNow(request, image, null, filename_suffix, false, false) ) {
+					if( MyDebug.LOG )
+						Log.e(TAG, "saveSingleImageNow failed for exposure image");
+					// we don't set success to false here - as for deciding whether to pause preview or not (which is all we use the success return for), all that matters is whether we saved the final HDR image
+				}
+				if( request.save_base == Request.SaveBase.SAVEBASE_FIRST )
+					break; // only requested the first
+			}
+		}
+	}
+
 	/** Performs the auto-stabilise algorithm on the image.
 	 * @param data The jpeg data.
 	 * @param bitmap Optional argument - the bitmap if already unpacked from the jpeg data.
@@ -778,9 +967,15 @@ public class ImageSaver extends Thread {
 			float rotated_size = (float)(w0*h0);
 			float scale = (float)Math.sqrt(orig_size/rotated_size);
 			if( main_activity.test_low_memory ) {
-				if( MyDebug.LOG )
+				if( MyDebug.LOG ) {
 					Log.d(TAG, "TESTING LOW MEMORY");
-				scale *= 2.0f; // test 20MP on Galaxy Nexus or Nexus 7; 52MP on Nexus 6
+					Log.d(TAG, "scale was: " + scale);
+				}
+				// test 20MP on Galaxy Nexus or Nexus 7; 29MP on Nexus 6 and 36MP OnePlus 3T
+				if( width*height >= 7500 )
+					scale *= 1.5f;
+				else
+					scale *= 2.0f;
 			}
 			if( MyDebug.LOG ) {
 				Log.d(TAG, "w0 = " + w0 + " , h0 = " + h0);
@@ -1410,8 +1605,17 @@ public class ImageSaver extends Thread {
     		    matrix.postScale(scale, scale);
 	    		if( MyDebug.LOG )
 	    			Log.d(TAG, "    scale: " + scale);
-    		    thumbnail = Bitmap.createBitmap(bitmap, 0, 0, width, height, matrix, true);
-				// don't need to rotate for exif, as we already did that when creating the bitmap
+				if( width > 0 && height > 0 ) {
+					thumbnail = Bitmap.createBitmap(bitmap, 0, 0, width, height, matrix, true);
+					// don't need to rotate for exif, as we already did that when creating the bitmap
+				}
+				else {
+					// received IllegalArgumentException on Google Play from Bitmap.createBitmap; documentation suggests this
+					// means width or height are 0
+					if( MyDebug.LOG )
+						Log.e(TAG, "bitmap has zero width or height?!");
+					thumbnail = null;
+				}
 			}
 			if( thumbnail == null ) {
 				// received crashes on Google Play suggesting that thumbnail could not be created
@@ -1422,7 +1626,7 @@ public class ImageSaver extends Thread {
 	    		final Bitmap thumbnail_f = thumbnail;
 		    	main_activity.runOnUiThread(new Runnable() {
 					public void run() {
-						applicationInterface.updateThumbnail(thumbnail_f);
+						applicationInterface.updateThumbnail(thumbnail_f, false);
 					}
 				});
         		if( MyDebug.LOG ) {

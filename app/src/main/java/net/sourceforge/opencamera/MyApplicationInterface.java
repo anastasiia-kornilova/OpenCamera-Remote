@@ -61,7 +61,8 @@ public class MyApplicationInterface implements ApplicationInterface {
     	Standard,
 		DRO, // single image "fake" HDR
     	HDR, // HDR created from multiple (expo bracketing) images
-    	ExpoBracketing // take multiple expo bracketed images, without combining to a single image
+    	ExpoBracketing, // take multiple expo bracketed images, without combining to a single image
+		NoiseReduction
     }
     
 	private final MainActivity main_activity;
@@ -70,6 +71,8 @@ public class MyApplicationInterface implements ApplicationInterface {
 	private final StorageUtils storageUtils;
 	private final DrawPreview drawPreview;
 	private final ImageSaver imageSaver;
+
+	private final float panorama_pics_per_screen = 2.0f;
 
 	private File last_video_file = null;
 	private Uri last_video_file_saf = null;
@@ -556,6 +559,8 @@ public class MyApplicationInterface implements ApplicationInterface {
 		PhotoMode photo_mode = getPhotoMode();
 		if( photo_mode == PhotoMode.DRO )
 			return 100;
+		else if( photo_mode == PhotoMode.NoiseReduction )
+			return 100;
 		return getSaveImageQualityPref();
     }
     
@@ -771,6 +776,10 @@ public class MyApplicationInterface implements ApplicationInterface {
 
     @Override
     public boolean getPausePreviewPref() {
+		if( main_activity.getPreview().isVideoRecording() ) {
+			// don't pause preview when taking photos while recording video!
+			return false;
+		}
 		SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getContext());
     	return sharedPreferences.getBoolean(PreferenceKeys.getPausePreviewPreferenceKey(), false);
     }
@@ -970,6 +979,14 @@ public class MyApplicationInterface implements ApplicationInterface {
     }
 
     @Override
+    public boolean isCameraBurstPref() {
+    	PhotoMode photo_mode = getPhotoMode();
+    	if( photo_mode == PhotoMode.NoiseReduction )
+			return true;
+		return false;
+	}
+
+    @Override
     public int getExpoBracketingNImagesPref() {
 		if( MyDebug.LOG )
 			Log.d(TAG, "getExpoBracketingNImagesPref");
@@ -1024,6 +1041,9 @@ public class MyApplicationInterface implements ApplicationInterface {
     }
 
     public PhotoMode getPhotoMode() {
+		// Note, this always should return the true photo mode - if we're in video mode and taking a photo snapshot while
+		// video recording, the caller should override. We don't override here, as this preference may be used to affect how
+		// the CameraController is set up, and we don't always re-setup the camera when switching between photo and video modes.
 		SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getContext());
 		return getPhotoMode(sharedPreferences);
     }
@@ -1039,6 +1059,9 @@ public class MyApplicationInterface implements ApplicationInterface {
 		boolean expo_bracketing = photo_mode_pref.equals("preference_photo_mode_expo_bracketing");
 		if( expo_bracketing && main_activity.supportsExpoBracketing() )
 			return PhotoMode.ExpoBracketing;
+		boolean noise_reduction = photo_mode_pref.equals("preference_photo_mode_noise_reduction");
+		if( noise_reduction && main_activity.supportsNoiseReduction() )
+			return PhotoMode.NoiseReduction;
 		return PhotoMode.Standard;
     }
 
@@ -1115,8 +1138,7 @@ public class MyApplicationInterface implements ApplicationInterface {
 		float camera_angle_y = main_activity.getPreview().getViewAngleY();
 		n_panorama_pics++;
 		float angle = (float) Math.toRadians(camera_angle_y) * n_panorama_pics;
-		final float pics_per_screen = 2.0f;
-		setNextPanoramaPoint((float) Math.sin(angle / pics_per_screen), 0.0f, (float) -Math.cos(angle / pics_per_screen));
+		setNextPanoramaPoint((float) Math.sin(angle / panorama_pics_per_screen), 0.0f, (float) -Math.cos(angle / panorama_pics_per_screen));
 	}
 
 	private void setNextPanoramaPoint(float x, float y, float z) {
@@ -1130,7 +1152,7 @@ public class MyApplicationInterface implements ApplicationInterface {
 				if( MyDebug.LOG )
 					Log.d(TAG, "TargetCallback.onAchieved");
 				clearPanoramaPoint();
-				main_activity.takePicturePressed();
+				main_activity.takePicturePressed(false);
 			}
 		});
 		drawPreview.setGyroDirectionMarker(x, y, z);
@@ -1176,6 +1198,12 @@ public class MyApplicationInterface implements ApplicationInterface {
 				pauseVideoButton.setVisibility(View.VISIBLE);
 			}
 			main_activity.getMainUI().setPauseVideoContentDescription();
+		}
+		if( main_activity.getPreview().supportsPhotoVideoRecording() ) {
+			if( !( main_activity.getMainUI().inImmersiveMode() && main_activity.usingKitKatImmersiveModeEverything() ) ) {
+				View takePhotoVideoButton = main_activity.findViewById(R.id.take_photo_when_video_recording);
+				takePhotoVideoButton.setVisibility(View.VISIBLE);
+			}
 		}
 		final int video_method = this.createOutputVideoMethod();
 		boolean dategeo_subtitles = getVideoSubtitlePref().equals("preference_video_subtitle_yes");
@@ -1343,6 +1371,8 @@ public class MyApplicationInterface implements ApplicationInterface {
 		}
 		View pauseVideoButton = main_activity.findViewById(R.id.pause_video);
 		pauseVideoButton.setVisibility(View.INVISIBLE);
+		View takePhotoVideoButton = main_activity.findViewById(R.id.take_photo_when_video_recording);
+		takePhotoVideoButton.setVisibility(View.INVISIBLE);
 		main_activity.getMainUI().setPauseVideoContentDescription(); // just to be safe
 		main_activity.getMainUI().destroyPopup(); // as the available popup options change while recording video
 		if( subtitleVideoTimerTask != null ) {
@@ -1453,7 +1483,7 @@ public class MyApplicationInterface implements ApplicationInterface {
 				final Bitmap thumbnail_f = thumbnail;
 				main_activity.runOnUiThread(new Runnable() {
 					public void run() {
-						updateThumbnail(thumbnail_f);
+						updateThumbnail(thumbnail_f, true);
 					}
 				});
 			}
@@ -1564,6 +1594,8 @@ public class MyApplicationInterface implements ApplicationInterface {
 
     @Override
 	public void hasPausedPreview(boolean paused) {
+		if( MyDebug.LOG )
+			Log.d(TAG, "hasPausedPreview: " + paused);
 	    View shareButton = main_activity.findViewById(R.id.share);
 	    View trashButton = main_activity.findViewById(R.id.trash);
 	    if( paused ) {
@@ -1576,9 +1608,9 @@ public class MyApplicationInterface implements ApplicationInterface {
 		    this.clearLastImages();
 	    }
 	}
-    
+
     @Override
-    public void cameraInOperation(boolean in_operation) {
+    public void cameraInOperation(boolean in_operation, boolean is_video) {
 		if( MyDebug.LOG )
 			Log.d(TAG, "cameraInOperation: " + in_operation);
     	if( !in_operation && used_front_screen_flash ) {
@@ -1586,7 +1618,7 @@ public class MyApplicationInterface implements ApplicationInterface {
     		used_front_screen_flash = false;
     	}
     	drawPreview.cameraInOperation(in_operation);
-    	main_activity.getMainUI().showGUI(!in_operation);
+    	main_activity.getMainUI().showGUI(!in_operation, is_video);
     }
     
     @Override
@@ -1598,10 +1630,13 @@ public class MyApplicationInterface implements ApplicationInterface {
     	drawPreview.turnFrontScreenFlashOn();
     }
 
+    private int n_capture_images = 0; // how many calls to onPictureTaken() since the last call to onCaptureStarted()
+
 	@Override
 	public void onCaptureStarted() {
 		if( MyDebug.LOG )
 			Log.d(TAG, "onCaptureStarted");
+		n_capture_images = 0;
 		drawPreview.onCaptureStarted();
 	}
 
@@ -1609,6 +1644,20 @@ public class MyApplicationInterface implements ApplicationInterface {
 	public void onPictureCompleted() {
 		if( MyDebug.LOG )
 			Log.d(TAG, "onPictureCompleted");
+
+		PhotoMode photo_mode = getPhotoMode();
+		if( main_activity.getPreview().isVideo() ) {
+			if( MyDebug.LOG )
+				Log.d(TAG, "snapshop mode");
+			// must be in photo snapshot while recording video mode, only support standard photo mode
+			photo_mode = PhotoMode.Standard;
+		}
+		if( photo_mode == PhotoMode.NoiseReduction ) {
+			boolean image_capture_intent = isImageCaptureIntent();
+			boolean do_in_background = saveInBackground(image_capture_intent);
+			imageSaver.finishImageAverage(do_in_background);
+		}
+
 		// call this, so that if pause-preview-after-taking-photo option is set, we remove the "taking photo" border indicator straight away
 		// also even for normal (not pausing) behaviour, good to remove the border asap
     	drawPreview.cameraInOperation(false);
@@ -1621,12 +1670,12 @@ public class MyApplicationInterface implements ApplicationInterface {
 		drawPreview.clearContinuousFocusMove();
 	}
 	
-	void updateThumbnail(Bitmap thumbnail) {
+	void updateThumbnail(Bitmap thumbnail, boolean is_video) {
 		if( MyDebug.LOG )
 			Log.d(TAG, "updateThumbnail");
 		main_activity.updateGalleryIcon(thumbnail);
 		drawPreview.updateThumbnail(thumbnail);
-		if( this.getPausePreviewPref() ) {
+		if( !is_video && this.getPausePreviewPref() ) {
 			drawPreview.showLastImage();
 		}
 	}
@@ -1870,15 +1919,15 @@ public class MyApplicationInterface implements ApplicationInterface {
 		ALIGNMENT_BOTTOM
 	}
 
-    public void drawTextWithBackground(Canvas canvas, Paint paint, String text, int foreground, int background, int location_x, int location_y) {
-		drawTextWithBackground(canvas, paint, text, foreground, background, location_x, location_y, Alignment.ALIGNMENT_BOTTOM);
+    public int drawTextWithBackground(Canvas canvas, Paint paint, String text, int foreground, int background, int location_x, int location_y) {
+		return drawTextWithBackground(canvas, paint, text, foreground, background, location_x, location_y, Alignment.ALIGNMENT_BOTTOM);
 	}
 
-	public void drawTextWithBackground(Canvas canvas, Paint paint, String text, int foreground, int background, int location_x, int location_y, Alignment alignment_y) {
-		drawTextWithBackground(canvas, paint, text, foreground, background, location_x, location_y, alignment_y, null, true);
+	public int drawTextWithBackground(Canvas canvas, Paint paint, String text, int foreground, int background, int location_x, int location_y, Alignment alignment_y) {
+		return drawTextWithBackground(canvas, paint, text, foreground, background, location_x, location_y, alignment_y, null, true);
 	}
 
-	public void drawTextWithBackground(Canvas canvas, Paint paint, String text, int foreground, int background, int location_x, int location_y, Alignment alignment_y, String ybounds_text, boolean shadow) {
+	public int drawTextWithBackground(Canvas canvas, Paint paint, String text, int foreground, int background, int location_x, int location_y, Alignment alignment_y, String ybounds_text, boolean shadow) {
 		final float scale = getContext().getResources().getDisplayMetrics().density;
 		paint.setStyle(Paint.Style.FILL);
 		paint.setColor(background);
@@ -1916,7 +1965,7 @@ public class MyApplicationInterface implements ApplicationInterface {
 		}
 		else if( alignment_y == Alignment.ALIGNMENT_CENTRE ) {
 			int height = text_bounds.bottom - text_bounds.top + 2*padding;
-			int y_diff = - text_bounds.top + padding - 1;
+			//int y_diff = - text_bounds.top + padding - 1;
 			text_bounds.top = (int)(0.5 * ( (location_y - 1) + (text_bounds.top + location_y - padding) )); // average of ALIGNMENT_TOP and ALIGNMENT_BOTTOM
 			text_bounds.bottom = text_bounds.top + height;
 			location_y += (int)(0.5*top_y_diff); // average of ALIGNMENT_TOP and ALIGNMENT_BOTTOM
@@ -1930,6 +1979,7 @@ public class MyApplicationInterface implements ApplicationInterface {
 		}
 		paint.setColor(foreground);
 		canvas.drawText(text, location_x, location_y, paint);
+		return text_bounds.bottom - text_bounds.top;
 	}
 	
 	private boolean saveInBackground(boolean image_capture_intent) {
@@ -1967,7 +2017,7 @@ public class MyApplicationInterface implements ApplicationInterface {
 			if( MyDebug.LOG )
 				Log.d(TAG, "saveImage(): from image capture intent");
 	        Bundle myExtras = main_activity.getIntent().getExtras();
-	        if (myExtras != null) {
+	        if( myExtras != null ) {
 	        	image_capture_intent_uri = myExtras.getParcelable(MediaStore.EXTRA_OUTPUT);
     			if( MyDebug.LOG )
     				Log.d(TAG, "image capture intent uri save to: " + image_capture_intent_uri);
@@ -2017,16 +2067,54 @@ public class MyApplicationInterface implements ApplicationInterface {
 		if( MyDebug.LOG )
 			Log.d(TAG, "sample_factor: " + sample_factor);
 
-		boolean success = imageSaver.saveImageJpeg(do_in_background, is_hdr, save_expo, images,
-				image_capture_intent, image_capture_intent_uri,
-				using_camera2, image_quality,
-				do_auto_stabilise, level_angle,
-				is_front_facing,
-				mirror,
-				current_date,
-				preference_stamp, preference_textstamp, font_size, color, pref_style, preference_stamp_dateformat, preference_stamp_timeformat, preference_stamp_gpsformat,
-				store_location, location, store_geo_direction, geo_direction,
-				sample_factor);
+		boolean success;
+		PhotoMode photo_mode = getPhotoMode();
+		if( main_activity.getPreview().isVideo() ) {
+			if( MyDebug.LOG )
+				Log.d(TAG, "snapshop mode");
+			// must be in photo snapshot while recording video mode, only support standard photo mode
+			photo_mode = PhotoMode.Standard;
+		}
+		if( photo_mode == PhotoMode.NoiseReduction ) {
+			if( n_capture_images == 1 ) {
+				ImageSaver.Request.SaveBase save_base = ImageSaver.Request.SaveBase.SAVEBASE_NONE;
+				String save_base_preference = sharedPreferences.getString(PreferenceKeys.getNRSaveExpoPreferenceKey(), "preference_nr_save_no");
+				switch( save_base_preference ) {
+					case "preference_nr_save_single":
+						save_base = ImageSaver.Request.SaveBase.SAVEBASE_FIRST;
+						break;
+					case "preference_nr_save_all":
+						save_base = ImageSaver.Request.SaveBase.SAVEBASE_ALL;
+						break;
+				}
+
+				imageSaver.startImageAverage(true,
+					save_base,
+					image_capture_intent, image_capture_intent_uri,
+					using_camera2, image_quality,
+					do_auto_stabilise, level_angle,
+					is_front_facing,
+					mirror,
+					current_date,
+					preference_stamp, preference_textstamp, font_size, color, pref_style, preference_stamp_dateformat, preference_stamp_timeformat, preference_stamp_gpsformat,
+					store_location, location, store_geo_direction, geo_direction,
+					sample_factor);
+			}
+			imageSaver.addImageAverage(images.get(0));
+			success = true;
+		}
+		else {
+			success = imageSaver.saveImageJpeg(do_in_background, is_hdr, save_expo, images,
+					image_capture_intent, image_capture_intent_uri,
+					using_camera2, image_quality,
+					do_auto_stabilise, level_angle,
+					is_front_facing,
+					mirror,
+					current_date,
+					preference_stamp, preference_textstamp, font_size, color, pref_style, preference_stamp_dateformat, preference_stamp_timeformat, preference_stamp_gpsformat,
+					store_location, location, store_geo_direction, geo_direction,
+					sample_factor);
+		}
 
 		if( MyDebug.LOG )
 			Log.d(TAG, "saveImage complete, success: " + success);
@@ -2039,6 +2127,10 @@ public class MyApplicationInterface implements ApplicationInterface {
 		if( MyDebug.LOG )
 			Log.d(TAG, "onPictureTaken");
 
+		n_capture_images++;
+		if( MyDebug.LOG )
+			Log.d(TAG, "n_capture_images is now " + n_capture_images);
+
 		List<byte []> images = new ArrayList<>();
 		images.add(data);
 
@@ -2046,11 +2138,17 @@ public class MyApplicationInterface implements ApplicationInterface {
 		// note, multi-image HDR and expo is handled under onBurstPictureTaken; here we look for DRO, as that's the photo mode to set
 		// single image HDR
 		PhotoMode photo_mode = getPhotoMode();
+		if( main_activity.getPreview().isVideo() ) {
+			if( MyDebug.LOG )
+				Log.d(TAG, "snapshop mode");
+			// must be in photo snapshot while recording video mode, only support standard photo mode
+			photo_mode = PhotoMode.Standard;
+		}
 		if( photo_mode == PhotoMode.DRO ) {
 			is_hdr = true;
 		}
 		boolean success = saveImage(is_hdr, false, images, current_date);
-        
+
 		if( MyDebug.LOG )
 			Log.d(TAG, "onPictureTaken complete, success: " + success);
 		
@@ -2064,11 +2162,17 @@ public class MyApplicationInterface implements ApplicationInterface {
 
 		boolean success;
 		PhotoMode photo_mode = getPhotoMode();
+		if( main_activity.getPreview().isVideo() ) {
+			if( MyDebug.LOG )
+				Log.d(TAG, "snapshop mode");
+			// must be in photo snapshot while recording video mode, only support standard photo mode
+			photo_mode = PhotoMode.Standard;
+		}
 		if( photo_mode == PhotoMode.HDR ) {
 			if( MyDebug.LOG )
 				Log.d(TAG, "HDR mode");
 			SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getContext());
-			boolean save_expo =  sharedPreferences.getBoolean(PreferenceKeys.getHDRSaveExpoPreferenceKey(), false);
+			boolean save_expo = sharedPreferences.getBoolean(PreferenceKeys.getHDRSaveExpoPreferenceKey(), false);
 			if( MyDebug.LOG )
 				Log.d(TAG, "save_expo: " + save_expo);
 

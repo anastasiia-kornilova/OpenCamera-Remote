@@ -30,7 +30,7 @@ public abstract class CameraController {
 	public static final long EXPOSURE_TIME_DEFAULT = 1000000000L/30;
 
 	// for testing:
-	public int count_camera_parameters_exception;
+	int count_camera_parameters_exception;
 	public int count_precapture_timeout;
 	public boolean test_wait_capture_result; // whether to test delayed capture result in Camera2 API
 	public volatile int test_capture_results; // for Camera2 API, how many capture requests completed with RequestTag.CAPTURE
@@ -54,6 +54,7 @@ public abstract class CameraController {
 		public float minimum_focus_distance;
 		public boolean is_exposure_lock_supported;
 		public boolean is_video_stabilization_supported;
+		public boolean is_photo_video_recording_supported;
 		public boolean supports_white_balance_temperature;
 		public int min_temperature;
 		public int max_temperature;
@@ -236,6 +237,7 @@ public abstract class CameraController {
     public abstract void setPictureSize(int width, int height);
     public abstract CameraController.Size getPreviewSize();
     public abstract void setPreviewSize(int width, int height);
+	public abstract void setWantBurst(boolean want_burst);
 	public abstract void setExpoBracketing(boolean want_expo_bracketing);
 	/** n_images must be an odd number greater than 1.
 	 */

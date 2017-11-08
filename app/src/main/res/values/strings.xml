@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="app_name">Open Camera</string>
+    <string name="app_name">Open Camera</string> <!-- shouldn't be translated -->
     <string name="action_settings">Settings</string>
     <string name="action_popup">Popup settings</string>
     <string name="intro_text">Touch to focus, and press the blue camera button to take photos. For more help, click Online help from Settings. Open Camera is completely free. If you like this app, please consider buying my donate app :) (see link in Settings, or Online help).\n\nPrivacy Policy: Location permission is required for geotagging, but this is disabled by default. If enabled, your location is encoded in the saved files (and it is only used for this purpose).</string>
@@ -307,10 +307,11 @@
     <string name="dont_show_again">Don\'t show again</string>
 
     <string name="photo_mode">Photo Mode</string>
-    <string name="photo_mode_standard">Standard</string>
+    <string name="photo_mode_standard">Std</string>
     <string name="photo_mode_hdr">HDR</string>
     <string name="photo_mode_expo_bracketing">Expo {}</string>
     <string name="photo_mode_expo_bracketing_full">Exposure Bracketing</string>
+    <string name="photo_mode_noise_reduction">NR</string>
     <string name="preference_category_stamp">Photo Stamp</string>
     <string name="preference_hdr_save_expo">Save all images for HDR mode</string>
     <string name="preference_hdr_save_expo_summary">If enabled, when using HDR photo mode, the three base exposure images will be saved as well as the final HDR photo. Note this will make saving slower, especially if options like \"Stamp photos\" or Auto-level are also used.</string>
@@ -331,6 +332,13 @@
     <string name="preference_expo_bracketing_n_images_summary">Number of images for exposure bracketing mode</string>
     <string name="preference_expo_bracketing_stops">Exposure Bracketing Stops</string>
     <string name="preference_expo_bracketing_stops_summary">How many stops to subtract/add for the darkest/brightest image</string>
+
+    <string name="preference_nr_save">Noise Reduction original images</string>
+    <string name="preference_nr_save_summary">Whether to save original images in noise reduction mode. Note this can make saving photos much slower.</string>
+
+    <string name="preference_nr_save_no">Don\'t save original images</string>
+    <string name="preference_nr_save_single">Save single original image</string>
+    <string name="preference_nr_save_all">Save all original images (slow)</string>
 
     <string name="seconds_abbreviation">s</string> <!-- short for seconds -->
 
@@ -446,4 +454,19 @@
     <string name="color_effect_sepia">Sepia</string>
     <string name="color_effect_solarize">Solarize</string>
     <string name="color_effect_whiteboard">Whiteboard</string>
+
+    <string name="whats_new">What\'s New:</string>
+    <string name="donate">Donate</string>
+
+    <!-- There's no point translating the What's New text - it'll be updated constantly, and change each version -->
+    <string name="whats_new_text"><b>v1.41:</b>\n\n
+        <ul>
+            <li>User interface improvements: icons to switch photo/video mode, and switch camera, are
+                next to the shutter button for easier one-handed use; ISO controls are now moved
+                entirely to the exposure icon.\n</li>
+            <li>Take photos while recording video (on supported devices).\n</li>
+            <li>HDR improvements (ghost removal, and brightening of too dark images).\n</li>
+            <li>Performance improvements and bug fixes.\n</li>
+        </ul>
+    </string>
 </resources>

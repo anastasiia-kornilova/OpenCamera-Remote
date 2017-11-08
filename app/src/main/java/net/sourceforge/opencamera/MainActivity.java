@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Vector;
 
 import android.Manifest;
+import android.content.pm.PackageInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -102,6 +103,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 	private MyApplicationInterface applicationInterface;
 	private Preview preview;
 	private OrientationEventListener orientationEventListener;
+	private int large_heap_memory;
 	private boolean supports_auto_stabilise;
 	private boolean supports_force_video_4k;
 	private boolean supports_camera2;
@@ -189,8 +191,8 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 			Log.d(TAG, "standard max memory = " + activityManager.getMemoryClass() + "MB");
 			Log.d(TAG, "large max memory = " + activityManager.getLargeMemoryClass() + "MB");
 		}
-		//if( activityManager.getMemoryClass() >= 128 ) { // test
-		if( activityManager.getLargeMemoryClass() >= 128 ) {
+		large_heap_memory = activityManager.getLargeMemoryClass();
+		if( large_heap_memory >= 128 ) {
 			supports_auto_stabilise = true;
 		}
 		if( MyDebug.LOG )
@@ -275,6 +277,8 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 			Log.d(TAG, "onCreate: time after setting button visibility: " + (System.currentTimeMillis() - debug_time));
 		View pauseVideoButton = findViewById(R.id.pause_video);
 		pauseVideoButton.setVisibility(View.INVISIBLE);
+		View takePhotoVideoButton = findViewById(R.id.take_photo_when_video_recording);
+		takePhotoVideoButton.setVisibility(View.INVISIBLE);
 
 		// We initialise optional controls to invisible, so they don't show while the camera is opening - the actual visibility is
 		// set in cameraSetup().
@@ -378,6 +382,51 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 
             setFirstTimeFlag();
         }
+
+		{
+			// handle What's New dialog
+			int version_code = -1;
+			try {
+				PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
+				version_code = pInfo.versionCode;
+			}
+			catch(PackageManager.NameNotFoundException e) {
+				if( MyDebug.LOG )
+					Log.d(TAG, "NameNotFoundException exception trying to get version number");
+				e.printStackTrace();
+			}
+			if( version_code != -1 ) {
+				int latest_version = sharedPreferences.getInt(PreferenceKeys.getLatestVersionPreferenceKey(), 0);
+				if( MyDebug.LOG ) {
+					Log.d(TAG, "version_code: " + version_code);
+					Log.d(TAG, "latest_version: " + latest_version);
+				}
+				/*final boolean force_whats_new = false;
+				//final boolean force_whats_new = true; // for testing
+				// don't show What's New if this is the first time the user has run
+				if( has_done_first_time && ( force_whats_new || version_code > latest_version ) ) {
+					AlertDialog.Builder alertDialog = new AlertDialog.Builder(this);
+					alertDialog.setTitle(R.string.whats_new);
+					alertDialog.setMessage(R.string.whats_new_text);
+					alertDialog.setPositiveButton(android.R.string.ok, null);
+					alertDialog.setNegativeButton(R.string.donate, new DialogInterface.OnClickListener() {
+						@Override
+						public void onClick(DialogInterface dialog, int which) {
+							if( MyDebug.LOG )
+								Log.d(TAG, "donate");
+							Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(MainActivity.getDonateLink()));
+							startActivity(browserIntent);
+						}
+					});
+					alertDialog.show();
+				}*/
+				// we set the latest_version whether or not the dialog is shown - if we showed the irst time dialog, we don't
+				// want to then show the What's New dialog next time we run!
+				SharedPreferences.Editor editor = sharedPreferences.edit();
+				editor.putInt(PreferenceKeys.getLatestVersionPreferenceKey(), version_code);
+				editor.apply();
+			}
+		}
 
 		setModeFromIntents(savedInstanceState);
 
@@ -602,7 +651,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 					if (!preview.isVideo()) {
 						MainActivity.this.runOnUiThread(new Runnable() {
 							public void run() {
-								takePicture();
+								takePicture(false);
 							}
 						});
 					}
@@ -624,7 +673,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 								if (preview.isVideoRecording())
 									preview.stopVideo(true);
 								else
-									takePicture();
+									takePicture(false);
 							}
 						});
 					}
@@ -799,6 +848,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 			Log.d(TAG, "onDestroy");
 			Log.d(TAG, "size of preloaded_bitmap_resources: " + preloaded_bitmap_resources.size());
 		}
+		preview.onDestroy();
 		if( applicationInterface != null ) {
 			applicationInterface.onDestroy();
 		}
@@ -950,6 +1000,10 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 			if( MyDebug.LOG )
 				Log.d(TAG, "ignore audio trigger due to already taking photo or on timer");
 		}
+		else if( preview.isVideoRecording() ) {
+			if( MyDebug.LOG )
+				Log.d(TAG, "ignore audio trigger due to already recording video");
+		}
 		else {
 			if( MyDebug.LOG )
 				Log.d(TAG, "schedule take picture due to loud noise");
@@ -959,7 +1013,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 					if( MyDebug.LOG )
 						Log.d(TAG, "taking picture due to audio trigger");
 					MainActivity.sCount = ""; // initialize photo counter (Andy Modla)
-					takePicture();
+					takePicture(false);
 				}
 			});
 		}
@@ -1125,8 +1179,16 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
     public void clickedTakePhoto(View view) {
 		if( MyDebug.LOG )
 			Log.d(TAG, "clickedTakePhoto");
-    	this.takePicture();
+    	this.takePicture(false);
     }
+
+	/** User has clicked button to take a photo snapshot whilst video recording.
+	 */
+	public void clickedTakePhotoVideoSnapshot(View view) {
+		if( MyDebug.LOG )
+			Log.d(TAG, "clickedTakePhotoVideoSnapshot");
+    	this.takePicture(true);
+	}
 
 	public void clickedPauseVideo(View view) {
 		if( MyDebug.LOG )
@@ -1230,12 +1292,14 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 			Log.d(TAG, "clickedSwitchVideo");
 		applicationInterface.setStitchPreviewImage(null);
 		this.closePopup();
+		mainUI.destroyPopup(); // important as we don't want to use a cached popup, as we can show different options depending on whether we're in photo or video mode
 	    View switchVideoButton = findViewById(R.id.switch_video);
 	    switchVideoButton.setEnabled(false); // prevent slowdown if user repeatedly clicks
 		this.preview.switchVideo(false, true);
 		switchVideoButton.setEnabled(true);
 
 		mainUI.setTakePhotoIcon();
+	    mainUI.setPopupIcon(); // needed as turning to video mode or back can turn flash mode off or back on
 		if( !block_startup_toast ) {
 			this.showPhotoVideoToast(true);
 		}
@@ -1315,8 +1379,8 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
     }
 	
     // for testing
-    public View getPopupButton(String key) {
-    	return mainUI.getPopupButton(key);
+    public View getUIButton(String key) {
+    	return mainUI.getUIButton(key);
     }
     
     public void closePopup() {
@@ -1442,6 +1506,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 		waitUntilImageQueueEmpty(); // in theory not needed as we could continue running in the background, but best to be safe
 		closePopup();
 		preview.cancelTimer(); // best to cancel any timer, in case we take a photo while settings window is open, or when changing settings
+		preview.cancelBurst(); // similarly cancel the auto-repeat burst mode!
 		preview.stopVideo(false); // important to stop video, as we'll be changing camera parameters when the settings window closes
 		stopAudioListeners();
 		
@@ -1456,6 +1521,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 		bundle.putBoolean("supports_face_detection", this.preview.supportsFaceDetection());
 		bundle.putBoolean("supports_raw", this.preview.supportsRaw());
 		bundle.putBoolean("supports_hdr", this.supportsHDR());
+		bundle.putBoolean("supports_nr", this.supportsNoiseReduction());
 		bundle.putBoolean("supports_expo_bracketing", this.supportsExpoBracketing());
 		bundle.putInt("max_expo_bracketing_n_images", this.maxExpoBracketingNImages());
 		bundle.putBoolean("supports_exposure_compensation", this.preview.supportsExposures());
@@ -1592,9 +1658,9 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 		// make sure we're into continuous video mode
 		// workaround for bug on Samsung Galaxy S5 with UHD, where if the user switches to another (non-continuous-video) focus mode, then goes to Settings, then returns and records video, the preview freezes and the video is corrupted
 		// so to be safe, we always reset to continuous video mode, and then reset it afterwards
-    	String saved_focus_value = preview.updateFocusForVideo(); // n.b., may be null if focus mode not changed
+    	/*String saved_focus_value = preview.updateFocusForVideo(); // n.b., may be null if focus mode not changed
 		if( MyDebug.LOG )
-			Log.d(TAG, "saved_focus_value: " + saved_focus_value);
+			Log.d(TAG, "saved_focus_value: " + saved_focus_value);*/
     	
 		if( MyDebug.LOG )
 			Log.d(TAG, "update folder history");
@@ -1675,7 +1741,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 			if( MyDebug.LOG ) {
 				Log.d(TAG, "updateForSettings: time after set display orientation: " + (System.currentTimeMillis() - debug_time));
 			}
-			preview.pausePreview();
+			preview.pausePreview(true);
 			if( MyDebug.LOG ) {
 				Log.d(TAG, "updateForSettings: time after pause: " + (System.currentTimeMillis() - debug_time));
 			}
@@ -2466,8 +2532,11 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 
 	/** User has pressed the take picture button, or done an equivalent action to request this (e.g.,
 	 *  volume buttons, audio trigger).
+	 * @param photo_snapshot If true, then the user has requested taking a photo whilst video
+	 *                       recording. If false, either take a photo or start/stop video depending
+	 *                       on the current mode.
 	 */
-    public void takePicture() {
+    public void takePicture(boolean photo_snapshot) {
 		if( MyDebug.LOG )
 			Log.d(TAG, "takePicture");
 
@@ -2496,10 +2565,15 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 		}
 		// Andy Modla end block
 
-		this.takePicturePressed();
+		this.takePicturePressed(photo_snapshot);
     }
 
-    void takePicturePressed() {
+	/**
+	 * @param photo_snapshot If true, then the user has requested taking a photo whilst video
+	 *                       recording. If false, either take a photo or start/stop video depending
+	 *                       on the current mode.
+	 */
+	void takePicturePressed(boolean photo_snapshot) {
 		if( MyDebug.LOG )
 			Log.d(TAG, "takePicturePressed");
 
@@ -2511,7 +2585,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 			applicationInterface.setNextPanoramaPoint();
 		}
 
-    	this.preview.takePicturePressed();
+    	this.preview.takePicturePressed(photo_snapshot);
 	}
     
     /** Lock the screen - this is Open Camera's own lock to guard against accidental presses,
@@ -2760,6 +2834,7 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
 						int max_iso = preview.getMaximumISO();
 						int iso = (int)exponentialScaling(frac, min_iso, max_iso);
 						preview.setISO(iso);
+						mainUI.updateSelectedISOButton();
 					}
 
 					@Override
@@ -2935,6 +3010,11 @@ public class MainActivity extends Activity implements AudioListener.AudioListene
     public boolean supportsExpoBracketing() {
 		return preview.supportsExpoBracketing();
     }
+
+    public boolean supportsNoiseReduction() {
+		//return( Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && preview.usingCamera2API() && large_heap_memory >= 512 && preview.supportsExpoBracketing() );
+		return false; // currently blocked for release
+	}
 
     private int maxExpoBracketingNImages() {
 		return preview.maxExpoBracketingNImages();

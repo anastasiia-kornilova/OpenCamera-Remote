@@ -1,8 +1,10 @@
 package net.sourceforge.opencamera.UI;
 
+import net.sourceforge.opencamera.CameraController.CameraController;
 import net.sourceforge.opencamera.MainActivity;
 import net.sourceforge.opencamera.MyDebug;
 import net.sourceforge.opencamera.PreferenceKeys;
+import net.sourceforge.opencamera.Preview.Preview;
 import net.sourceforge.opencamera.R;
 
 import android.content.Context;
@@ -22,10 +24,16 @@ import android.view.ViewTreeObserver.OnGlobalLayoutListener;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.Animation;
 import android.view.animation.ScaleAnimation;
+import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.RelativeLayout;
 import android.widget.SeekBar;
 import android.widget.ZoomControls;
+
+import java.util.ArrayList;
+import java.util.Hashtable;
+import java.util.List;
+import java.util.Map;
 
 /** This contains functionality related to the main UI.
  */
@@ -42,10 +50,14 @@ public class MainUI {
 	private boolean ui_placement_right = true;
 
 	private boolean immersive_mode;
-    private boolean show_gui = true; // result of call to showGUI() - false means a "reduced" GUI is displayed, whilst taking photo or video
+    private boolean show_gui_photo = true; // result of call to showGUI() - false means a "reduced" GUI is displayed, whilst taking photo or video
+    private boolean show_gui_video = true;
 
 	private boolean keydown_volume_up;
 	private boolean keydown_volume_down;
+
+	// for testing:
+	private final Map<String, View> test_ui_buttons = new Hashtable<>();
 
 	public MainUI(MainActivity main_activity) {
 		if( MyDebug.LOG )
@@ -59,8 +71,8 @@ public class MainUI {
 		this.setIcon(R.id.popup);
 		this.setIcon(R.id.exposure_lock);
 		this.setIcon(R.id.exposure);
-		this.setIcon(R.id.switch_video);
-		this.setIcon(R.id.switch_camera);
+		//this.setIcon(R.id.switch_video);
+		//this.setIcon(R.id.switch_camera);
 		this.setIcon(R.id.audio_control);
 		this.setIcon(R.id.trash);
 		this.setIcon(R.id.share);
@@ -240,25 +252,26 @@ public class MainUI {
 			view.setLayoutParams(layoutParams);
 			setViewRotation(view, ui_rotation);
 	
-			view = main_activity.findViewById(R.id.switch_video);
+			/*view = main_activity.findViewById(R.id.switch_video);
 			layoutParams = (RelativeLayout.LayoutParams)view.getLayoutParams();
 			layoutParams.addRule(align_parent_top, RelativeLayout.TRUE);
 			layoutParams.addRule(align_parent_bottom, 0);
 			layoutParams.addRule(left_of, R.id.exposure);
 			layoutParams.addRule(right_of, 0);
 			view.setLayoutParams(layoutParams);
-			setViewRotation(view, ui_rotation);
+			setViewRotation(view, ui_rotation);*/
 	
-			view = main_activity.findViewById(R.id.switch_camera);
+			/*view = main_activity.findViewById(R.id.switch_camera);
 			layoutParams = (RelativeLayout.LayoutParams)view.getLayoutParams();
 			layoutParams.addRule(align_parent_left, 0);
 			layoutParams.addRule(align_parent_right, 0);
 			layoutParams.addRule(align_parent_top, RelativeLayout.TRUE);
 			layoutParams.addRule(align_parent_bottom, 0);
-			layoutParams.addRule(left_of, R.id.switch_video);
+			//layoutParams.addRule(left_of, R.id.switch_video);
+			layoutParams.addRule(left_of, R.id.exposure);
 			layoutParams.addRule(right_of, 0);
 			view.setLayoutParams(layoutParams);
-			setViewRotation(view, ui_rotation);
+			setViewRotation(view, ui_rotation);*/
 
 			view = main_activity.findViewById(R.id.audio_control);
 			layoutParams = (RelativeLayout.LayoutParams)view.getLayoutParams();
@@ -266,7 +279,8 @@ public class MainUI {
 			layoutParams.addRule(align_parent_right, 0);
 			layoutParams.addRule(align_parent_top, RelativeLayout.TRUE);
 			layoutParams.addRule(align_parent_bottom, 0);
-			layoutParams.addRule(left_of, R.id.switch_camera);
+			//layoutParams.addRule(left_of, R.id.switch_camera);
+			layoutParams.addRule(left_of, R.id.exposure);
 			layoutParams.addRule(right_of, 0);
 			view.setLayoutParams(layoutParams);
 			setViewRotation(view, ui_rotation);
@@ -296,7 +310,28 @@ public class MainUI {
 			view.setLayoutParams(layoutParams);
 			setViewRotation(view, ui_rotation);
 
+			view = main_activity.findViewById(R.id.switch_camera);
+			layoutParams = (RelativeLayout.LayoutParams)view.getLayoutParams();
+			layoutParams.addRule(align_parent_left, 0);
+			layoutParams.addRule(align_parent_right, RelativeLayout.TRUE);
+			view.setLayoutParams(layoutParams);
+			setViewRotation(view, ui_rotation);
+
 			view = main_activity.findViewById(R.id.pause_video);
+			layoutParams = (RelativeLayout.LayoutParams)view.getLayoutParams();
+			layoutParams.addRule(align_parent_left, 0);
+			layoutParams.addRule(align_parent_right, RelativeLayout.TRUE);
+			view.setLayoutParams(layoutParams);
+			setViewRotation(view, ui_rotation);
+
+			view = main_activity.findViewById(R.id.switch_video);
+			layoutParams = (RelativeLayout.LayoutParams)view.getLayoutParams();
+			layoutParams.addRule(align_parent_left, 0);
+			layoutParams.addRule(align_parent_right, RelativeLayout.TRUE);
+			view.setLayoutParams(layoutParams);
+			setViewRotation(view, ui_rotation);
+
+			view = main_activity.findViewById(R.id.take_photo_when_video_recording);
 			layoutParams = (RelativeLayout.LayoutParams)view.getLayoutParams();
 			layoutParams.addRule(align_parent_left, 0);
 			layoutParams.addRule(align_parent_right, RelativeLayout.TRUE);
@@ -355,7 +390,7 @@ public class MainUI {
 			// set seekbar info
 			int width_dp;
 			if( ui_rotation == 0 || ui_rotation == 180 ) {
-				width_dp = 300;
+				width_dp = 350;
 			}
 			else {
 				width_dp = 200;
@@ -364,10 +399,14 @@ public class MainUI {
 			final float scale = main_activity.getResources().getDisplayMetrics().density;
 			int width_pixels = (int) (width_dp * scale + 0.5f); // convert dps to pixels
 			int height_pixels = (int) (height_dp * scale + 0.5f); // convert dps to pixels
-			int exposure_zoom_gap = (int) (4 * scale + 0.5f); // convert dps to pixels
 
 			View view = main_activity.findViewById(R.id.sliders_container);
 			setViewRotation(view, ui_rotation);
+			view.setTranslationX(0.0f);
+			view.setTranslationY(0.0f);
+			if( ui_rotation == 90 || ui_rotation == 270 ) {
+				view.setTranslationX(2*height_pixels);
+			}
 
 			view = main_activity.findViewById(R.id.exposure_seekbar);
 			RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams)view.getLayoutParams();
@@ -448,7 +487,7 @@ public class MainUI {
 		}
     }
 
-    /** Set icon for taking photos vs videos.
+    /** Set icons for taking photos vs videos.
 	 *  Also handles content descriptions for the take photo button and switch video button.
      */
     public void setTakePhotoIcon() {
@@ -479,6 +518,9 @@ public class MainUI {
 
 			view = (ImageButton)main_activity.findViewById(R.id.switch_video);
 			view.setContentDescription( main_activity.getResources().getString(switch_video_content_description) );
+			resource = main_activity.getPreview().isVideo() ? R.drawable.take_photo : R.drawable.take_video;
+			view.setImageResource(resource);
+			view.setTag(resource); // for testing
 		}
     }
 
@@ -512,7 +554,7 @@ public class MainUI {
 		int content_description;
 		if( main_activity.getPreview().isVideoRecordingPaused() ) {
 			content_description = R.string.resume_video;
-			pauseVideoButton.setImageResource(R.drawable.ic_play_circle_outline_white);
+			pauseVideoButton.setImageResource(R.drawable.ic_play_circle_outline_white_48dp);
 		}
 		else {
 			content_description = R.string.pause_video;
@@ -606,10 +648,14 @@ public class MainUI {
 						View pauseVideoButton = main_activity.findViewById(R.id.pause_video);
 						pauseVideoButton.setVisibility(visibility);
 					}
+					if( main_activity.getPreview().supportsPhotoVideoRecording() && main_activity.getPreview().isVideoRecording() ) {
+						View takePhotoVideoButton = main_activity.findViewById(R.id.take_photo_when_video_recording);
+						takePhotoVideoButton.setVisibility(visibility);
+					}
         		}
 				if( !immersive_mode ) {
 					// make sure the GUI is set up as expected
-					showGUI(show_gui);
+					showGUI();
 				}
 			}
 		});
@@ -619,19 +665,34 @@ public class MainUI {
     	return immersive_mode;
     }
 
-    public void showGUI(final boolean show) {
-		if( MyDebug.LOG )
+    public void showGUI(final boolean show, final boolean is_video) {
+		if( MyDebug.LOG ) {
 			Log.d(TAG, "showGUI: " + show);
-		this.show_gui = show;
+			Log.d(TAG, "is_video: " + is_video);
+		}
+		if( is_video )
+			this.show_gui_video = show;
+		else
+			this.show_gui_photo = show;
+		showGUI();
+	}
+
+	private void showGUI() {
+		if( MyDebug.LOG ) {
+			Log.d(TAG, "showGUI");
+			Log.d(TAG, "show_gui_photo: " + show_gui_photo);
+			Log.d(TAG, "show_gui_video: " + show_gui_video);
+		}
 		if( inImmersiveMode() )
 			return;
-		if( show && main_activity.usingKitKatImmersiveMode() ) {
+		if( (show_gui_photo || show_gui_video) && main_activity.usingKitKatImmersiveMode() ) {
 			// call to reset the timer
 			main_activity.initImmersiveMode();
 		}
 		main_activity.runOnUiThread(new Runnable() {
 			public void run() {
-		    	final int visibility = show ? View.VISIBLE : View.GONE;
+		    	final int visibility = (show_gui_photo && show_gui_video) ? View.VISIBLE : View.GONE; // for UI that is hidden while taking photo or video
+		    	final int visibility_video = show_gui_photo ? View.VISIBLE : View.GONE; // for UI that is only hidden while taking photo
 			    View switchCameraButton = main_activity.findViewById(R.id.switch_camera);
 			    View switchVideoButton = main_activity.findViewById(R.id.switch_video);
 			    View exposureButton = main_activity.findViewById(R.id.exposure);
@@ -640,19 +701,17 @@ public class MainUI {
 			    View popupButton = main_activity.findViewById(R.id.popup);
 			    if( main_activity.getPreview().getCameraControllerManager().getNumberOfCameras() > 1 )
 			    	switchCameraButton.setVisibility(visibility);
-			    if( !main_activity.getPreview().isVideo() )
-			    	switchVideoButton.setVisibility(visibility); // still allow switch video when recording video
-			    if( main_activity.supportsExposureButton() && !main_activity.getPreview().isVideo() ) // still allow exposure when recording video
-			    	exposureButton.setVisibility(visibility);
-			    if( main_activity.getPreview().supportsExposureLock() && !main_activity.getPreview().isVideo() ) // still allow exposure lock when recording video
-			    	exposureLockButton.setVisibility(visibility);
+				switchVideoButton.setVisibility(visibility);
+			    if( main_activity.supportsExposureButton() )
+			    	exposureButton.setVisibility(visibility_video); // still allow exposure when recording video
+			    if( main_activity.getPreview().supportsExposureLock() )
+			    	exposureLockButton.setVisibility(visibility_video); // still allow exposure lock when recording video
 			    if( main_activity.hasAudioControl() )
 			    	audioControlButton.setVisibility(visibility);
-			    if( !show ) {
+			    if( !(show_gui_photo && show_gui_video) ) {
 			    	closePopup(); // we still allow the popup when recording video, but need to update the UI (so it only shows flash options), so easiest to just close
 			    }
-			    if( !main_activity.getPreview().isVideo() || !main_activity.getPreview().supportsFlash() )
-			    	popupButton.setVisibility(visibility); // still allow popup in order to change flash mode when recording video
+				popupButton.setVisibility(main_activity.getPreview().supportsFlash() ? visibility_video : visibility); // still allow popup in order to change flash mode when recording video
 			}
 		});
     }
@@ -669,53 +728,244 @@ public class MainUI {
 		view.setContentDescription( main_activity.getResources().getString(R.string.audio_control_start) );
     }
 
-    public void toggleExposureUI() {
-		if( MyDebug.LOG )
-			Log.d(TAG, "toggleExposureUI");
-		closePopup();
+    private boolean isExposureUIOpen() {
 		View exposure_seek_bar = main_activity.findViewById(R.id.exposure_container);
 		int exposure_visibility = exposure_seek_bar.getVisibility();
 		View manual_exposure_seek_bar = main_activity.findViewById(R.id.manual_exposure_container);
 		int manual_exposure_visibility = manual_exposure_seek_bar.getVisibility();
-		boolean is_open = exposure_visibility == View.VISIBLE || manual_exposure_visibility == View.VISIBLE;
-		if( is_open ) {
+		return exposure_visibility == View.VISIBLE || manual_exposure_visibility == View.VISIBLE;
+	}
+
+    public void toggleExposureUI() {
+		if( MyDebug.LOG )
+			Log.d(TAG, "toggleExposureUI");
+		closePopup();
+		if( isExposureUIOpen() ) {
 			clearSeekBar();
 		}
 		else if( main_activity.getPreview().getCameraController() != null ) {
-			String iso_value = main_activity.getApplicationInterface().getISOPref();
-			if( main_activity.getPreview().usingCamera2API() && !iso_value.equals("auto") ) {
-				// with Camera2 API, when using manual ISO we instead show sliders for ISO range and exposure time
-				if( main_activity.getPreview().supportsISORange()) {
-					manual_exposure_seek_bar.setVisibility(View.VISIBLE);
-					SeekBar exposure_time_seek_bar = ((SeekBar)main_activity.findViewById(R.id.exposure_time_seekbar));
-					if( main_activity.getPreview().supportsExposureTime() ) {
-						exposure_time_seek_bar.setVisibility(View.VISIBLE);
+			setupExposureUI();
+		}
+    }
+
+    private List<View> iso_buttons;
+	private int iso_button_manual_index = -1;
+	private final static String manual_iso_value = "m";
+
+    private void setupExposureUI() {
+		if( MyDebug.LOG )
+			Log.d(TAG, "setupExposureUI");
+		test_ui_buttons.clear();
+		final SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(main_activity);
+		final Preview preview = main_activity.getPreview();
+		ViewGroup iso_buttons_container = (ViewGroup)main_activity.findViewById(R.id.iso_buttons);
+		iso_buttons_container.removeAllViews();
+		List<String> supported_isos;
+		if( preview.supportsISORange() ) {
+			if( MyDebug.LOG )
+				Log.d(TAG, "supports ISO range");
+			int min_iso = preview.getMinimumISO();
+			int max_iso = preview.getMaximumISO();
+			List<String> values = new ArrayList<>();
+			values.add("auto");
+			values.add(manual_iso_value);
+			iso_button_manual_index = 1; // must match where we place the manual button!
+			int [] iso_values = {50, 100, 200, 400, 800, 1600, 3200, 6400};
+			values.add("" + min_iso);
+			for(int iso_value : iso_values) {
+				if( iso_value > min_iso && iso_value < max_iso ) {
+					values.add("" + iso_value);
+				}
+			}
+			values.add("" + max_iso);
+			supported_isos = values;
+		}
+		else {
+			supported_isos = preview.getSupportedISOs();
+			iso_button_manual_index = -1;
+		}
+		String current_iso = sharedPreferences.getString(PreferenceKeys.getISOPreferenceKey(), "auto");
+		// if the manual ISO value isn't one of the "preset" values, then instead highlight the manual ISO icon
+		if( !current_iso.equals("auto") && supported_isos != null && supported_isos.contains(manual_iso_value) && !supported_isos.contains(current_iso) )
+			current_iso = manual_iso_value;
+		// n.b., we hardcode the string "ISO" as this isn't a user displayed string, rather it's used to filter out "ISO" included in old Camera API parameters
+		iso_buttons = PopupView.createButtonOptions(iso_buttons_container, main_activity, 280, test_ui_buttons, supported_isos, -1, -1, "ISO", false, current_iso, "TEST_ISO", new PopupView.ButtonOptionsPopupListener() {
+			@Override
+			public void onClick(String option) {
+				if( MyDebug.LOG )
+					Log.d(TAG, "clicked iso: " + option);
+				SharedPreferences.Editor editor = sharedPreferences.edit();
+				String old_iso = sharedPreferences.getString(PreferenceKeys.getISOPreferenceKey(), "auto");
+				if( MyDebug.LOG )
+					Log.d(TAG, "old_iso: " + old_iso);
+				editor.putString(PreferenceKeys.getISOPreferenceKey(), option);
+				String toast_option = option;
+
+				if( preview.supportsISORange() ) {
+					if( option.equals("auto") ) {
+						if( MyDebug.LOG )
+							Log.d(TAG, "switched from manual to auto iso");
+						// also reset exposure time when changing from manual to auto from the popup menu:
+						editor.putLong(PreferenceKeys.getExposureTimePreferenceKey(), CameraController.EXPOSURE_TIME_DEFAULT);
+						editor.apply();
+						main_activity.updateForSettings("ISO: " + toast_option);
+					}
+					else if( old_iso.equals("auto") ) {
+						if( MyDebug.LOG )
+							Log.d(TAG, "switched from auto to manual iso");
+						if( option.equals("m") ) {
+							// if we used the generic "manual", then instead try to preserve the current iso if it exists
+							if( preview.getCameraController() != null && preview.getCameraController().captureResultHasIso() ) {
+								int iso = preview.getCameraController().captureResultIso();
+								if( MyDebug.LOG )
+									Log.d(TAG, "apply existing iso of " + iso);
+								editor.putString(PreferenceKeys.getISOPreferenceKey(), "" + iso);
+								toast_option = "" + iso;
+							}
+							else {
+								if( MyDebug.LOG )
+									Log.d(TAG, "no existing iso available");
+								// use a default
+								final int iso = 800;
+								editor.putString(PreferenceKeys.getISOPreferenceKey(), "" + iso);
+								toast_option = "" + iso;
+							}
+						}
+
+						// if changing from auto to manual, preserve the current exposure time if it exists
+						if( preview.getCameraController() != null && preview.getCameraController().captureResultHasExposureTime() ) {
+							long exposure_time = preview.getCameraController().captureResultExposureTime();
+							if( MyDebug.LOG )
+								Log.d(TAG, "apply existing exposure time of " + exposure_time);
+							editor.putLong(PreferenceKeys.getExposureTimePreferenceKey(), exposure_time);
+						}
+						else {
+							if( MyDebug.LOG )
+								Log.d(TAG, "no existing exposure time available");
+						}
+
+						editor.apply();
+						main_activity.updateForSettings("ISO: " + toast_option);
 					}
 					else {
-						exposure_time_seek_bar.setVisibility(View.GONE);
+						if( MyDebug.LOG )
+							Log.d(TAG, "changed manual iso");
+						if( option.equals("m") ) {
+							// if user selected the generic "manual", then just keep the previous non-ISO option
+							if( MyDebug.LOG )
+								Log.d(TAG, "keep existing iso of " + old_iso);
+							editor.putString(PreferenceKeys.getISOPreferenceKey(), "" + old_iso);
+						}
+
+						editor.apply();
+						int iso = preview.parseManualISOValue(option);
+						if( iso >= 0 ) {
+							// if changing between manual ISOs, no need to call updateForSettings, just change the ISO directly (as with changing the ISO via manual slider)
+							preview.setISO(iso);
+							updateSelectedISOButton();
+						}
 					}
+				}
+				else {
+					editor.apply();
+					preview.getCameraController().setISO(option);
+				}
+
+				setupExposureUI();
+			}
+		});
+		if( supported_isos != null ) {
+			View iso_container_view = main_activity.findViewById(R.id.iso_container);
+			iso_container_view.setVisibility(View.VISIBLE);
+		}
+
+		View exposure_seek_bar = main_activity.findViewById(R.id.exposure_container);
+		View manual_exposure_seek_bar = main_activity.findViewById(R.id.manual_exposure_container);
+		String iso_value = main_activity.getApplicationInterface().getISOPref();
+		if( main_activity.getPreview().usingCamera2API() && !iso_value.equals("auto") ) {
+			exposure_seek_bar.setVisibility(View.GONE);
+
+			// with Camera2 API, when using manual ISO we instead show sliders for ISO range and exposure time
+			if( main_activity.getPreview().supportsISORange()) {
+				manual_exposure_seek_bar.setVisibility(View.VISIBLE);
+				SeekBar exposure_time_seek_bar = ((SeekBar)main_activity.findViewById(R.id.exposure_time_seekbar));
+				if( main_activity.getPreview().supportsExposureTime() ) {
+					exposure_time_seek_bar.setVisibility(View.VISIBLE);
+				}
+				else {
+					exposure_time_seek_bar.setVisibility(View.GONE);
 				}
 			}
 			else {
-				if( main_activity.getPreview().supportsExposures() ) {
-					exposure_seek_bar.setVisibility(View.VISIBLE);
-					ZoomControls seek_bar_zoom = (ZoomControls)main_activity.findViewById(R.id.exposure_seekbar_zoom);
-					seek_bar_zoom.setVisibility(View.VISIBLE);
+				manual_exposure_seek_bar.setVisibility(View.GONE);
+			}
+		}
+		else {
+			manual_exposure_seek_bar.setVisibility(View.GONE);
+
+			if( main_activity.getPreview().supportsExposures() ) {
+				exposure_seek_bar.setVisibility(View.VISIBLE);
+				ZoomControls seek_bar_zoom = (ZoomControls)main_activity.findViewById(R.id.exposure_seekbar_zoom);
+				seek_bar_zoom.setVisibility(View.VISIBLE);
+			}
+			else {
+				exposure_seek_bar.setVisibility(View.GONE);
+			}
+		}
+
+		View manual_white_balance_seek_bar = main_activity.findViewById(R.id.manual_white_balance_container);
+		if( main_activity.getPreview().supportsWhiteBalanceTemperature()) {
+			// we also show slider for manual white balance, if in that mode
+			String white_balance_value = main_activity.getApplicationInterface().getWhiteBalancePref();
+			if( main_activity.getPreview().usingCamera2API() && white_balance_value.equals("manual") ) {
+				manual_white_balance_seek_bar.setVisibility(View.VISIBLE);
+			}
+			else {
+				manual_white_balance_seek_bar.setVisibility(View.GONE);
+			}
+		}
+		else {
+			manual_white_balance_seek_bar.setVisibility(View.GONE);
+		}
+	}
+
+	/** If the exposure panel is open, updates the selected ISO button to match the current ISO value,
+	 *  if a continuous range of ISO values are supported by the camera.
+	 */
+	public void updateSelectedISOButton() {
+		if( MyDebug.LOG )
+			Log.d(TAG, "updateSelectedISOButton");
+		Preview preview = main_activity.getPreview();
+		if( preview.supportsISORange() && isExposureUIOpen() ) {
+			SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(main_activity);
+			String current_iso = sharedPreferences.getString(PreferenceKeys.getISOPreferenceKey(), "auto");
+			// if the manual ISO value isn't one of the "preset" values, then instead highlight the manual ISO icon
+			if( MyDebug.LOG )
+				Log.d(TAG, "current_iso: " + current_iso);
+			boolean found = false;
+			for(View view : iso_buttons) {
+				Button button = (Button)view;
+				if( MyDebug.LOG )
+					Log.d(TAG, "button: " + button.getText());
+				String button_text = "" + button.getText();
+				if( button_text.contains(current_iso) ) {
+					PopupView.setButtonSelected(button, true);
+					found = true;
+				}
+				else {
+					PopupView.setButtonSelected(button, false);
 				}
 			}
-
-			if( main_activity.getPreview().supportsWhiteBalanceTemperature()) {
-				// we also show slider for manual white balance, if in that mode
-				String white_balance_value = main_activity.getApplicationInterface().getWhiteBalancePref();
-				View manual_white_balance_seek_bar = main_activity.findViewById(R.id.manual_white_balance_container);
-				if (main_activity.getPreview().usingCamera2API() && white_balance_value.equals("manual")) {
-					manual_white_balance_seek_bar.setVisibility(View.VISIBLE);
-				} else {
-					manual_white_balance_seek_bar.setVisibility(View.GONE);
+			if( !found && !current_iso.equals("auto") ) {
+				if( MyDebug.LOG )
+					Log.d(TAG, "must be manual");
+				if( iso_button_manual_index >= 0 && iso_button_manual_index < iso_buttons.size() ) {
+					Button button = (Button)iso_buttons.get(iso_button_manual_index);
+					PopupView.setButtonSelected(button, true);
 				}
 			}
 		}
-    }
+	}
 
 	public void setSeekbarZoom(int new_zoom) {
 		if( MyDebug.LOG )
@@ -749,7 +999,9 @@ public class MainUI {
 	}
 
     public void clearSeekBar() {
-		View view = main_activity.findViewById(R.id.exposure_container);
+		View view = main_activity.findViewById(R.id.iso_container);
+		view.setVisibility(View.GONE);
+		view = main_activity.findViewById(R.id.exposure_container);
 		view.setVisibility(View.GONE);
 		view = main_activity.findViewById(R.id.exposure_seekbar_zoom);
 		view.setVisibility(View.GONE);
@@ -767,7 +1019,7 @@ public class MainUI {
 		if( MyDebug.LOG )
 			Log.d(TAG, "flash_value: " + flash_value);
     	if( flash_value != null && flash_value.equals("flash_off") ) {
-    		popup.setImageResource(R.drawable.popup_flash_off);
+			popup.setImageResource(R.drawable.popup_flash_off);
     	}
     	else if( flash_value != null && flash_value.equals("flash_torch") ) {
     		popup.setImageResource(R.drawable.popup_flash_torch);
@@ -853,6 +1105,7 @@ public class MainUI {
     	if( popup_view == null ) {
 			if( MyDebug.LOG )
 				Log.d(TAG, "create new popup_view");
+			test_ui_buttons.clear();
     		popup_view = new PopupView(main_activity);
 			popup_container.addView(popup_view);
     	}
@@ -932,14 +1185,14 @@ public class MainUI {
 				switch(volume_keys) {
 					case "volume_take_photo":
 						MainActivity.sCount = "";  // Andy Modla
-						main_activity.takePicture();
+						main_activity.takePicture(false);
 						return true;
 					case "volume_focus":
 						if(keydown_volume_up && keydown_volume_down) {
 							if (MyDebug.LOG)
 								Log.d(TAG, "take photo rather than focus, as both volume keys are down");
 							MainActivity.sCount = "";  // Andy Modla
-							main_activity.takePicture();
+							main_activity.takePicture(false);
 						}
 						else if (main_activity.getPreview().getCurrentFocusValue() != null && main_activity.getPreview().getCurrentFocusValue().equals("focus_mode_manual2")) {
 							if(keyCode == KeyEvent.KEYCODE_VOLUME_UP)
@@ -1018,7 +1271,7 @@ public class MainUI {
 			{
 				if( event.getRepeatCount() == 0 ) {
 					MainActivity.sCount = "";  // Andy Modla
-					main_activity.takePicture();
+					main_activity.takePicture(false);
 					return true;
 				}
 			}
@@ -1220,9 +1473,18 @@ public class MainUI {
 	}
 
     // for testing
-    public View getPopupButton(String key) {
-    	return popup_view.getPopupButton(key);
+    public View getUIButton(String key) {
+		if( MyDebug.LOG ) {
+			Log.d(TAG, "getPopupButton(" + key + "): " + test_ui_buttons.get(key));
+			Log.d(TAG, "this: " + this);
+			Log.d(TAG, "popup_buttons: " + test_ui_buttons);
+		}
+    	return test_ui_buttons.get(key);
     }
+
+	Map<String, View> getTestUIButtonsMap() {
+		return test_ui_buttons;
+	}
 
     public PopupView getPopupView() {
 		return popup_view;

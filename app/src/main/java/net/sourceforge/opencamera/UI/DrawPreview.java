@@ -74,6 +74,7 @@ public class DrawPreview {
 	private Bitmap raw_bitmap;
 	private Bitmap auto_stabilise_bitmap;
 	private Bitmap hdr_bitmap;
+	private Bitmap nr_bitmap;
 	private Bitmap photostamp_bitmap;
 	private Bitmap flash_bitmap;
 	private final Rect icon_dest = new Rect();
@@ -116,11 +117,12 @@ public class DrawPreview {
 		this.stroke_width = (1.0f * scale + 0.5f); // convert dps to pixels
 		p.setStrokeWidth(stroke_width);
 
-        location_bitmap = BitmapFactory.decodeResource(getContext().getResources(), R.drawable.earth);
-    	location_off_bitmap = BitmapFactory.decodeResource(getContext().getResources(), R.drawable.earth_off);
+        location_bitmap = BitmapFactory.decodeResource(getContext().getResources(), R.drawable.ic_gps_fixed_white_48dp);
+    	location_off_bitmap = BitmapFactory.decodeResource(getContext().getResources(), R.drawable.ic_gps_off_white_48dp);
 		raw_bitmap = BitmapFactory.decodeResource(getContext().getResources(), R.drawable.raw_icon);
 		auto_stabilise_bitmap = BitmapFactory.decodeResource(getContext().getResources(), R.drawable.auto_stabilise_icon);
 		hdr_bitmap = BitmapFactory.decodeResource(getContext().getResources(), R.drawable.ic_hdr_on_white_48dp);
+		nr_bitmap = BitmapFactory.decodeResource(getContext().getResources(), R.drawable.nr_icon);
 		photostamp_bitmap = BitmapFactory.decodeResource(getContext().getResources(), R.drawable.ic_text_format_white_48dp);
 		flash_bitmap = BitmapFactory.decodeResource(getContext().getResources(), R.drawable.flash_on);
 
@@ -150,6 +152,10 @@ public class DrawPreview {
 		if( hdr_bitmap != null ) {
 			hdr_bitmap.recycle();
 			hdr_bitmap = null;
+		}
+		if( nr_bitmap != null ) {
+			nr_bitmap.recycle();
+			nr_bitmap = null;
 		}
 		if( photostamp_bitmap != null ) {
 			photostamp_bitmap.recycle();
@@ -553,7 +559,7 @@ public class DrawPreview {
 		p.setTextAlign(Paint.Align.LEFT);
 		int location_x = (int) (50 * scale + 0.5f); // convert dps to pixels
 		int location_y = top_y;
-		final int diff_y = (int) (16 * scale + 0.5f); // convert dps to pixels
+		final int gap_y = (int) (2 * scale + 0.5f); // convert dps to pixels
 		if( ui_rotation == 90 || ui_rotation == 270 ) {
 			int diff = canvas.getWidth() - canvas.getHeight();
 			location_x += diff/2;
@@ -581,13 +587,13 @@ public class DrawPreview {
 	        // also possibly related https://code.google.com/p/android/issues/detail?id=181201
 	        String current_time = dateFormatTimeInstance.format(calendar.getTime());
 	        //String current_time = DateUtils.formatDateTime(getContext(), c.getTimeInMillis(), DateUtils.FORMAT_SHOW_TIME);
-	        applicationInterface.drawTextWithBackground(canvas, p, current_time, Color.WHITE, Color.BLACK, location_x, location_y, MyApplicationInterface.Alignment.ALIGNMENT_TOP);
-
+	        int height = applicationInterface.drawTextWithBackground(canvas, p, current_time, Color.WHITE, Color.BLACK, location_x, location_y, MyApplicationInterface.Alignment.ALIGNMENT_TOP);
+			height += gap_y;
 			if( ui_rotation == 90 ) {
-				location_y -= diff_y;
+				location_y -= height;
 			}
 			else {
-				location_y += diff_y;
+				location_y += height;
 			}
 	    }
 
@@ -602,14 +608,14 @@ public class DrawPreview {
 				last_free_memory_time = time_now; // always set this, so that in case of free memory not being available, we aren't calling freeMemory() every frame
 			}
 			if( free_memory_gb >= 0.0f ) {
-				applicationInterface.drawTextWithBackground(canvas, p, getContext().getResources().getString(R.string.free_memory) + ": " + decimalFormat.format(free_memory_gb) + getContext().getResources().getString(R.string.gb_abbreviation), Color.WHITE, Color.BLACK, location_x, location_y, MyApplicationInterface.Alignment.ALIGNMENT_TOP);
-			}
-
-			if( ui_rotation == 90 ) {
-				location_y -= diff_y;
-			}
-			else {
-				location_y += diff_y;
+				int height = applicationInterface.drawTextWithBackground(canvas, p, getContext().getResources().getString(R.string.free_memory) + ": " + decimalFormat.format(free_memory_gb) + getContext().getResources().getString(R.string.gb_abbreviation), Color.WHITE, Color.BLACK, location_x, location_y, MyApplicationInterface.Alignment.ALIGNMENT_TOP);
+				height += gap_y;
+				if( ui_rotation == 90 ) {
+					location_y -= height;
+				}
+				else {
+					location_y += height;
+				}
 			}
 		}
 
@@ -657,27 +663,20 @@ public class DrawPreview {
 				else {
 					ae_started_scanning_ms = -1;
 				}
-				applicationInterface.drawTextWithBackground(canvas, p, string, text_color, Color.BLACK, location_x, location_y, MyApplicationInterface.Alignment.ALIGNMENT_TOP, ybounds_text, true);
-
+				int height = applicationInterface.drawTextWithBackground(canvas, p, string, text_color, Color.BLACK, location_x, location_y, MyApplicationInterface.Alignment.ALIGNMENT_TOP, ybounds_text, true);
+				height += gap_y;
 				// only move location_y if we actually print something (because on old camera API, even if the ISO option has
 				// been enabled, we'll never be able to display the on-screen ISO)
 				if( ui_rotation == 90 ) {
-					location_y -= diff_y;
+					location_y -= height;
 				}
 				else {
-					location_y += diff_y;
+					location_y += height;
 				}
 			}
 		}
 
 		if( camera_controller != null ) {
-			final int symbols_diff_y = (int) (2 * scale + 0.5f); // convert dps to pixels;
-			if( ui_rotation == 90 ) {
-				location_y -= symbols_diff_y;
-			}
-			else {
-				location_y += symbols_diff_y;
-			}
 			// padding to align with earlier text
 			final int flash_padding = (int) (1 * scale + 0.5f); // convert dps to pixels
 			int location_x2 = location_x - flash_padding;
@@ -687,11 +686,13 @@ public class DrawPreview {
 			}
 
 			// RAW not enabled in HDR or ExpoBracketing modes (see note in CameraController.takePictureBurstExpoBracketing())
+			// RAW not enabled in NR mode (see note in CameraController.takePictureBurst())
 			if( applicationInterface.isRawPref(sharedPreferences) &&
 					preview.supportsRaw() && // RAW can be enabled, even if it isn't available for this camera (e.g., user enables RAW for back camera, but then switches to front camera which doesn't support it)
-					!applicationInterface.isVideoPref() && // RAW not relevant for video mode
+					!applicationInterface.isVideoPref() && // RAW not supported for video mode
 					photoMode != MyApplicationInterface.PhotoMode.HDR &&
-					photoMode != MyApplicationInterface.PhotoMode.ExpoBracketing ) {
+					photoMode != MyApplicationInterface.PhotoMode.ExpoBracketing &&
+					photoMode != MyApplicationInterface.PhotoMode.NoiseReduction ) {
 				icon_dest.set(location_x2, location_y, location_x2 + icon_size, location_y + icon_size);
 				p.setStyle(Paint.Style.FILL);
 				p.setColor(Color.BLACK);
@@ -708,7 +709,7 @@ public class DrawPreview {
 				}
 			}
 
-			if( applicationInterface.getAutoStabilisePref(sharedPreferences) && !applicationInterface.isVideoPref() ) {
+			if( applicationInterface.getAutoStabilisePref(sharedPreferences) ) { // auto-level is supported for photos taken in video mode
 				icon_dest.set(location_x2, location_y, location_x2 + icon_size, location_y + icon_size);
 				p.setStyle(Paint.Style.FILL);
 				p.setColor(Color.BLACK);
@@ -725,14 +726,15 @@ public class DrawPreview {
 				}
 			}
 
-			if( photoMode == MyApplicationInterface.PhotoMode.HDR && !applicationInterface.isVideoPref() ) {
+			if( ( photoMode == MyApplicationInterface.PhotoMode.HDR || photoMode == MyApplicationInterface.PhotoMode.NoiseReduction ) &&
+					!applicationInterface.isVideoPref() ) { // HDR or NR not supported for video mode
 				icon_dest.set(location_x2, location_y, location_x2 + icon_size, location_y + icon_size);
 				p.setStyle(Paint.Style.FILL);
 				p.setColor(Color.BLACK);
 				p.setAlpha(64);
 				canvas.drawRect(icon_dest, p);
 				p.setAlpha(255);
-				canvas.drawBitmap(hdr_bitmap, null, icon_dest, p);
+				canvas.drawBitmap(photoMode == MyApplicationInterface.PhotoMode.HDR ? hdr_bitmap : nr_bitmap, null, icon_dest, p);
 
 				if( ui_rotation == 180 ) {
 					location_x2 -= icon_size + flash_padding;
@@ -742,7 +744,7 @@ public class DrawPreview {
 				}
 			}
 
-			if( applicationInterface.getStampPref(sharedPreferences).equals("preference_stamp_yes") && !applicationInterface.isVideoPref() ) {
+			if( applicationInterface.getStampPref(sharedPreferences).equals("preference_stamp_yes") ) { // photo-stamp is supported for photos taken in video mode
 				icon_dest.set(location_x2, location_y, location_x2 + icon_size, location_y + icon_size);
 				p.setStyle(Paint.Style.FILL);
 				p.setColor(Color.BLACK);
@@ -763,7 +765,7 @@ public class DrawPreview {
 			// note, flash_frontscreen_auto not yet support for the flash symbol (as camera_controller.needsFlash() only returns info on the built-in actual flash, not frontscreen flash)
 			if( flash_value != null &&
 					( flash_value.equals("flash_on") || flash_value.equals("flash_red_eye") || ( flash_value.equals("flash_auto") && camera_controller.needsFlash() ) ) &&
-					!applicationInterface.isVideoPref() ) {
+					!applicationInterface.isVideoPref() ) { // flash-indicator not supported for photos taken in video mode
 				long time_now = System.currentTimeMillis();
 				if( needs_flash_time != -1 ) {
 					final long fade_ms = 500;
@@ -1057,12 +1059,16 @@ public class DrawPreview {
 				location_x = canvas.getWidth() - location_x - location_size;
 			}
 			location_dest.set(location_x, location_y, location_x + location_size, location_y + location_size);
+			p.setStyle(Paint.Style.FILL);
+			p.setColor(Color.BLACK);
+			p.setAlpha(64);
+			canvas.drawRect(location_dest, p);
+			p.setAlpha(255);
 			if( applicationInterface.getLocation() != null ) {
 				canvas.drawBitmap(location_bitmap, null, location_dest, p);
 				int location_radius = location_size / 10;
-				int indicator_x = location_x + location_size;
-				int indicator_y = location_y + location_radius / 2 + 1;
-				p.setStyle(Paint.Style.FILL);
+				int indicator_x = location_x + location_size - (int)(location_radius*1.5);
+				int indicator_y = location_y + (int)(location_radius*1.5);
 				p.setColor(applicationInterface.getLocation().getAccuracy() < 25.01f ? Color.rgb(37, 155, 36) : Color.rgb(255, 235, 59)); // Green 500 or Yellow 500
 				canvas.drawCircle(indicator_x, indicator_y, location_radius, p);
 			}
