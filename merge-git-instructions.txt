@@ -1,0 +1,100 @@
+Merging an upstream repository into your fork
+MAC WINDOWS LINUX
+If you don't have push (write) access to an upstream repository, then you can pull commits from that repository into your own fork.
+
+Open Git Bash.
+
+Change the current working directory to your local project.
+
+Check out the branch you wish to merge to. Usually, you will merge into master.
+
+git checkout master
+Pull the desired branch from the upstream repository. This method will retain the commit history without modification.
+
+git pull https://github.com/ORIGINAL_OWNER/ORIGINAL_REPOSITORY.git BRANCH_NAME
+If there are conflicts, resolve them. For more information, see "Addressing merge conflicts".
+
+Commit the merge.
+Review the changes and ensure they are satisfactory.
+Push the merge to your GitHub repository.
+git push origin master
+ 
+git tag v1.40
+git push origin v1.40
+---------------------------------------------------------------------------------------------------------------------------------------
+
+ 
+ Welcome to Git (version 1.9.5-preview20150319)
+
+
+Run 'git help git' to display the help index.
+Run 'git help <command>' to display help for specific commands.
+
+Andrew@DEV-PC /G/Documents/projects/android/u-ajavamind-opencamera (master)
+$ git checkout master
+M       app/build.gradle
+M       build.gradle
+Already on 'master'
+Your branch is up-to-date with 'origin/master'.
+
+Andrew@DEV-PC /G/Documents/projects/android/u-ajavamind-opencamera (master)
+$ git pull https://git.code.sf.net/p/opencamera/code v1.39
+remote: Counting objects: 2285, done.
+remote: Compressing objects: 100% (1385/1385), done.
+remote: Total 2097 (delta 972), reused 570 (delta 252)
+Receiving objects: 100% (2097/2097), 263.69 KiB | 155.00 KiB/s, done.
+Resolving deltas: 100% (972/972), completed with 61 local objects.
+From https://git.code.sf.net/p/opencamera/code
+ * tag               v1.39      -> FETCH_HEAD
+error: Your local changes to the following files would be overwritten by merge:
+        app/build.gradle
+        build.gradle
+Please, commit your changes or stash them before you can merge.
+Aborting
+
+Make sure all files committed before pull !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+Andrew@DEV-PC /G/Documents/projects/android/u-ajavamind-opencamera (master)
+$ git pull https://git.code.sf.net/p/opencamera/code v1.39
+From https://git.code.sf.net/p/opencamera/code
+ * tag               v1.39      -> FETCH_HEAD
+Auto-merging gradle/wrapper/gradle-wrapper.properties
+CONFLICT (content): Merge conflict in gradle/wrapper/gradle-wrapper.properties
+Auto-merging app/src/main/res/xml/preferences.xml
+Auto-merging app/src/main/res/values/strings.xml
+Auto-merging app/src/main/res/values/arrays.xml
+Auto-merging app/src/main/res/values-sl/arrays.xml
+Auto-merging app/src/main/res/values-ru/arrays.xml
+Auto-merging app/src/main/java/net/sourceforge/opencamera/UI/MainUI.java
+Auto-merging app/src/main/java/net/sourceforge/opencamera/StorageUtils.java
+Auto-merging app/src/main/java/net/sourceforge/opencamera/PreferenceKeys.java
+Auto-merging app/src/main/java/net/sourceforge/opencamera/MyPreferenceFragment.java
+Auto-merging app/src/main/java/net/sourceforge/opencamera/MainActivity.java
+CONFLICT (content): Merge conflict in app/src/main/java/net/sourceforge/opencamera/MainActivity.java
+Auto-merging app/src/main/AndroidManifest.xml
+CONFLICT (content): Merge conflict in app/src/main/AndroidManifest.xml
+Auto-merging app/build.gradle
+CONFLICT (content): Merge conflict in app/build.gradle
+Automatic merge failed; fix conflicts and then commit the result.
+
+Andrew@DEV-PC /G/Documents/projects/android/u-ajavamind-opencamera (master|MERGING)
+$
+
+Here are simple steps what to do when you get into conflicted state:
+
+Note the list of conflicted files with: git status (under Unmerged paths section).
+Solve the conflicts separately for each file by one of the following approaches:
+Use GUI to solve the conflicts: git mergetool (the easiest way).
+To accept remote/other version, use: git checkout --theirs path/file. This will reject any local changes you did for that file.
+To accept local/our version, use: git checkout --ours path/file
+
+However you've to be careful, as remote changes that conflicts were done for some reason.
+
+Related: What is the precise meaning of "ours" and "theirs" in git?
+Edit the conflicted files manually and look for the code block between <<<<</>>>>> then choose the version either from above or below =====. See: How conflicts are presented.
+Path and filename conflicts can be solved by git add/git rm.
+Finally, review the files ready for commit using: git status.
+
+If you still have any files under Unmerged paths, and you did solve the conflict manually, then let Git know that you solved it by: git add path/file.
+If all conflicts were solved successfully, commit the changes by: git commit -a and push to remote as usual.
+See also: Resolving a merge conflict from the command line at GitHub

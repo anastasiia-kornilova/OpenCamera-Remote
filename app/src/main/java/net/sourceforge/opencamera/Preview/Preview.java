@@ -17,6 +17,7 @@ import net.sourceforge.opencamera.Preview.CameraSurface.MySurfaceView;
 import net.sourceforge.opencamera.Preview.CameraSurface.MyTextureView;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -816,8 +817,12 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 	    			if( video_uri != null ) {
 			    		if( MyDebug.LOG )
 			    			Log.d(TAG, "delete corrupt video: " + video_uri);
-	    				DocumentsContract.deleteDocument(getContext().getContentResolver(), video_uri);
-	    			}
+						try {
+							DocumentsContract.deleteDocument(getContext().getContentResolver(), video_uri);
+						} catch (FileNotFoundException e1) {
+							e1.printStackTrace();
+						}
+					}
 	    		}
 	    		else if( video_method == ApplicationInterface.VIDEOMETHOD_FILE ) {
 		    		if( video_filename != null ) {

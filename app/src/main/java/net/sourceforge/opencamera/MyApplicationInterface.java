@@ -2284,18 +2284,22 @@ public class MyApplicationInterface implements ApplicationInterface {
 			if( MyDebug.LOG )
 				Log.d(TAG, "Delete: " + image_uri);
     	    File file = storageUtils.getFileFromDocumentUriSAF(image_uri, false); // need to get file before deleting it, as fileFromDocumentUriSAF may depend on the file still existing
-			if( !DocumentsContract.deleteDocument(main_activity.getContentResolver(), image_uri) ) {
-				if( MyDebug.LOG )
-					Log.e(TAG, "failed to delete " + image_uri);
-			}
-			else {
-				if( MyDebug.LOG )
-					Log.d(TAG, "successfully deleted " + image_uri);
-	    	    preview.showToast(null, R.string.photo_deleted);
-                if( file != null ) {
-                	// SAF doesn't broadcast when deleting them
-	            	storageUtils.broadcastFile(file, false, false, true);
-                }
+			try {
+				if( !DocumentsContract.deleteDocument(main_activity.getContentResolver(), image_uri) ) {
+					if( MyDebug.LOG )
+						Log.e(TAG, "failed to delete " + image_uri);
+				}
+				else {
+					if( MyDebug.LOG )
+						Log.d(TAG, "successfully deleted " + image_uri);
+					preview.showToast(null, R.string.photo_deleted);
+					if( file != null ) {
+						// SAF doesn't broadcast when deleting them
+						storageUtils.broadcastFile(file, false, false, true);
+					}
+				}
+			} catch (FileNotFoundException e) {
+				e.printStackTrace();
 			}
 		}
 		else if( image_name != null ) {
