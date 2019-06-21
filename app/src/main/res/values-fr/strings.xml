@@ -6,9 +6,6 @@
     <string name="action_popup">Fenêtre de paramètres</string>
     <string name="intro_text">Touchez pour faire la mise au point, et appuyez sur le bouton bleu «\u00A0Appareil photo\u00A0» pour faire des photos. Pour de l\'aide supplémentaire, cliquez sur «\u00A0Aide en ligne\u00A0» dans les paramètres. Open Camera est totalement gratuit. Si vous aimez cette application, n\'hésitez pas à me faire un don\u00A0:) (voir le lien dans «\u00A0Paramètres\u00A0», ou «\u00A0Aide en ligne\u00A0».\nPolitique de confidentialité\u00A0: la permission «\u00A0Position\u00A0» est requise pour géolocaliser la photo, mais le paramètre est désactivé par défaut. Si vous l\'activez, votre position est encodée dans les photos (et n\'est utilisée qu\'à cet effet).</string>
     <string name="intro_ok">OK (ce message ne s\'affichera plus)</string>
-    
-    <string name="answer_yes">Oui</string>
-    <string name="answer_no">Non</string>
 
     <string name="on">Actif</string> <!-- whether a setting is turned on, e.g., "Auto-stabilise: On" -->
     <string name="off">Inactif</string> <!-- whether a setting is turned off, e.g., "Auto-stabilise: Off" -->
@@ -38,7 +35,7 @@
     <string name="exposure_locked">Exposition bloquée</string>
     <string name="exposure_unlocked">Exposition débloquée</string>
     <string name="cancelled_timer">Retardateur annulé</string>
-    <string name="cancelled_burst_mode">Mode rafale annulé</string>
+    <string name="cancelled_repeat_mode">Mode rafale annulé</string>
     <string name="started_timer">Retardateur démarré</string>
     <string name="failed_to_save_video">Impossible d\'enregistrer le fichier vidéo</string>
     <string name="failed_to_record_video">Impossible d\'enregistrer la vidéo</string>
@@ -89,21 +86,18 @@
     <string name="preference_exposure">Régler la compensation d\'exposition</string>
     <string name="preference_exposure_summary">Mettre à 0 pour la compensation de l\'exposition par défaut</string>
     <string name="preference_lock_orientation">Bloquer l\'orientation de la photo/vidéo</string>
-    <string name="preference_lock_orientation_summary">Si elle est définie, l\'orientation de l\'appareil sera ignorée, et l\'orientation de la photo/vidéo sera l\'orientation spécifiée</string>
+    <string name="preference_lock_orientation_summary">Si elle est définie, l\'orientation de l\'appareil sera ignorée, et l\'orientation de la photo/vidéo sera l\'orientation spécifiée\n%s</string>
     <string name="preference_face_detection">Détection des visages</string>
     <string name="preference_face_detection_summary">Utilise la détection des visages au lieu des zones de focus</string>
 
     <string name="preference_category_camera_controls">Commandes de la caméra</string>
     <string name="preference_timer">Retardateur</string>
-    <string name="preference_timer_summary">Régle le retardateur pour la caméra</string>
     <string name="preference_timer_beep">Retardateur sonore</string>
     <string name="preference_timer_beep_summary">Émet des bips pour le retardateur ou le délai du mode rafale</string>
     <string name="preference_timer_speak">Retardateur à voix</string>
     <string name="preference_timer_speak_summary">Énonce le compte à rebours pour le retardateur ou le délai du mode rafale (à partir de 60s)</string>
     <string name="preference_burst_mode">Mode rafale</string>
-    <string name="preference_burst_mode_summary">Prendre plusieurs photos les unes à la suite des autres</string>
     <string name="preference_burst_interval">Intervale du mode rafale</string>
-    <string name="preference_burst_interval_summary">Délai (le cas échéant) entre la prise de photos en mode rafale</string>
     <string name="preference_screen_camera_controls_more">Plus de paramètres…</string>
     <string name="preference_touch_capture">Toucher pour capturer</string>
     <string name="preference_touch_capture_summary">Prendre une photo en touchant 1 ou 2 fois l\'aperçu</string>
@@ -112,7 +106,6 @@
     <string name="preference_shutter_sound">Son de l\'obturateur</string>
     <string name="preference_shutter_sound_summary">Jouer un son lorsque vous prenez une photo (nécessite Android 4.2 ou supérieur pour désactiver)</string>
     <string name="preference_volume_keys">Touches de volumes</string>
-    <string name="preference_volume_keys_summary">Définit un comportement lors de l\'utilisation des touches de volume</string>
     <string name="preference_audio_control">Option contrôle audio</string>
     <string name="preference_audio_control_summary">Prend une photo ou une vidéo quand un bruit est détecté, ou sur commande vocale («\u00A0cheese\u00A0»). Si activé alors utilisez le bouton micro pour démarrer/stopper la détection.</string>
     <string name="preference_audio_noise_control_sensitivity">Sensibilité contrôle audio</string>
@@ -132,14 +125,11 @@
     <string name="preference_lock_video">Verrouiller l\'écran lors de l\'enregistrement vidéo</string>
     <string name="preference_lock_video_summary">Lors de l\'enregistrement vidéo, l\'interface graphique sera verrouillée pour éviter d\'arrêter accidentellement l\'enregistrement. Balayez l\'écran pour déverrouiller. Notez que l\'enregistrement vidéo sera toujours arrêté si l\'application passe en arrière-plan ou si l\'écran est occulté.</string>
     <string name="preference_rotate_preview">Pivoter l\'aperçu</string>
-    <string name="preference_rotate_preview_summary">Option pour faire pivoter l\'aperçu (n\'affecte pas les photos/videos originales)</string>
+    <string name="preference_rotate_preview_summary">Option pour faire pivoter l\'aperçu (n\'affecte pas les photos/videos originales)\n%s</string>
     <string name="preference_screen_gui">Interface à l\'écran…</string>
     <string name="preference_preview_size">Taille de l\'aperçu</string>
-    <string name="preference_preview_size_summary">Choisissez la taille de l\'aperçu</string>
     <string name="preference_ui_placement">Emplacement de l\'interface utilisateur</string>
-    <string name="preference_ui_placement_summary">Choisissez l\'interface pour gaucher ou droitier</string>
     <string name="preference_immersive_mode">Mode immersif</string>
-    <string name="preference_immersive_mode_summary">Options de comportement pour le «\u00A0mode immersif\u00A0»</string>
     <string name="preference_show_zoom">Afficher le zoom</string>
     <string name="preference_show_zoom_summary">Affiche le niveau actuel de zoom à l\'écran (quand le zoom est actif)</string>
     <string name="preference_show_zoom_controls">Afficher les contrôles de zoom -/+</string>
@@ -163,10 +153,9 @@
     <string name="preference_show_battery">Afficher la batterie</string>
     <string name="preference_show_battery_summary">Affiche le niveau actuel de la batterie à l\'écran</string>
     <string name="preference_grid">Afficher une grille</string>
-    <string name="preference_grid_summary">Affiche l\'une des différentes grilles</string>
     <string name="grid">Grille</string> <!-- short form of Show a grid -->
     <string name="preference_crop_guide">Afficher un guide de recadrage</string>
-    <string name="preference_crop_guide_summary">Un guide de recadrage affiche un rectangle montrant à quoi le rapport d\'aspect spécifié ressemble - utile si vous prévoyez de recadrer la photo/vidéo après un ratio d\'aspect différent. Nécessite le mode photo WYSIWYG, ou d\'être en mode vidéo.</string>
+    <string name="preference_crop_guide_summary">Un guide de recadrage affiche un rectangle montrant à quoi le rapport d\'aspect spécifié ressemble - utile si vous prévoyez de recadrer la photo/vidéo après un ratio d\'aspect différent. Nécessite le mode photo WYSIWYG, ou d\'être en mode vidéo\n%s</string>
     <string name="preference_show_toasts">Afficher les messages d\'information</string>
     <string name="preference_show_toasts_summary">Affiche les messages d\'informations à l\'écran</string>
     <string name="preference_thumbnail_animation">Voir l\'animation des vignettes</string>
@@ -183,9 +172,8 @@
     <string name="preference_screen_video_settings">Paramètres vidéo…</string>
     <string name="preference_screen_location_settings">Paramètres de géocodage…</string>
     <string name="preference_resolution">Résolution de l\'appareil photo</string>
-    <string name="preference_resolution_summary">Réglez la résolution des photos prises par l\'appareil photo</string>
     <string name="preference_quality">Qualité de l\'image</string>
-    <string name="preference_quality_summary">Réglez la qualité des photos enregistrées (la valeur recommandée est 90 %%)</string>
+    <string name="preference_quality_summary">Réglez la qualité des photos enregistrées (la valeur recommandée est 90 %%)\n%s</string>
     <string name="preference_location">Stocker les données de position (Géocodage)</string>
     <string name="preference_location_summary">Enregistre la position GPS dans les photos/videos</string>
     <string name="preference_gps_direction">Stocker la direction de la boussole</string>
@@ -193,13 +181,10 @@
     <string name="preference_require_location">Données de position indispensables</string>
     <string name="preference_require_location_summary">Prendre des photos/vidéos uniquement si les données de position sont activées et disponibles</string>
     <string name="preference_stamp">Incrustation photo</string>
-    <string name="preference_stamp_summary">Incruste sur les photos la date, l\'heure et la position GPS si les informations de position/direction sont activées</string>
+    <string name="preference_stamp_summary">Incruste sur les photos la date, l\'heure et la position GPS si les informations de position/direction sont activées\n%s</string>
     <string name="preference_stamp_dateformat">Format de la date</string>
-    <string name="preference_stamp_dateformat_summary">Spécifie le format de la date (si activé)</string>
     <string name="preference_stamp_timeformat">Format de l\'heure</string>
-    <string name="preference_stamp_timeformat_summary">Spécifie le format de l\'heure (si activé)</string>
     <string name="preference_stamp_gpsformat">Format GPS</string>
-    <string name="preference_stamp_gpsformat_summary">Specifie le format du GPS (si activé)</string>
     <string name="preference_textstamp">Texte personnalisé</string>
     <string name="preference_textstamp_summary">Incruste un texte personnalisé sur la photo</string>
     <string name="preference_stamp_fontsize">Taille de la police</string>
@@ -209,28 +194,27 @@
     <string name="preference_stamp_style">Format du texte</string>
     <string name="preference_stamp_style_summary">Format du texte utilisé pour l\'incrustation de texte sur les photos</string>
     <string name="video_quality">Résolution vidéo</string>
-    <string name="video_quality_summary">Règle la résolution des vidéos</string>
     <string name="preference_force_video_4k">Forcer le format vidéo 4K UHD (experimental)</string>
     <string name="preference_force_video_4k_summary">Active la résolution 3840x2160 pour l\'enregistrement vidéo sur l\'appareil photo arrière - cela ne fonctionnera que si votre appareil le prend en charge (et peut se bloquer le cas échéant\u00A0!)</string>
     <string name="preference_video_stabilization">Activer la stabilisation vidéo</string>
     <string name="preference_video_stabilization_summary">La stabilisation vidéo réduit les tremblements dûent aux mouvements de la caméra à la fois dans l\'aperçu et dans les vidéos enregistrées</string>
     <string name="preference_video_bitrate">Débit des vidéos (approx.)</string>
-    <string name="preference_video_bitrate_summary">Règle le débit approximatif des vidéos (plus élevé signifie une meilleure qualité, mais prend plus d\'espace disque, et peut entraîner un échec de l\'enregistrement vidéo s\'il n\'est pas pris en charge)</string>
+    <string name="preference_video_bitrate_summary">Règle le débit approximatif des vidéos (plus élevé signifie une meilleure qualité, mais prend plus d\'espace disque, et peut entraîner un échec de l\'enregistrement vidéo s\'il n\'est pas pris en charge)\n%s</string>
     <string name="preference_video_fps">Nombre d\'image de la vidéo (approx.)</string>
-    <string name="preference_video_fps_summary">Définir le nombre d\'image par seconde (IPS) des vidéos (en fonction de votre appareil le nombre d\'IPS peut être aproximatif et pourrait ne pas atteindre le maximum. Un mauvais réglage peut entraîner l\'échec de l\'enregistrement vidéo s\'il n\'est pas pris en charge)</string>
+    <string name="preference_video_fps_summary">Définir le nombre d\'image par seconde (IPS) des vidéos (en fonction de votre appareil le nombre d\'IPS peut être aproximatif et pourrait ne pas atteindre le maximum. Un mauvais réglage peut entraîner l\'échec de l\'enregistrement vidéo s\'il n\'est pas pris en charge)\n%s</string>
     <string name="preference_video_max_duration">Durée maximale de la vidéo</string>
-    <string name="preference_video_max_duration_summary">L\'enregistrement vidéo s\'arrêtera après la durée spécifiée</string>
+    <string name="preference_video_max_duration_summary">L\'enregistrement vidéo s\'arrêtera après la durée spécifiée\n%s</string>
     <string name="preference_video_restart">Nombre de vidéos après la durée maximale</string>
-    <string name="preference_video_restart_summary">Si la vidéo est stoppée après avoir atteint la durée maximale sélectionnée (si activé), alors l\'enregistrement va reprendre autant de fois que le nombre spécifié dans ce paramètre</string>
+    <string name="preference_video_restart_summary">Si la vidéo est stoppée après avoir atteint la durée maximale sélectionnée (si activé), alors l\'enregistrement va reprendre autant de fois que le nombre spécifié dans ce paramètre\n%s</string>
 
     <string name="preference_video_max_filesize">Taille maximale d\'un fichier vidéo</string>
-    <string name="preference_video_max_filesize_summary">L\'enregistrement vidéo va s\'arrêter/ou redémarrer (voir option ci-dessous) quand la taille maximale approximative du fichier est atteinte. Notez que la plupart des périphériques Android ont une taille maximale pour les vidéos (typiquement entre 2 et 4 Go), mais cette option permet de choisir une valeur</string>
+    <string name="preference_video_max_filesize_summary">L\'enregistrement vidéo va s\'arrêter/ou redémarrer (voir option ci-dessous) quand la taille maximale approximative du fichier est atteinte. Notez que la plupart des périphériques Android ont une taille maximale pour les vidéos (typiquement entre 2 et 4 Go), mais cette option permet de choisir une valeur\n%s</string>
     <string name="preference_video_restart_max_filesize">Redémarrer sur la taille maximale</string>
     <string name="preference_video_restart_max_filesize_summary">Si activé, redémarrage automatique quand la taille maximale de fichier est atteinte (soit la valeur par défaut du périphérique, soit la valeur spécifiée)</string>
     <string name="preference_record_audio">Enregistrement audio</string>
     <string name="preference_record_audio_summary">Enregistre aussi l\'audio lors de l\'enregistrement vidéo</string>
     <string name="preference_record_audio_src">Source audio</string>
-    <string name="preference_record_audio_src_summary">Sélectionne l\'entrée audio pour l\'enregistrement</string>
+    <string name="preference_record_audio_src_summary">Sélectionne l\'entrée audio pour l\'enregistrement\n%s</string>
     <string name="preference_record_audio_channels">Format audio</string>
     <string name="preference_record_audio_channels_summary">Spécifiez mono ou stéréo pour l\'enregistrement audio (stéréo uniquement pris en charge sur certains appareils)</string>
     <string name="preference_video_flash">Clignoter pendant l\'enregistrement vidéo</string>
@@ -306,7 +290,8 @@
     </string>
     <string name="photo_mode">Mode photo</string>
     <string name="photo_mode_hdr">HDR</string>
-    <string name="photo_mode_standard">Standard</string>
+    <string name="photo_mode_standard">Std</string> <!-- keep short, as this shows in the popup menu -->
+    <string name="photo_mode_standard_full">Standard</string>
     <string name="preference_background_photo_saving">Utiliser une tâche de fond</string>
     <string name="preference_background_photo_saving_summary">Permettre d\'enregistrer les photos dans une tâche de fond
         (opération plus rapide)
@@ -319,11 +304,7 @@
         utilisées.
     </string>
     <string name="preference_raw">RAW</string>
-    <string name="preference_raw_summary">Choisissez d\'enregistrer au format RAW (DNG)</string>
     <string name="preference_save_zulu_time">Format de l\'heure pour le nom de fichier</string>
-    <string name="preference_save_zulu_time_summary">Utiliser l\'heure locale ou l\'heure UTC pour nommer les photos ou
-        les vidéos
-    </string>
     <string name="raw_info">Les fichiers DNG contiennent toutes les informations non compressées ni traitées de votre
         caméra.\n\nLa plupart des applications d\'affichage d\'image ne reconnaissent pas le DNG. Vous devrez utiliser une app
         spécialisée comme Snapseed ou Lightroom\n\nNotez que certaines options comme «\u00A0Incrustation photo\u00A0» ou
@@ -356,4 +337,105 @@
     <string name="duration_30m">30 minutes</string>
     <string name="duration_45m">45 minutes</string>
     <string name="duration_1h">1 heure</string>
+
+    <string name="preference_video_fps_default">Par défaut</string>
+
+    <string name="preference_stamp_dateformat_default">Par défaut</string>
+    <string name="preference_stamp_dateformat_yyyymmdd">aaaa-mm-jj</string>
+    <string name="preference_stamp_dateformat_ddmmyyyy">jj/mm/aaaa</string>
+    <string name="preference_stamp_dateformat_mmddyyyy">mm/jj/aaaa</string>
+    <string name="preference_stamp_dateformat_none">Aucun</string>
+
+    <string name="flash_off">Flash éteint</string>
+    <string name="flash_auto">Flash auto</string>
+    <string name="flash_on">Flash forcé</string>
+    <string name="flash_torch">Torche</string>
+    <string name="flash_red_eye">Yeux rouges</string>
+
+    <string name="preference_record_audio_src_camcorder">Caméscope</string>
+    <string name="preference_record_audio_src_mic">Micro externe (si présent)</string>
+    <string name="preference_record_audio_src_default">Source audio par défaut</string>
+    <string name="preference_record_audio_src_voice_communication">Optimisé pour la voix</string>
+
+    <string name="preference_video_bitrate_default">Par défaut</string>
+    <string name="preference_video_bitrate_100000">100kbps</string>
+    <string name="preference_video_bitrate_200000">200kbps</string>
+    <string name="preference_video_bitrate_500000">500kbps</string>
+    <string name="preference_video_bitrate_1000000">1Mbps</string>
+    <string name="preference_video_bitrate_2000000">2Mbps</string>
+    <string name="preference_video_bitrate_3000000">3Mbps</string>
+    <string name="preference_video_bitrate_4000000">4Mbps</string>
+    <string name="preference_video_bitrate_5000000">5Mbps</string>
+    <string name="preference_video_bitrate_6000000">6Mbps</string>
+    <string name="preference_video_bitrate_7000000">7Mbps</string>
+    <string name="preference_video_bitrate_8000000">8Mbps</string>
+    <string name="preference_video_bitrate_9000000">9Mbps</string>
+    <string name="preference_video_bitrate_10000000">10Mbps</string>
+    <string name="preference_video_bitrate_15000000">15Mbps</string>
+    <string name="preference_video_bitrate_20000000">20Mbps</string>
+    <string name="preference_video_bitrate_30000000">30Mbps</string>
+    <string name="preference_video_bitrate_40000000">40Mbps</string>
+    <string name="preference_video_bitrate_50000000">50Mbps</string>
+    <string name="preference_video_bitrate_60000000">60Mbps</string>
+    <string name="preference_video_bitrate_70000000">70Mbps</string>
+    <string name="preference_video_bitrate_80000000">80Mbps</string>
+    <string name="preference_video_bitrate_90000000">90Mbps</string>
+    <string name="preference_video_bitrate_100000000">100Mbps</string>
+
+    <string name="preference_burst_mode_off">Désactivé</string>
+    <string name="preference_burst_mode_2x">2x</string>
+    <string name="preference_burst_mode_3x">3x</string>
+    <string name="preference_burst_mode_4x">4x</string>
+    <string name="preference_burst_mode_5x">5x</string>
+    <string name="preference_burst_mode_10x">10x</string>
+    <string name="preference_burst_mode_unlimited">Illimité</string>
+
+    <string name="preference_burst_interval_no_delay">Pas de délai</string>
+    <string name="preference_burst_interval_1s">1s</string>
+    <string name="preference_burst_interval_2s">2s</string>
+    <string name="preference_burst_interval_3s">3s</string>
+    <string name="preference_burst_interval_5s">5s</string>
+    <string name="preference_burst_interval_10s">10s</string>
+    <string name="preference_burst_interval_15s">15s</string>
+    <string name="preference_burst_interval_20s">20s</string>
+    <string name="preference_burst_interval_30s">30s</string>
+    <string name="preference_burst_interval_1m">1m</string>
+    <string name="preference_burst_interval_2m">2m</string>
+    <string name="preference_burst_interval_5m">5m</string>
+    <string name="preference_burst_interval_10m">10m</string>
+    <string name="preference_burst_interval_20m">20m</string>
+    <string name="preference_burst_interval_30m">30m</string>
+    <string name="preference_burst_interval_1h">1h</string>
+    <string name="preference_burst_interval_2h">2h</string>
+
+    <string name="preference_video_max_filesize_default">Par défaut</string>
+    <string name="preference_video_max_filesize_100mb">100Mo</string>
+    <string name="preference_video_max_filesize_200mb">200Mo</string>
+    <string name="preference_video_max_filesize_300mb">300Mo</string>
+    <string name="preference_video_max_filesize_500mb">500Mo</string>
+    <string name="preference_video_max_filesize_1gb">1Go</string>
+
+    <string name="preference_crop_guide_none">Aucun</string>
+    <string name="preference_crop_guide_1">1 (1:1)</string>
+    <string name="preference_crop_guide_1_25">1.25 (5:4)</string>
+    <string name="preference_crop_guide_1_33">1.33 (4:3)</string>
+    <string name="preference_crop_guide_1_4">1.4 (7:4)</string>
+    <string name="preference_crop_guide_1_5">1.5 (3:2)</string>
+    <string name="preference_crop_guide_1_78">1.78 (16:9)</string>
+    <string name="preference_crop_guide_1_85">1.85 (37:20)</string>
+    <string name="preference_crop_guide_2_33">2.33 (21:9)</string>
+    <string name="preference_crop_guide_2_35">2.35 (47:20)</string>
+    <string name="preference_crop_guide_2_4">2.4 (12:5)</string>
+
+    <string name="preference_audio_noise_control_sensitivity_3">+3 (très sensible)</string>
+    <string name="preference_audio_noise_control_sensitivity_2">+2</string>
+    <string name="preference_audio_noise_control_sensitivity_1">+1</string>
+    <string name="preference_audio_noise_control_sensitivity_0">0 (par défaut)</string>
+    <string name="preference_audio_noise_control_sensitivity_m1">-1</string>
+    <string name="preference_audio_noise_control_sensitivity_m2">-2</string>
+    <string name="preference_audio_noise_control_sensitivity_m3">-3 (peu sensible)</string>
+
+    <string name="preference_ui_placement_left">Interface utilisateur pour gaucher</string>
+    <string name="preference_ui_placement_right">Interface utilisateur pour droitier</string>
+
 </resources>

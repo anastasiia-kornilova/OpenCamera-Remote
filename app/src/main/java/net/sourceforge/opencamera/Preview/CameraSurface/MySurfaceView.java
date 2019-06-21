@@ -27,7 +27,6 @@ public class MySurfaceView extends SurfaceView implements CameraSurface {
 	private final Handler handler = new Handler();
 	private final Runnable tick;
 
-	@SuppressWarnings("deprecation")
 	public
 	MySurfaceView(Context context, final Preview preview) {
 		super(context);
@@ -48,8 +47,7 @@ public class MySurfaceView extends SurfaceView implements CameraSurface {
 					Log.d(TAG, "invalidate()");*/
 				preview.test_ticker_called = true;
 				invalidate();
-				// avoid overloading ui thread when taking photo
-				handler.postDelayed(this, preview.isTakingPhoto() ? 500 : 100);
+				handler.postDelayed(this, preview.getFrameRate());
 			}
 		};
 	}
@@ -91,6 +89,8 @@ public class MySurfaceView extends SurfaceView implements CameraSurface {
 
     @Override
     protected void onMeasure(int widthSpec, int heightSpec) {
+		if( MyDebug.LOG )
+			Log.d(TAG, "onMeasure: " + widthSpec + " x " + heightSpec);
     	preview.getMeasureSpec(measure_spec, widthSpec, heightSpec);
     	super.onMeasure(measure_spec[0], measure_spec[1]);
     }

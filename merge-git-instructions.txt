@@ -7,8 +7,10 @@ Open Git Bash.
 Change the current working directory to your local project.
 
 Check out the branch you wish to merge to. Usually, you will merge into master.
+$ git checkout master
+Already on 'master'
+Your branch is up to date with 'origin/master'.
 
-git checkout master
 Pull the desired branch from the upstream repository. This method will retain the commit history without modification.
 
 git pull https://github.com/ORIGINAL_OWNER/ORIGINAL_REPOSITORY.git BRANCH_NAME

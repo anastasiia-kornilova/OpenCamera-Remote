@@ -6,9 +6,6 @@
     <string name="action_popup">ポップアップ設定</string>
     <string name="intro_text">写真を撮るには青いカメラボタンを押してください。ヘルプの参照は「設定」から「オンラインヘルプ」をタップして行います。Open Cameraは無料ですが寄付を受け付けておりますのでご検討ください(リンクまたはオンラインヘルプから参照してください)。\n\nプライバシー方針:位置情報をジオタグのために使用します。位置情報の適用を初めは無効にしています。有効にすると位置情報が保存したファイルに埋め込まれます(位置情報はこのためだけに使用します)。</string>
     <string name="intro_ok">了解しました (この内容を再度表示しない)</string>
-    
-    <string name="answer_yes">はい</string>
-    <string name="answer_no">いいえ</string>
 
     <string name="on">有効</string> <!-- whether a setting is turned on, e.g., "Auto-stabilise: On" -->
     <string name="off">無効</string> <!-- whether a setting is turned off, e.g., "Auto-stabilise: Off" -->
@@ -38,7 +35,7 @@
     <string name="exposure_locked">露出を設定しました</string>
     <string name="exposure_unlocked">露出を解除しました</string>
     <string name="cancelled_timer">タイマーを解除しました</string>
-    <string name="cancelled_burst_mode">高速撮影を解除しました</string>
+    <string name="cancelled_repeat_mode">高速撮影を解除しました</string>
     <string name="started_timer">タイマーを開始しました</string>
     <string name="failed_to_save_video">保存に失敗しました</string>
     <string name="failed_to_record_video">録画に失敗しました</string>
@@ -89,21 +86,18 @@
     <string name="preference_exposure">露出補正</string>
     <string name="preference_exposure_summary">0に設定するとデフォルトの露出補正になります</string>
     <string name="preference_lock_orientation">写真/ビデオの向き</string>
-    <string name="preference_lock_orientation_summary">設定すると機械上の向きよりも設定された向きを優先して保存します</string>
+    <string name="preference_lock_orientation_summary">設定すると機械上の向きよりも設定された向きを優先して保存します\n%s</string>
     <string name="preference_face_detection">顔検出</string>
     <string name="preference_face_detection_summary">フォーカスの設定に顔検出を利用します</string>
 
     <string name="preference_category_camera_controls">カメラ制御</string>
     <string name="preference_timer">タイマー</string>
-    <string name="preference_timer_summary">カメラにタイマーを設定します</string>
     <string name="preference_timer_beep">タイマー音</string>
     <string name="preference_timer_beep_summary">タイマーの計測もしくは高速撮影時の間隔の計測で音を鳴らします</string>
     <string name="preference_timer_speak">音声タイマー</string>
     <string name="preference_timer_speak_summary">タイマーの計測もしくは高速撮影時の間隔の計測で(残り1分から)音声を流します</string>
     <string name="preference_burst_mode">高速撮影</string>
-    <string name="preference_burst_mode_summary">1度に多くの写真を撮影します</string>
     <string name="preference_burst_interval">撮影間隔</string>
-    <string name="preference_burst_interval_summary">高速撮影時の撮影間隔を決めます</string>
     <string name="preference_screen_camera_controls_more">カメラ制御の詳細設定…</string>
     <string name="preference_touch_capture">タッチして保存する</string>
     <string name="preference_touch_capture_summary">タッチもしくはプレビューを2回タップして写真を保存します</string>
@@ -112,7 +106,6 @@
     <string name="preference_shutter_sound">シャッター音</string>
     <string name="preference_shutter_sound_summary">撮影時に音を再生する (無効にする場合はAndroid 4.2以上が必要です)</string>
     <string name="preference_volume_keys">音量キー</string>
-    <string name="preference_volume_keys_summary">音量キーを押した時の動作を設定します</string>
 
     <string name="preference_save_location">保存場所</string>
     <string name="preference_save_location_summary">写真/ビデオを保存するフォルダを決めます</string>
@@ -128,14 +121,11 @@
     <string name="preference_lock_video">録画中は画面を固定する</string>
     <string name="preference_lock_video_summary">録画が停止しないように画面を固定します。固定は画面をスワイプすると解除されます。アプリをバックグラウンドに移すか画面を消灯しても録画は停止します。</string>
     <string name="preference_rotate_preview">回転をプレビュー</string>
-    <string name="preference_rotate_preview_summary">プレビューを回転して表示します(写真/ビデオの保存には影響しません)</string>
+    <string name="preference_rotate_preview_summary">プレビューを回転して表示します(写真/ビデオの保存には影響しません)\n%s</string>
     <string name="preference_screen_gui">画面上での表示設定…</string>
     <string name="preference_preview_size">プレビューサイズ</string>
-    <string name="preference_preview_size_summary">プレビューサイズの選択を設定します</string>
     <string name="preference_ui_placement">操作位置</string>
-    <string name="preference_ui_placement_summary">左利きもしくは右利き用に設定します</string>
     <string name="preference_immersive_mode">全画面表示モード</string>
-    <string name="preference_immersive_mode_summary">このオプションは画面全体による表示を提供します</string>
     <string name="preference_show_zoom">ズームを表示する</string>
     <string name="preference_show_zoom_summary">画面上にズームレベルを表示します(ズームインする場合)</string>
     <string name="preference_show_zoom_controls">ズーム制御を表示する</string>
@@ -159,10 +149,9 @@
     <string name="preference_show_battery">電池残量を表示する</string>
     <string name="preference_show_battery_summary">画面上に電池残量を表示します</string>
     <string name="preference_grid">グリッドを表示する</string>
-    <string name="preference_grid_summary">画面上にグリッドを表示します</string>
     <string name="grid">グリッド</string> <!-- short form of Show a grid -->
     <string name="preference_crop_guide">クロップを表示する</string>
-    <string name="preference_crop_guide_summary">画面上に切り取り用の線を表示します - 異なる比率に加工する場合に便利です。使用にはWYSIWYGでの写真モード、もしくはビデオモードを必要とします。</string>
+    <string name="preference_crop_guide_summary">画面上に切り取り用の線を表示します - 異なる比率に加工する場合に便利です。使用にはWYSIWYGでの写真モード、もしくはビデオモードを必要とします。\n%s</string>
     <string name="preference_show_toasts">トーストを表示する</string>
     <string name="preference_show_toasts_summary">画面上のメッセージをトースト形式で表示します</string>
     <string name="preference_thumbnail_animation">サムネイルをアニメにする</string>
@@ -177,9 +166,8 @@
     <string name="preference_screen_video_settings">ビデオの設定…</string>
     <string name="preference_screen_location_settings">位置情報の設定…</string>
     <string name="preference_resolution">写真の解像度</string>
-    <string name="preference_resolution_summary">カメラで撮影する写真の解像度を決めます</string>
     <string name="preference_quality">写真の品質</string>
-    <string name="preference_quality_summary">保存する写真の品質を決めます (90%%の圧縮率を提案します)</string>
+    <string name="preference_quality_summary">保存する写真の品質を決めます (90%%の圧縮率を提案します)\n%s</string>
     <string name="preference_location">位置情報を使用する</string>
     <string name="preference_location_summary">写真/ビデオにジオタグを埋め込みます</string>
     <string name="preference_gps_direction">方角情報を使用する</string>
@@ -187,13 +175,10 @@
     <string name="preference_require_location">位置情報を要求する</string>
     <string name="preference_require_location_summary">有効にすると位置情報を取得可能な場合のみ写真/ビデオの撮影が動作します</string>
     <string name="preference_stamp">情報を貼り付ける</string>
-    <string name="preference_stamp_summary">写真に日付と時刻を貼り付けます。GPSが有効であれば位置情報も埋め込みます。</string>
+    <string name="preference_stamp_summary">写真に日付と時刻を貼り付けます。GPSが有効であれば位置情報も埋め込みます。\n%s</string>
     <string name="preference_stamp_dateformat">日付の形式</string>
-    <string name="preference_stamp_dateformat_summary">日付の形式を指定します (有効時のみ)</string>
     <string name="preference_stamp_timeformat">時刻の形式</string>
-    <string name="preference_stamp_timeformat_summary">時刻の形式を指定します (有効時のみ)</string>
     <string name="preference_stamp_gpsformat">GPSの形式</string>
-    <string name="preference_stamp_gpsformat_summary">GPSの形式を指定します (有効時のみ)</string>
     <string name="preference_textstamp">文字の内容</string>
     <string name="preference_textstamp_summary">写真に貼り付ける文字の内容を決めます</string>
     <string name="preference_stamp_fontsize">文字のサイズ</string>
@@ -203,24 +188,23 @@
     <string name="preference_stamp_style">文字の形状</string>
     <string name="preference_stamp_style_summary">写真に貼り付ける文字の形状を決めます</string>
     <string name="video_quality">ビデオの解像度</string>
-    <string name="video_quality_summary">ビデオの解像度を設定します</string>
     <string name="preference_force_video_4k">4K UHDビデオ (実験中)</string>
     <string name="preference_force_video_4k_summary">3840x2160での撮影を有効にします - サポートしていない機械ではクラッシュする事もあります!</string>
     <string name="preference_video_stabilization">自動回転を有効にする</string>
     <string name="preference_video_stabilization_summary">ビデオ撮影時の自動回転を設定します</string>
     <string name="preference_video_bitrate">ビデオのビットレート</string>
-    <string name="preference_video_bitrate_summary">ビデオのビットレートを設定します(設定を高くするとより多くの保存スペースが必要になり、サポートしていないレートを設定すると録画に失敗する事があります)</string>
+    <string name="preference_video_bitrate_summary">ビデオのビットレートを設定します(設定を高くするとより多くの保存スペースが必要になり、サポートしていないレートを設定すると録画に失敗する事があります)\n%s</string>
     <string name="preference_video_fps">ビデオのフレームレート</string>
-    <string name="preference_video_fps_summary">ビデオのフレームレート(FPS)を設定します(サポートしていないレートを設定すると録画に失敗する事があります)</string>
+    <string name="preference_video_fps_summary">ビデオのフレームレート(FPS)を設定します(サポートしていないレートを設定すると録画に失敗する事があります)\n%s</string>
     <string name="preference_video_max_duration">ビデオの最大撮影時間</string>
-    <string name="preference_video_max_duration_summary">指定した時間が経過するとビデオ撮影が自動的に停止します</string>
+    <string name="preference_video_max_duration_summary">指定した時間が経過するとビデオ撮影が自動的に停止します\n%s</string>
     <string name="preference_video_restart">ビデオの最大撮影回数</string>
-    <string name="preference_video_restart_summary">最大撮影時間の経過後に指定した回数だけ撮影を繰り返します(有効時のみ)</string>
+    <string name="preference_video_restart_summary">最大撮影時間の経過後に指定した回数だけ撮影を繰り返します(有効時のみ)\n%s</string>
 
     <string name="preference_record_audio">音声録音</string>
     <string name="preference_record_audio_summary">ビデオの撮影時に音声も録音します</string>
     <string name="preference_record_audio_src">オーディオソース</string>
-    <string name="preference_record_audio_src_summary">音声の録音にマイクを使用します</string>
+    <string name="preference_record_audio_src_summary">音声の録音にマイクを使用します\n%s</string>
     <string name="preference_record_audio_channels">オーディオチャンネル</string>
     <string name="preference_record_audio_channels_summary">モノラルもしくはステレオを指定します (ステレオはサポートしている機械でのみ有効です)</string>
     <string name="preference_video_flash">録画中にフラッシュを使用する</string>
@@ -290,4 +274,85 @@
     <string name="duration_30m">30分</string>
     <string name="duration_45m">45分</string>
     <string name="duration_1h">1時間</string>
+    <string name="preference_video_fps_default">デフォルト</string>
+
+    <string name="preference_stamp_dateformat_default">デフォルト</string>
+    <string name="preference_stamp_dateformat_yyyymmdd">年-月-日</string>
+    <string name="preference_stamp_dateformat_ddmmyyyy">日/月/年</string>
+    <string name="preference_stamp_dateformat_mmddyyyy">月/日/年</string>
+    <string name="preference_stamp_dateformat_none">なし</string>
+
+    <string name="flash_off">オフ</string>
+    <string name="flash_auto">自動</string>
+    <string name="flash_on">オン</string>
+    <string name="flash_torch">懐中電灯</string>
+    <string name="flash_red_eye">赤目軽減</string>
+
+    <string name="preference_video_bitrate_default">デフォルト</string>
+    <string name="preference_video_bitrate_100000">100kbps</string>
+    <string name="preference_video_bitrate_200000">200kbps</string>
+    <string name="preference_video_bitrate_500000">500kbps</string>
+    <string name="preference_video_bitrate_1000000">1Mbps</string>
+    <string name="preference_video_bitrate_2000000">2Mbps</string>
+    <string name="preference_video_bitrate_3000000">3Mbps</string>
+    <string name="preference_video_bitrate_4000000">4Mbps</string>
+    <string name="preference_video_bitrate_5000000">5Mbps</string>
+    <string name="preference_video_bitrate_6000000">6Mbps</string>
+    <string name="preference_video_bitrate_7000000">7Mbps</string>
+    <string name="preference_video_bitrate_8000000">8Mbps</string>
+    <string name="preference_video_bitrate_9000000">9Mbps</string>
+    <string name="preference_video_bitrate_10000000">10Mbps</string>
+    <string name="preference_video_bitrate_15000000">15Mbps</string>
+    <string name="preference_video_bitrate_20000000">20Mbps</string>
+    <string name="preference_video_bitrate_30000000">30Mbps</string>
+    <string name="preference_video_bitrate_40000000">40Mbps</string>
+    <string name="preference_video_bitrate_50000000">50Mbps</string>
+    <string name="preference_video_bitrate_60000000">60Mbps</string>
+    <string name="preference_video_bitrate_70000000">70Mbps</string>
+    <string name="preference_video_bitrate_80000000">80Mbps</string>
+    <string name="preference_video_bitrate_90000000">90Mbps</string>
+    <string name="preference_video_bitrate_100000000">100Mbps</string>
+
+    <string name="preference_burst_mode_off">なし</string>
+    <string name="preference_burst_mode_2x">2倍</string>
+    <string name="preference_burst_mode_3x">3倍</string>
+    <string name="preference_burst_mode_4x">4倍</string>
+    <string name="preference_burst_mode_5x">5倍</string>
+    <string name="preference_burst_mode_10x">10倍</string>
+    <string name="preference_burst_mode_unlimited">無制限</string>
+
+    <string name="preference_burst_interval_no_delay">なし</string>
+    <string name="preference_burst_interval_1s">1秒</string>
+    <string name="preference_burst_interval_2s">2秒</string>
+    <string name="preference_burst_interval_3s">3秒</string>
+    <string name="preference_burst_interval_5s">5秒</string>
+    <string name="preference_burst_interval_10s">10秒</string>
+    <string name="preference_burst_interval_15s">15秒</string>
+    <string name="preference_burst_interval_20s">20秒</string>
+    <string name="preference_burst_interval_30s">30秒</string>
+    <string name="preference_burst_interval_1m">1分</string>
+    <string name="preference_burst_interval_2m">2分</string>
+    <string name="preference_burst_interval_5m">5分</string>
+    <string name="preference_burst_interval_10m">10分</string>
+    <string name="preference_burst_interval_20m">20分</string>
+    <string name="preference_burst_interval_30m">30分</string>
+    <string name="preference_burst_interval_1h">1時間</string>
+    <string name="preference_burst_interval_2h">2時間</string>
+
+    <string name="preference_crop_guide_none">なし</string>
+    <string name="preference_crop_guide_1">1.00 (1対1)</string>
+    <string name="preference_crop_guide_1_25">1.25 (5対4)</string>
+    <string name="preference_crop_guide_1_33">1.33 (4対3)</string>
+    <string name="preference_crop_guide_1_4">1.4 (7対4)</string>
+    <string name="preference_crop_guide_1_5">1.5 (3対2)</string>
+    <string name="preference_crop_guide_1_78">1.78 (16対9)</string>
+    <string name="preference_crop_guide_1_85">1.85 (37対20)</string>
+    <string name="preference_crop_guide_2">2.00 (2対1)</string>
+    <string name="preference_crop_guide_2_33">2.33 (21対9)</string>
+    <string name="preference_crop_guide_2_35">2.35 (47対20)</string>
+    <string name="preference_crop_guide_2_4">2.4 (12対5)</string>
+
+    <string name="preference_ui_placement_left">左利き用</string>
+    <string name="preference_ui_placement_right">右利き用</string>
+
 </resources>

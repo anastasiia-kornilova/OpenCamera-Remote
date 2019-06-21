@@ -6,9 +6,6 @@
     <string name="action_popup">Felugró beállítások</string>
     <string name="intro_text">Érintéssel állíthatsz élességet, és a kék kamera gombbal tudsz fényképezni. További segítséget a beállítások online súgójában találsz. Az Open Camera teljesen ingyenes. Ha tetszik az alkalmazás, kérlek fontold meg az adományozói verzió megvásárlását :) (lásd a hivatkozást a Beállításokban és az online súgóban). \ N \ nAdatvédelmi feltételek: A helymeghatározás a fényképek geokódolásához szükséges, de alapértelmezésben le van tiltva. Ha engedélyezed, a kép készítésének helye bele lesz mentve a fájlokba (és semmi másra nem lesz használva).</string>
     <string name="intro_ok">OK (Ez az üzenet nem jelenik meg újra)</string>
-    
-    <string name="answer_yes">Igen</string>
-    <string name="answer_no">Nem</string>
 
     <string name="on">Be</string> <!-- whether a setting is turned on, e.g., "Auto-stabilise: On" -->
     <string name="off">Ki</string> <!-- whether a setting is turned off, e.g., "Auto-stabilise: Off" -->
@@ -38,7 +35,7 @@
     <string name="exposure_locked">Expozíció zárolva</string>
     <string name="exposure_unlocked">Expozíció feloldva</string>
     <string name="cancelled_timer">Időzítő megszakítva</string>
-    <string name="cancelled_burst_mode">Sorozatfelvétel megszakítva</string>
+    <string name="cancelled_repeat_mode">Sorozatfelvétel megszakítva</string>
     <string name="started_timer">Időzítő elindult</string>
     <string name="failed_to_save_video">Nem sikerült menteni a videofájlt </string>
     <string name="failed_to_record_video">Nem sikerült videofelvételt készíteni</string>
@@ -90,21 +87,18 @@
     <string name="preference_exposure">Expozíció kompenzáció beállítása</string>
     <string name="preference_exposure_summary">Az alapértelmezett kompenzációhoz állítsd 0-ra</string>
     <string name="preference_lock_orientation">Fotó/videó tájolás zárolása</string>
-    <string name="preference_lock_orientation_summary">Ha be van állítva, a készülék tájolása figyelmen kívül lesz hagyva, és a fotó/videó a megadott tájolás szerint fog állni</string>
+    <string name="preference_lock_orientation_summary">Ha be van állítva, a készülék tájolása figyelmen kívül lesz hagyva, és a fotó/videó a megadott tájolás szerint fog állni\n%s</string>
     <string name="preference_face_detection">Arcfelismerés</string>
     <string name="preference_face_detection_summary">Arcfelismerés használata fókuszterületek helyett</string>
 
     <string name="preference_category_camera_controls">Kamera kezelés</string>
     <string name="preference_timer">Időzítő</string>
-    <string name="preference_timer_summary">Késleltetett képkészítés beállítása</string>
     <string name="preference_timer_beep">Időzítő hangjelzés</string>
     <string name="preference_timer_beep_summary">Csipogjon az időzítő visszaszámlálása és sorozatfelvétel készítés alatt</string>
     <string name="preference_timer_speak">Hangos visszaszámlálás</string>
     <string name="preference_timer_speak_summary">Az időzítő és sorozatfelvétel visszaszámlálás késleltetésének bemondása (60 másodperctől)</string>
     <string name="preference_burst_mode">Sorozatfelvétel</string>
-    <string name="preference_burst_mode_summary">Több kép készítése egymás után</string>
     <string name="preference_burst_interval">Sorozatfelvétel intervallum</string>
-    <string name="preference_burst_interval_summary">Késleltetés a sorozatfelvétel fotói között</string>
     <string name="preference_screen_camera_controls_more">További kamera beállítások…</string>
     <string name="preference_touch_capture">Exponálás érintéssel</string>
     <string name="preference_touch_capture_summary">Fénykép készítése az előnézet érintésével, vagy dupla koppintással</string>
@@ -113,7 +107,6 @@
     <string name="preference_shutter_sound">Zárhang</string>
     <string name="preference_shutter_sound_summary">Hang lejátszása fotózáskor</string>
     <string name="preference_volume_keys">Hangerő gombok</string>
-    <string name="preference_volume_keys_summary">Mi történjen a hangerőgombok megnyomásakor?</string>
     <string name="preference_audio_control">Hangvezérlési lehetőségek</string>
     <string name="preference_audio_control_summary">Fotó, vagy videó készítése zajra, vagy hangjelzésre (pl. \"csíz\"). Ha engedélyezve van, használd a képernyőn megjelenő mikrofon gombot a figyelés indításához és leállításához.</string>
     <string name="preference_audio_noise_control_sensitivity">Hangvezérlés érzékenysége</string>
@@ -127,7 +120,6 @@
     <string name="preference_save_video_prefix">Videó fájlnév előtag</string>
     <string name="preference_save_video_prefix_summary">A videók mentésekor használt fájlnév előtag</string>
     <string name="preference_save_zulu_time">Fájlnév időformátum</string>
-    <string name="preference_save_zulu_time_summary">A fotók és videók fájlnevében a helyi idő, vagy az UTC (egyezményes koordinált világidő) jelenjen meg</string>
     <string name="preference_show_when_locked">Kamera megjelenítése zárolt állapotban</string>
     <string name="preference_show_when_locked_summary">Ha engedélyezve van, az Open Camera látható marad a zárképernyő alatt is (de fel kell oldanod a beállítások, geléria, stb. eléréséhez)</string>
     <string name="preference_startup_focus">Autofókusz indításkor</string>
@@ -135,14 +127,11 @@
     <string name="preference_lock_video">Képernyő zárolása videofelvétel alatt</string>
     <string name="preference_lock_video_summary">Videó készítése alatt a felhasználói felület zárolva lesz, megakadályozva a felvétel véletlen leállítását. Feloldáshoz csúsztad az ujjad a képernyőn. Megjegyzendő, hogy a felvétel le fog állni, ha az alkalmazás háttérbe kerül vagy a képernyő kikapcsol.</string>
     <string name="preference_rotate_preview">Előnézet forgatása</string>
-    <string name="preference_rotate_preview_summary">Az előnézet forgatásának lehetősége (nem befolyásolja az elkészített fotót, videót)</string>
+    <string name="preference_rotate_preview_summary">Az előnézet forgatásának lehetősége (nem befolyásolja az elkészített fotót, videót)\n%s</string>
     <string name="preference_screen_gui">Kezelőfelület…</string>
     <string name="preference_preview_size">Előnézet mérete</string>
-    <string name="preference_preview_size_summary">Hogyan kerüljön kiválasztásra az előnézet mérete</string>
     <string name="preference_ui_placement">Kezelőfelület elhelyezés</string>
-    <string name="preference_ui_placement_summary">Bal- vagy jobbkezes használathoz megfelelő felület</string>
     <string name="preference_immersive_mode">Kiterjesztett üzemmód</string>
-    <string name="preference_immersive_mode_summary">\"Kiterjesztett módú\" üzemmód beállításai</string>
     <string name="preference_show_zoom">Zoom megjelenítése</string>
     <string name="preference_show_zoom_summary">Az aktuális zoomszint megjelenítése a képernyőn (zoomolt állapotban)</string>
     <string name="preference_show_zoom_controls">Zoom -/+ gombok</string>
@@ -166,10 +155,9 @@
     <string name="preference_show_battery">Akkumulátor megjelenítése</string>
     <string name="preference_show_battery_summary">Az aktuális akkumulátortöltöttség megjelenítése a képernyőn</string>
     <string name="preference_grid">Rács megjelenítése</string>
-    <string name="preference_grid_summary">Egy rács megjelenítése a különféle választhatóak közül</string>
     <string name="grid">Rács</string> <!-- short form of Show a grid -->
     <string name="preference_crop_guide">Vágási segédvonal megjelenítése</string>
-    <string name="preference_crop_guide_summary">A vágási segéd egy négyzetet jelenít meg, mutatva, hogy nézne ki a megadott oldalarány – hasznos, ha a fotót/videót később más oldalarányúra tervezed vágni. WYSIWYG fényképmód, vagy videózás mód szükséges hozzá.</string>
+    <string name="preference_crop_guide_summary">A vágási segéd egy négyzetet jelenít meg, mutatva, hogy nézne ki a megadott oldalarány – hasznos, ha a fotót/videót később más oldalarányúra tervezed vágni. WYSIWYG fényképmód, vagy videózás mód szükséges hozzá\n%s</string>
     <string name="preference_show_toasts">\"toast\" üzenetek megjelenítése</string>
     <string name="preference_show_toasts_summary">Megjelenjenek-e felugró \"toast\" üzenetek</string>
     <string name="preference_thumbnail_animation">Bélyegkép animáció megjelenítése</string>
@@ -186,11 +174,9 @@
     <string name="preference_screen_video_settings">Videó beállítások…</string>
     <string name="preference_screen_location_settings">Helymeghatározás beállítások…</string>
     <string name="preference_resolution">Kamera felbontása</string>
-    <string name="preference_resolution_summary">Beállítja a kamera által készített képek felbontását</string>
     <string name="preference_quality">Képminőség</string>
-    <string name="preference_quality_summary">Beállítja, hogy a képek milyen JPEG minőséggel legyenek elmentve (ajánlott érték 90%%)</string> <!-- '%' is encoded as '%%' - a single % can crash devices, and this isn't picked up by Android Lint! -->
+    <string name="preference_quality_summary">Beállítja, hogy a képek milyen JPEG minőséggel legyenek elmentve (ajánlott érték 90%%)\n%s</string> <!-- '%' is encoded as '%%' - a single % can crash devices, and this isn't picked up by Android Lint! -->
     <string name="preference_raw">RAW</string>
-    <string name="preference_raw_summary">Mentsen-e RAW (DNG) formátumban</string>
     <string name="preference_location">Helyadatok eltárolása (geotaggelés)</string>
     <string name="preference_location_summary">Eltárolja a GPS helyadatot a fotóban/videóban</string>
     <string name="preference_gps_direction">Irány eltárolása</string>
@@ -198,13 +184,10 @@
     <string name="preference_require_location">Helyadatok megkövetelése</string>
     <string name="preference_require_location_summary">Ha a helymeghatározás engedélyezve van, csak akkor enged fotózni/videózni, ha a helyadat rendelkezésre áll</string>
     <string name="preference_stamp">Fotók feliratozása</string>
-    <string name="preference_stamp_summary">A fotók feliratozása dátum- és időbélyeggel, valamint GPS információval, ha a hely/irány adat elérhető</string>
+    <string name="preference_stamp_summary">A fotók feliratozása dátum- és időbélyeggel, valamint GPS információval, ha a hely/irány adat elérhető\n%s</string>
     <string name="preference_stamp_dateformat">Dátumbélyeg formátum</string>
-    <string name="preference_stamp_dateformat_summary">Add meg a dátumbélyeg formátumát (ha engedélyezve van)</string>
     <string name="preference_stamp_timeformat">Időbélyeg formátum</string>
-    <string name="preference_stamp_timeformat_summary">Add meg az időbélyeg formátumát (ha engedélyezve van)</string>
     <string name="preference_stamp_gpsformat">GPS bélyeg formátum</string>
-    <string name="preference_stamp_gpsformat_summary">Add meg a GPS-bélyegző formátumát (ha engedélyezve van)</string>
     <string name="preference_textstamp">Egyéni szöveg</string>
     <string name="preference_textstamp_summary">Képek feliratozása egyéni szöveggel</string>
     <string name="preference_stamp_fontsize">Betűméret</string>
@@ -216,27 +199,26 @@
     <string name="preference_background_photo_saving">Háttérszál használata</string>
     <string name="preference_background_photo_saving_summary">A fotók mentése háttérben futó programszálon (gyorsabb műveletek)</string>
     <string name="video_quality">Videó felbontása</string>
-    <string name="video_quality_summary">Videók felbontásának beállítása</string>
     <string name="preference_force_video_4k">4K UHD videó kényszerítése (csak egyes eszközökön működik)</string>
     <string name="preference_force_video_4k_summary">3840x2160 felbontású videofelvétel engedélyezése hátlapi kamerával - ez a lehetőség egy trükk, ami lehetővé teheti a 4K videózást olyan 4K-s eszközökön amelyek nem kínálják fel ezt a lehetőséget a nem gyári kamera alkalmazásoknak. Nem biztos, hogy működik, használat előtt próbáld ki.</string>
     <string name="preference_video_stabilization">Videó stabilizáció engedélyezése</string>
     <string name="preference_video_stabilization_summary">A videó stabilizálása csökkenti a kamera mozgásából származó remegést az előnézeten és a felvett videón.</string>
     <string name="preference_video_bitrate">Videó bitráta (nagyjából)</string>
-    <string name="preference_video_bitrate_summary">A videók hozzávetőleges bitrátájának beállítása (a magasabb jobb minőséget jelent, de több tárhelyet foglal; ha a bitráta nem támogatott, sikertelen lehet a felvétel)</string>
+    <string name="preference_video_bitrate_summary">A videók hozzávetőleges bitrátájának beállítása (a magasabb jobb minőséget jelent, de több tárhelyet foglal; ha a bitráta nem támogatott, sikertelen lehet a felvétel)\n%s</string>
     <string name="preference_video_fps">Videó képkockaszám (nagyjából)</string>
-    <string name="preference_video_fps_summary">A videók képkockasebességének (FPS) beállítása (hozzávetőleges, az elérése nem garantálható és ha a képkockaszám nem támogatott, sikertelen lehet a felvétel)</string>
+    <string name="preference_video_fps_summary">A videók képkockasebességének (FPS) beállítása (hozzávetőleges, az elérése nem garantálható és ha a képkockaszám nem támogatott, sikertelen lehet a felvétel)\n%s</string>
     <string name="preference_video_max_duration">Videó maximális időtartama</string>
-    <string name="preference_video_max_duration_summary">A videofelvétel leáll a megadott idő után</string>
+    <string name="preference_video_max_duration_summary">A videofelvétel leáll a megadott idő után\n%s</string>
     <string name="preference_video_restart">Újraindítás a maximális időtartam után</string>
-    <string name="preference_video_restart_summary">Ha a videó elérte a maximális időtartamot (ha be lett állítva) és megállt, újraindítja a felvételt a megadott számú alkalommal</string>
+    <string name="preference_video_restart_summary">Ha a videó elérte a maximális időtartamot (ha be lett állítva) és megállt, újraindítja a felvételt a megadott számú alkalommal\n%s</string>
     <string name="preference_video_max_filesize">Videó maximális fáljmérete</string>
-    <string name="preference_video_max_filesize_summary">A felvétel leáll és/vagy újraindul (lásd a beállítást alább), ha (nagyjából) elérte a maximális fájlméretet. Megjegyezzük, hogy az Androidos eszközökön korlátozott a videofájlok mérete (általában 2GB vagy 4GB körül), de ez a beállítás lehetővé teszi egyedi érték megadását</string>
+    <string name="preference_video_max_filesize_summary">A felvétel leáll és/vagy újraindul (lásd a beállítást alább), ha (nagyjából) elérte a maximális fájlméretet. Megjegyezzük, hogy az Androidos eszközökön korlátozott a videofájlok mérete (általában 2GB vagy 4GB körül), de ez a beállítás lehetővé teszi egyedi érték megadását\n%s</string>
     <string name="preference_video_restart_max_filesize">Újraindítás a maximális méret után</string>
     <string name="preference_video_restart_max_filesize_summary">Újrainduljon-e a videofelvétel, miután elérte a maximális fájlméretet (az eszközön alapértelmezett, vagy a beállított)</string>
     <string name="preference_record_audio">Hangrögzítés</string>
     <string name="preference_record_audio_summary">Hangrögzítés videofelvétel alatt</string>
     <string name="preference_record_audio_src">Hangforrás</string>
-    <string name="preference_record_audio_src_summary">Hangrögzítésre használandó mikrofon</string>
+    <string name="preference_record_audio_src_summary">Hangrögzítésre használandó mikrofon\n%s</string>
     <string name="preference_record_audio_channels">Hangcsatornák</string>
     <string name="preference_record_audio_channels_summary">Monó vagy sztereó hangfelvétel készítése (sztereó felvételre nem minden eszköz képes)</string>
     <string name="preference_video_flash">Villogás felvétel alatt</string>
@@ -306,9 +288,10 @@
     <string name="dont_show_again">Ne jelenjen meg újra</string>
 
     <string name="photo_mode">Fotómód</string>
-    <string name="photo_mode_standard">Normál</string>
+    <string name="photo_mode_standard">Norma</string> <!-- keep short, as this shows in the popup menu -->
+    <string name="photo_mode_standard_full">Normál</string>
     <string name="photo_mode_hdr">HDR</string>
-    <string name="photo_mode_expo_bracketing">Expozíció {}</string>
+    <string name="photo_mode_expo_bracketing">Expo {}</string> <!-- keep short, as this shows in the popup menu -->
     <string name="photo_mode_expo_bracketing_full">Expozíció sorozat</string>
     <string name="preference_category_stamp">Fotó feliratozás</string>
     <string name="preference_hdr_save_expo">Az összes kép mentése HDR módban</string>
@@ -327,9 +310,9 @@
     <string name="preference_camera2_fake_flash_summary">Engedélyezd, ha a készülék vakuja hibásan működik Camera2 API-val</string>
 
     <string name="preference_expo_bracketing_n_images">Expozíciósorozat</string>
-    <string name="preference_expo_bracketing_n_images_summary">Képek száma az expozíciósorozat módban</string>
+    <string name="preference_expo_bracketing_n_images_summary">Képek száma az expozíciósorozat módban\n%s</string>
     <string name="preference_expo_bracketing_stops">Expozíciósorozat lépésköz</string>
-    <string name="preference_expo_bracketing_stops_summary">Az egyes képek készítése ennyi fényérték eltéréssel</string>
+    <string name="preference_expo_bracketing_stops_summary">Az egyes képek készítése ennyi fényérték eltéréssel\n%s</string>
 
     <string name="seconds_abbreviation">mp</string> <!-- short for seconds -->
 
@@ -352,7 +335,7 @@
     <string name="selfie">Szelfi</string>
 
     <string name="preference_front_camera_mirror">Előlapi kamera tükrözés</string>
-    <string name="preference_front_camera_mirror_summary">Az előlapi kamera használatakor a kép tükrözése.</string>
+    <string name="preference_front_camera_mirror_summary">Az előlapi kamera használatakor a kép tükrözése\n%s</string>
 
     <string name="preference_calibrate_level">Vízszint kalibrálása</string>
     <string name="preference_calibrate_level_summary">Ez a beállítás kalibrálja a készülék gyorsulásmérőjét, így az auto-stabilizálás és a képernyőn megjelenő vízszintező jól fog működni</string>
@@ -369,7 +352,7 @@
     <string name="preference_show_geo_direction_lines">Iránytű irányvonalak megjelenítése</string>
     <string name="preference_show_geo_direction_lines_summary">Irányvonalakat jelenít meg az iránytű alapján</string>
     <string name="preference_video_subtitle">Videó feliratok</string>
-    <string name="preference_video_subtitle_summary">Felirat (.srt) fájl létrehozása dátummal, idővel és GPS szélesség/hosszúság adatokkal</string>
+    <string name="preference_video_subtitle_summary">Felirat (.srt) fájl létrehozása dátummal, idővel és GPS szélesség/hosszúság adatokkal\n%s</string>
 
     <string name="duration_unlimited">Korlátlan</string>
     <string name="duration_3s">3 másodperc</string>
@@ -407,4 +390,110 @@
     <string name="capturing">Rögzítés…</string>
 
     <string name="audio_listener_failed">Nem sikerült elindítani a hangfigyelést</string>
+
+    <string name="preference_video_fps_default">Alapértelmezett</string>
+
+    <string name="preference_raw_no">Csak JPEG</string>
+    <string name="preference_raw_yes">JPEG és DNG (RAW)</string>
+
+    <string name="preference_stamp_dateformat_default">Alapértelmezett</string>
+    <string name="preference_stamp_dateformat_yyyymmdd">éééé-hh-nn</string>
+    <string name="preference_stamp_dateformat_ddmmyyyy">nn/hh/éééé</string>
+    <string name="preference_stamp_dateformat_mmddyyyy">hh/nn/éééé</string>
+    <string name="preference_stamp_dateformat_none">Nincs</string>
+
+    <string name="flash_off">Vaku ki</string>
+    <string name="flash_auto">Vaku automata</string>
+    <string name="flash_on">Vaku be</string>
+    <string name="flash_torch">Zseblámpa</string>
+    <string name="flash_red_eye">Vörös szem</string>
+    <string name="flash_frontscreen_auto">Képernyő vaku automata</string>
+    <string name="flash_frontscreen_on">Képernyő vaku ki</string>
+
+    <string name="preference_record_audio_src_camcorder">Kamkorder</string>
+    <string name="preference_record_audio_src_mic">Külső mikrofon (ha van)</string>
+    <string name="preference_record_audio_src_default">Alapértelmezett hangforrás</string>
+    <string name="preference_record_audio_src_voice_communication">Hangra optimalizált</string>
+
+    <string name="preference_video_bitrate_default">Alapértelmezett</string>
+    <string name="preference_video_bitrate_100000">100kbps</string>
+    <string name="preference_video_bitrate_200000">200kbps</string>
+    <string name="preference_video_bitrate_500000">500kbps</string>
+    <string name="preference_video_bitrate_1000000">1Mbps</string>
+    <string name="preference_video_bitrate_2000000">2Mbps</string>
+    <string name="preference_video_bitrate_3000000">3Mbps</string>
+    <string name="preference_video_bitrate_4000000">4Mbps</string>
+    <string name="preference_video_bitrate_5000000">5Mbps</string>
+    <string name="preference_video_bitrate_6000000">6Mbps</string>
+    <string name="preference_video_bitrate_7000000">7Mbps</string>
+    <string name="preference_video_bitrate_8000000">8Mbps</string>
+    <string name="preference_video_bitrate_9000000">9Mbps</string>
+    <string name="preference_video_bitrate_10000000">10Mbps</string>
+    <string name="preference_video_bitrate_15000000">15Mbps</string>
+    <string name="preference_video_bitrate_20000000">20Mbps</string>
+    <string name="preference_video_bitrate_30000000">30Mbps</string>
+    <string name="preference_video_bitrate_40000000">40Mbps</string>
+    <string name="preference_video_bitrate_50000000">50Mbps</string>
+    <string name="preference_video_bitrate_60000000">60Mbps</string>
+    <string name="preference_video_bitrate_70000000">70Mbps</string>
+    <string name="preference_video_bitrate_80000000">80Mbps</string>
+    <string name="preference_video_bitrate_90000000">90Mbps</string>
+    <string name="preference_video_bitrate_100000000">100Mbps</string>
+
+    <string name="preference_burst_mode_off">Ki</string>
+    <string name="preference_burst_mode_2x">2x</string>
+    <string name="preference_burst_mode_3x">3x</string>
+    <string name="preference_burst_mode_4x">4x</string>
+    <string name="preference_burst_mode_5x">5x</string>
+    <string name="preference_burst_mode_10x">10x</string>
+    <string name="preference_burst_mode_unlimited">Korlátlan</string>
+
+    <string name="preference_burst_interval_no_delay">Nincs késleltetés</string>
+    <string name="preference_burst_interval_1s">1mp</string>
+    <string name="preference_burst_interval_2s">2mp</string>
+    <string name="preference_burst_interval_3s">3mp</string>
+    <string name="preference_burst_interval_5s">5mp</string>
+    <string name="preference_burst_interval_10s">10mp</string>
+    <string name="preference_burst_interval_15s">15mp</string>
+    <string name="preference_burst_interval_20s">20mp</string>
+    <string name="preference_burst_interval_30s">30mp</string>
+    <string name="preference_burst_interval_1m">1p</string>
+    <string name="preference_burst_interval_2m">2p</string>
+    <string name="preference_burst_interval_5m">5p</string>
+    <string name="preference_burst_interval_10m">10p</string>
+    <string name="preference_burst_interval_20m">20p</string>
+    <string name="preference_burst_interval_30m">30p</string>
+    <string name="preference_burst_interval_1h">1ó</string>
+    <string name="preference_burst_interval_2h">2ó</string>
+
+    <string name="preference_video_max_filesize_default">Készülék alapértelmezett</string>
+    <string name="preference_video_max_filesize_100mb">100MB</string>
+    <string name="preference_video_max_filesize_200mb">200MB</string>
+    <string name="preference_video_max_filesize_300mb">300MB</string>
+    <string name="preference_video_max_filesize_500mb">500MB</string>
+    <string name="preference_video_max_filesize_1gb">1GB</string>
+
+    <string name="preference_crop_guide_none">Nincs</string>
+    <string name="preference_crop_guide_1">1 (1:1)</string>
+    <string name="preference_crop_guide_1_25">1.25 (5:4)</string>
+    <string name="preference_crop_guide_1_33">1.33 (4:3)</string>
+    <string name="preference_crop_guide_1_4">1.4 (7:4)</string>
+    <string name="preference_crop_guide_1_5">1.5 (3:2)</string>
+    <string name="preference_crop_guide_1_78">1.78 (16:9)</string>
+    <string name="preference_crop_guide_1_85">1.85 (37:20)</string>
+    <string name="preference_crop_guide_2_33">2.33 (21:9)</string>
+    <string name="preference_crop_guide_2_35">2.35 (47:20)</string>
+    <string name="preference_crop_guide_2_4">2.4 (12:5)</string>
+
+    <string name="preference_audio_noise_control_sensitivity_3">+3 (nagy érzékenység)</string>
+    <string name="preference_audio_noise_control_sensitivity_2">+2</string>
+    <string name="preference_audio_noise_control_sensitivity_1">+1</string>
+    <string name="preference_audio_noise_control_sensitivity_0">0 (alapértelmezett)</string>
+    <string name="preference_audio_noise_control_sensitivity_m1">-1</string>
+    <string name="preference_audio_noise_control_sensitivity_m2">-2</string>
+    <string name="preference_audio_noise_control_sensitivity_m3">-3 (alacsony érzékenység)</string>
+
+    <string name="preference_ui_placement_left">Balkezes felhasználói felület</string>
+    <string name="preference_ui_placement_right">Jobbkezes felhasználói felület</string>
+
 </resources>

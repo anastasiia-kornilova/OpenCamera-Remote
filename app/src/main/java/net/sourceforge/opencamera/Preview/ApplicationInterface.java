@@ -7,13 +7,12 @@ import java.util.List;
 
 import android.content.Context;
 import android.graphics.Canvas;
-import android.hardware.camera2.DngCreator;
 import android.location.Location;
-import android.media.CamcorderProfile;
-import android.media.Image;
 import android.net.Uri;
 import android.util.Pair;
 import android.view.MotionEvent;
+
+import net.sourceforge.opencamera.CameraController.RawImage;
 
 /** Provides communication between the Preview and the rest of the application
  *  - so in theory one can drop the Preview/ (and CameraController/) classes
@@ -38,20 +37,23 @@ public interface ApplicationInterface {
 	boolean useCamera2(); // should Android 5's Camera 2 API be used?
 	Location getLocation(); // get current location - null if not available (or you don't care about geotagging)
 	int createOutputVideoMethod(); // return a VIDEOMETHOD_* value to specify how to create a video file
-	File createOutputVideoFile() throws IOException; // will be called if createOutputVideoUsingSAF() returns VIDEOMETHOD_FILE
-	Uri createOutputVideoSAF() throws IOException; // will be called if createOutputVideoUsingSAF() returns VIDEOMETHOD_SAF
+	File createOutputVideoFile(String extension) throws IOException; // will be called if createOutputVideoUsingSAF() returns VIDEOMETHOD_FILE; extension is the recommended filename extension for the chosen video type
+	Uri createOutputVideoSAF(String extension) throws IOException; // will be called if createOutputVideoUsingSAF() returns VIDEOMETHOD_SAF; extension is the recommended filename extension for the chosen video type
 	Uri createOutputVideoUri(); // will be called if createOutputVideoUsingSAF() returns VIDEOMETHOD_URI
 	// for all of the get*Pref() methods, you can use Preview methods to get the supported values (e.g., getSupportedSceneModes())
 	// if you just want a default or don't really care, see the comments for each method for a default or possible options
 	// if Preview doesn't support the requested setting, it will check this, and choose its own
 	int getCameraIdPref(); // camera to use, from 0 to getCameraControllerManager().getNumberOfCameras()
 	String getFlashPref(); // flash_off, flash_auto, flash_on, flash_torch, flash_red_eye
-	String getFocusPref(boolean is_video); // focus_mode_auto, focus_mode_infinity, focus_mode_macro, focus_mode_locked, focus_mode_fixed, focus_mode_manual2, focus_mode_edof, focus_mode_continuous_video
+	String getFocusPref(boolean is_video); // focus_mode_auto, focus_mode_infinity, focus_mode_macro, focus_mode_locked, focus_mode_fixed, focus_mode_manual2, focus_mode_edof, focus_mode_continuous_picture, focus_mode_continuous_video
 	boolean isVideoPref(); // start up in video mode?
 	String getSceneModePref(); // "auto" for default (strings correspond to Android's scene mode constants in android.hardware.Camera.Parameters)
 	String getColorEffectPref(); // "node" for default (strings correspond to Android's color effect constants in android.hardware.Camera.Parameters)
 	String getWhiteBalancePref(); // "auto" for default (strings correspond to Android's white balance constants in android.hardware.Camera.Parameters)
 	int getWhiteBalanceTemperaturePref();
+	String getAntiBandingPref(); // "auto" for default (strings correspond to Android's antibanding constants in android.hardware.Camera.Parameters)
+	String getEdgeModePref(); // CameraController.EDGE_MODE_DEFAULT for device default, or "off", "fast", "high_quality"
+	String getCameraNoiseReductionModePref(); // CameraController.NOISE_REDUCTION_MODE_DEFAULT for device default, or "off", "minimal", "fast", "high_quality"
 	String getISOPref(); // "auto" for auto-ISO, otherwise a numerical value; see documentation for Preview.supportsISORange().
 	int getExposureCompensationPref(); // 0 for default
 	Pair<Integer, Integer> getCameraResolutionPref(); // return null to let Preview choose size
@@ -60,8 +62,12 @@ public interface ApplicationInterface {
 	String getVideoQualityPref(); // should be one of Preview.getSupportedVideoQuality() (use Preview.getCamcorderProfile() or Preview.getCamcorderProfileDescription() for details); or return "" to let Preview choose quality
 	boolean getVideoStabilizationPref(); // whether to use video stabilization for video
 	boolean getForce4KPref(); // whether to force 4K mode - experimental, only really available for some devices that allow 4K recording but don't return it as an available resolution - not recommended for most uses
+	String getRecordVideoOutputFormatPref(); // preference_video_output_format_default, preference_video_output_format_mpeg4_h264, preference_video_output_format_mpeg4_hevc, preference_video_output_format_3gpp, preference_video_output_format_webm
 	String getVideoBitratePref(); // return "default" to let Preview choose
-	String getVideoFPSPref(); // return "default" to let Preview choose
+	String getVideoFPSPref(); // return "default" to let Preview choose; if getVideoCaptureRateFactor() returns a value other than 1.0, this is the capture fps; the resultant video's fps will be getVideoFPSPref()*getVideoCaptureRateFactor()
+    float getVideoCaptureRateFactor(); // return 1.0f for standard operation, less than 1.0 for slow motion, more than 1.0 for timelapse; consider using a higher fps for slow motion, see getVideoFPSPref()
+	boolean useVideoLogProfile(); // whether to use a log profile for video mode
+	float getVideoLogProfileStrength(); // strength of the log profile for video mode, if useVideoLogProfile() returns true
 	long getVideoMaxDurationPref(); // time in ms after which to automatically stop video recording (return 0 for off)
 	int getVideoRestartTimesPref(); // number of times to restart video recording after hitting max duration (return 0 for never auto-restarting)
 	VideoMaxFileSize getVideoMaxFileSizePref() throws NoFreeStorageException; // see VideoMaxFileSize class for details
@@ -83,7 +89,7 @@ public interface ApplicationInterface {
 	boolean getRequireLocationPref(); // if getGeotaggingPref() returns true, and this method returns true, then phot/video will only be taken if location data is available
 	boolean getRecordAudioPref(); // whether to record audio when recording video
 	String getRecordAudioChannelsPref(); // either "audio_default", "audio_mono" or "audio_stereo"
-	String getRecordAudioSourcePref(); // "audio_src_camcorder" is recommended, but other options are: "audio_src_mic", "audio_src_default", "audio_src_voice_communication"; see corresponding values in android.media.MediaRecorder.AudioSource
+	String getRecordAudioSourcePref(); // "audio_src_camcorder" is recommended, but other options are: "audio_src_mic", "audio_src_default", "audio_src_voice_communication", "audio_src_unprocessed" (unprocessed required Android 7+); see corresponding values in android.media.MediaRecorder.AudioSource
 	int getZoomPref(); // index into Preview.getSupportedZoomRatios() array (each entry is the zoom factor, scaled by 100; array is sorted from min to max zoom)
 	double getCalibratedLevelAngle(); // set to non-zero to calibrate the accelerometer used for the level angles
 
@@ -95,17 +101,36 @@ public interface ApplicationInterface {
 	public boolean getHttpServerPref();
 	// Andy Modla end block
 
+	boolean canTakeNewPhoto(); // whether taking new photos is allowed (e.g., can return false if queue for processing images would become full)
+	boolean imageQueueWouldBlock(int n_raw, int n_jpegs); // called during some burst operations, whether we can allow taking the supplied number of extra photos
 	// Camera2 only modes:
 	long getExposureTimePref(); // only called if getISOPref() is not "default"
-	float getFocusDistancePref();
+	float getFocusDistancePref(boolean is_target_distance);
 	boolean isExpoBracketingPref(); // whether to enable burst photos with expo bracketing
     int getExpoBracketingNImagesPref(); // how many images to take for exposure bracketing
     double getExpoBracketingStopsPref(); // stops per image for exposure bracketing
+    int getFocusBracketingNImagesPref(); // how many images to take for focus bracketing
+	boolean getFocusBracketingAddInfinityPref(); // whether to include an additional image at infinite focus distance, for focus bracketing
+	boolean isFocusBracketingPref(); // whether to enable burst photos with focus bracketing
+	boolean isCameraBurstPref(); // whether to shoot the camera in burst mode (n.b., not the same as the "auto-repeat" mode)
+	int getBurstNImages(); // only relevant if isCameraBurstPref() returns true; see CameraController doc for setBurstNImages().
+	boolean getBurstForNoiseReduction(); // only relevant if isCameraBurstPref() returns true; see CameraController doc for setBurstForNoiseReduction().
+	enum NRModePref {
+		NRMODE_NORMAL,
+		NRMODE_LOW_LIGHT
+	}
+	NRModePref getNRModePref(); // only relevant if getBurstForNoiseReduction() returns true
 	boolean getOptimiseAEForDROPref(); // see CameraController doc for setOptimiseAEForDRO().
-	boolean isCameraBurstPref(); // whether to shoot the camera in burst mode (n.b., not the same as the "auto-repeat" burst)
-	boolean isRawPref(); // whether to enable RAW photos
+	enum RawPref {
+		RAWPREF_JPEG_ONLY, // JPEG only
+		RAWPREF_JPEG_DNG // JPEG and RAW (DNG)
+	}
+	RawPref getRawPref(); // whether to enable RAW photos
+	int getMaxRawImages(); // see documentation of CameraController.setRaw(), corresponds to max_raw_images
 	boolean useCamera2FakeFlash(); // whether to enable CameraController.setUseCamera2FakeFlash() for Camera2 API
 	boolean useCamera2FastBurst(); // whether to enable Camera2's captureBurst() for faster taking of expo-bracketing photos (generally should be true, but some devices have problems with captureBurst())
+	boolean usePhotoVideoRecording(); // whether to enable support for taking photos when recording video (if not supported, this won't be called)
+	boolean isPreviewInBackground(); // if true, then Preview can disable real-time effects (e.g., computing histogram)
 
 	// for testing purposes:
 	boolean isTestAlwaysFocus(); // if true, pretend autofocus always successful
@@ -122,8 +147,8 @@ public interface ApplicationInterface {
 	void onPhotoError(); // callback for failing to take a photo
 	void onVideoInfo(int what, int extra); // callback for info when recording video (see MediaRecorder.OnInfoListener)
 	void onVideoError(int what, int extra); // callback for errors when recording video (see MediaRecorder.OnErrorListener)
-	void onVideoRecordStartError(CamcorderProfile profile); // callback for video recording failing to start
-	void onVideoRecordStopError(CamcorderProfile profile); // callback for video recording being corrupted
+	void onVideoRecordStartError(VideoProfile profile); // callback for video recording failing to start
+	void onVideoRecordStopError(VideoProfile profile); // callback for video recording being corrupted
 	void onFailedReconnectError(); // failed to reconnect camera after stopping video recording
 	void onFailedCreateVideoFileError(); // callback if unable to create file for recording video
 	void hasPausedPreview(boolean paused); // called when the preview is paused or unpaused (due to getPausePreviewPref())
@@ -133,7 +158,6 @@ public interface ApplicationInterface {
 	void timerBeep(long remaining_time); // n.b., called once per second on timer countdown - so application can beep, or do whatever it likes
 
 	// methods that request actions
-	void layoutUI(); // application should layout UI that's on top of the preview
 	void multitouchZoom(int new_zoom); // indicates that the zoom has changed due to multitouch gesture on preview
 	// the set/clear*Pref() methods are called if Preview decides to override the requested pref (because Camera device doesn't support requested pref) (clear*Pref() is called if the feature isn't supported at all)
 	// the application can use this information to update its preferences
@@ -156,18 +180,20 @@ public interface ApplicationInterface {
 	void setVideoQualityPref(String video_quality);
 	void setZoomPref(int zoom);
 	void requestCameraPermission(); // for Android 6+: called when trying to open camera, but CAMERA permission not available
+	boolean needsStoragePermission(); // return true if the preview should call requestStoragePermission() if WRITE_EXTERNAL_STORAGE not available (i.e., if the application needs storage permission, e.g., to save photos)
 	void requestStoragePermission(); // for Android 6+: called when trying to open camera, but WRITE_EXTERNAL_STORAGE permission not available
 	void requestRecordAudioPermission(); // for Android 6+: called when switching to (or starting up in) video mode, but RECORD_AUDIO permission not available
 	// Camera2 only modes:
 	void setExposureTimePref(long exposure_time);
 	void clearExposureTimePref();
-	void setFocusDistancePref(float focus_distance);
+	void setFocusDistancePref(float focus_distance, boolean is_target_distance);
 	
 	// callbacks
 	void onDrawPreview(Canvas canvas);
 	boolean onPictureTaken(byte [] data, Date current_date);
 	boolean onBurstPictureTaken(List<byte []> images, Date current_date);
-	boolean onRawPictureTaken(DngCreator dngCreator, Image image, Date current_date);
+	boolean onRawPictureTaken(RawImage raw_image, Date current_date);
+	boolean onRawBurstPictureTaken(List<RawImage> raw_images, Date current_date);
 	void onCaptureStarted(); // called immediately before we start capturing the picture
 	void onPictureCompleted(); // called after all picture callbacks have been called and returned
 	void onContinuousFocusMove(boolean start); // called when focusing starts/stop in continuous picture mode (in photo mode only)

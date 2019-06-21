@@ -2,57 +2,177 @@
 #pragma rs java_package_name(net.sourceforge.opencamera)
 #pragma rs_fp_relaxed
 
+//rs_allocation bitmap_avg;
 rs_allocation bitmap_new;
 
+rs_allocation bitmap_align_new;
+
+//rs_allocation allocation_diffs;
+
 int offset_x_new = 0, offset_y_new = 0;
+int scale_align_size = 1;
 float avg_factor = 1.0f;
 float wiener_C = 1024.0f;
+float wiener_C_cutoff = 1024.0f;
+//float max_weight = 1.0f;
+
+float __attribute__((kernel)) compute_diff(uchar4 pixel_avg, uint32_t x, uint32_t y) {
+    int32_t ix = x;
+    int32_t iy = y;
+    uchar4 pixel_new;
+
+    if( ix+offset_x_new >= 0 && iy+offset_y_new >= 0 && ix+offset_x_new < rsAllocationGetDimX(bitmap_align_new) && iy+offset_y_new < rsAllocationGetDimY(bitmap_align_new) ) {
+        pixel_new = rsGetElementAt_uchar4(bitmap_align_new, x+offset_x_new, y+offset_y_new);
+    }
+    else {
+        return 0.0f;
+    }
+    float3 pixel_avg_f = convert_float3(pixel_avg.rgb);
+    float3 pixel_new_f = convert_float3(pixel_new.rgb);
+    float3 diff = pixel_avg_f - pixel_new_f;
+    float L = dot(diff, diff);
+    return L;
+}
 
 float3 __attribute__((kernel)) avg_f(float3 pixel_avg_f, uint32_t x, uint32_t y) {
     int32_t ix = x;
     int32_t iy = y;
     uchar4 pixel_new;
 
-	if( ix+offset_x_new >= 0 && iy+offset_y_new >= 0 && ix+offset_x_new < rsAllocationGetDimX(bitmap_new) && iy+offset_y_new < rsAllocationGetDimY(bitmap_new) ) {
-    	pixel_new = rsGetElementAt_uchar4(bitmap_new, x+offset_x_new, y+offset_y_new);
-	}
-	else {
-	    return pixel_avg_f;
-	    //return convert_float3(pixel_avg.rgb);
-	    //return convert_uchar4(pixel_avg);
-	}
+    if( ix+offset_x_new >= 0 && iy+offset_y_new >= 0 && ix+offset_x_new < rsAllocationGetDimX(bitmap_new) && iy+offset_y_new < rsAllocationGetDimY(bitmap_new) ) {
+        pixel_new = rsGetElementAt_uchar4(bitmap_new, x+offset_x_new, y+offset_y_new);
+    }
+    else {
+        return pixel_avg_f;
+        //return convert_float3(pixel_avg.rgb);
+        //return convert_uchar4(pixel_avg);
+    }
 
     float3 pixel_new_f = convert_float3(pixel_new.rgb);
 
+    // undo gamma correction
+    //pixel_new_f = powr(pixel_new_f/255.0f, 2.2f) * 255.0f;
+
     {
         // temporal merging
-        //const float C = 32.0f*32.0f;
+        // smaller value of wiener_C means stronger filter (i.e., less averaging)
+
+        // diff based on rgb
         float3 diff = pixel_avg_f - pixel_new_f;
         float L = dot(diff, diff);
-        /*if( L > C ) {
-            // error too large, so no contribution for new image pixel
-            return pixel_avg_f;
+
+        // diff based on neighbourhood
+        /*float L = 0.0f;
+        const int radius = 0;
+        if( ix-radius >= 0 && ix+radius < rsAllocationGetDimX(bitmap_new) &&
+            iy-radius >= 0 && iy+radius < rsAllocationGetDimY(bitmap_new) &&
+            ix+offset_x_new-radius >= 0 && ix+offset_x_new+radius < rsAllocationGetDimX(bitmap_new) &&
+            iy+offset_y_new-radius >= 0 && iy+offset_y_new+radius < rsAllocationGetDimY(bitmap_new) ) {
+            for(int cy=iy-radius;cy<=iy+radius;cy++) {
+                for(int cx=ix-radius;cx<=ix+radius;cx++) {
+                    //uchar4 this_pixel_avg = rsGetElementAt_uchar4(bitmap_avg, cx, cy);
+                    float3 this_pixel_avg = rsGetElementAt_float3(bitmap_avg, cx, cy);
+                    uchar4 this_pixel_new = rsGetElementAt_uchar4(bitmap_new, cx+offset_x_new, cy+offset_y_new);
+                    float3 this_diff = this_pixel_avg - convert_float3(this_pixel_new.rgb);
+                    //float3 this_diff = pixel_avg_f - convert_float3(this_pixel_new.rgb);
+                    //float3 this_diff = pixel_avg_f - pixel_new_f;
+                    float this_L = dot(this_diff, this_diff);
+                    L += this_L;
+                }
+            }
+            const int size = 2*radius+1;
+            L /= (size*size);
+        }
+        else {
+            float3 diff = pixel_avg_f - pixel_new_f;
+            L = dot(diff, diff);
         }*/
-        float weight = L/(L+wiener_C);
+
+        // diff based on compute_diff (separate pass on scaled down alignment bitmaps)
+        //int align_x = x/scale_align_size;
+        //int align_y = y/scale_align_size;
+        //float L = rsGetElementAt_float(allocation_diffs, align_x, align_y);
+
+        // debug mode: only works if limited to 2 images being merged
+        /*L = sqrt(L);
+        L = fmin(L, 255.0f);
+        pixel_new_f.r = L;
+        pixel_new_f.g = L;
+        pixel_new_f.b = L;
+        return pixel_new_f;*/
+
+        // diff based on luminance
+        /*float value_avg = fmax(pixel_avg_f.r, pixel_avg_f.g);
+        value_avg = fmax(value_avg, pixel_avg_f.b);
+        float value_new = fmax(pixel_new_f.r, pixel_new_f.g);
+        value_new = fmax(value_new, pixel_new_f.b);
+        float diff = value_avg - value_new;
+        float L = 3.0f*diff*diff;*/
+        //L = 0.0f; // test no wiener filter
+
+        /*float value_avg = fmax(pixel_avg_f.r, pixel_avg_f.g);
+        value_avg = fmax(value_avg, pixel_avg_f.b);
+        float value_new = fmax(pixel_new_f.r, pixel_new_f.g);
+        value_new = fmax(value_new, pixel_new_f.b);
+        //float value = 0.5f*(value_avg + value_new)/127.5f;
+        float value = 0.5f*(value_avg + value_new);
+        value = fmax(value, 8.0f);
+        value = fmin(value, 32.0f);
+        value /= 32.0f;*/
+        //float value = 1.0f;
+
+        // relative scaling:
+        /*float value_avg = fmax(pixel_avg_f.r, pixel_avg_f.g);
+        value_avg = fmax(value_avg, pixel_avg_f.b);
+        float value_new = fmax(pixel_new_f.r, pixel_new_f.g);
+        value_new = fmax(value_new, pixel_new_f.b);
+        float value = 0.5*(value_avg + value_new);
+        //float value = fmax(value_avg, value_new);
+        value = fmax(value, 64.0f);
+        L *= 64.0f/value;
+        //float L_scale = 64.0f/value;
+        //L *= L_scale*L_scale;
+        */
+
+        //L = 0.0f; // test no deghosting
+        if( L > wiener_C_cutoff ) {
+            // error too large, so no contribution for new image pixel
+            // reduces ghosting in: testAvg13, testAvg25, testAvg26, testAvg29, testAvg31
+            return pixel_avg_f;
+        }
+        float weight = L/(L+wiener_C); // lower weight means more averaging
         pixel_new_f = weight * pixel_avg_f + (1.0-weight) * pixel_new_f;
+
+        /*float weight = L/(L+wiener_C); // lower weight means more averaging
+        weight = fmin(weight, max_weight);
+        if( L > wiener_C_cutoff ) {
+            // error too large, so no contribution for new image pixel
+            // reduces ghosting in: testAvg13, testAvg25, testAvg26, testAvg29, testAvg31
+            weight = max_weight;
+        }
+        pixel_new_f = weight * pixel_avg_f + (1.0-weight) * pixel_new_f;*/
     }
 
     pixel_avg_f = (avg_factor*pixel_avg_f + pixel_new_f)/(avg_factor+1.0f);
 
-	/*uchar4 out;
+    /*uchar4 out;
     out.r = (uchar)clamp(pixel_avg_f.r+0.5f, 0.0f, 255.0f);
     out.g = (uchar)clamp(pixel_avg_f.g+0.5f, 0.0f, 255.0f);
     out.b = (uchar)clamp(pixel_avg_f.b+0.5f, 0.0f, 255.0f);
     out.a = 255;
 
-	return out;*/
-	return pixel_avg_f;
+    return out;*/
+    return pixel_avg_f;
 }
 
 float3 __attribute__((kernel)) avg(uchar4 pixel_avg, uint32_t x, uint32_t y) {
     float3 pixel_avg_f = convert_float3(pixel_avg.rgb);
     return avg_f(pixel_avg_f, x, y);
 }
+
+/*float3 __attribute__((kernel)) convert_to_f(uchar4 pixel_avg, uint32_t x, uint32_t y) {
+    return convert_float3(pixel_avg.rgb);
+}*/
 
 rs_allocation bitmap1;
 rs_allocation bitmap2;
@@ -72,13 +192,13 @@ int offset_x7 = 0, offset_y7 = 0;
 
 static uchar4 read_aligned_pixel(rs_allocation bitmap, int32_t ix, int32_t iy, int offset_x, int offset_y, uchar4 def) {
     uchar4 out;
-	if( ix+offset_x >= 0 && iy+offset_y >= 0 && ix+offset_x < rsAllocationGetDimX(bitmap) && iy+offset_y < rsAllocationGetDimY(bitmap) ) {
-    	out = rsGetElementAt_uchar4(bitmap, ix+offset_x, iy+offset_y);
-	}
-	else {
-    	out = def;
-	}
-	return out;
+    if( ix+offset_x >= 0 && iy+offset_y >= 0 && ix+offset_x < rsAllocationGetDimX(bitmap) && iy+offset_y < rsAllocationGetDimY(bitmap) ) {
+        out = rsGetElementAt_uchar4(bitmap, ix+offset_x, iy+offset_y);
+    }
+    else {
+        out = def;
+    }
+    return out;
 }
 
 uchar4 __attribute__((kernel)) avg_multi(uchar4 in, uint32_t x, uint32_t y) {
@@ -93,22 +213,22 @@ uchar4 __attribute__((kernel)) avg_multi(uchar4 in, uint32_t x, uint32_t y) {
     uchar4 pixel6 = read_aligned_pixel(bitmap6, ix, iy, offset_x6, offset_y6, in);
     uchar4 pixel7 = read_aligned_pixel(bitmap7, ix, iy, offset_x7, offset_y7, in);
 
-	float3 result = convert_float3(pixel0.rgb);
-	result += convert_float3(pixel1.rgb);
-	result += convert_float3(pixel2.rgb);
-	result += convert_float3(pixel3.rgb);
-	result += convert_float3(pixel4.rgb);
-	result += convert_float3(pixel5.rgb);
-	result += convert_float3(pixel6.rgb);
-	result += convert_float3(pixel7.rgb);
+    float3 result = convert_float3(pixel0.rgb);
+    result += convert_float3(pixel1.rgb);
+    result += convert_float3(pixel2.rgb);
+    result += convert_float3(pixel3.rgb);
+    result += convert_float3(pixel4.rgb);
+    result += convert_float3(pixel5.rgb);
+    result += convert_float3(pixel6.rgb);
+    result += convert_float3(pixel7.rgb);
 
-	result /= 8.0f;
+    result /= 8.0f;
 
-	uchar4 out;
+    uchar4 out;
     out.r = (uchar)clamp(result.r+0.5f, 0.0f, 255.0f);
     out.g = (uchar)clamp(result.g+0.5f, 0.0f, 255.0f);
     out.b = (uchar)clamp(result.b+0.5f, 0.0f, 255.0f);
     out.a = 255;
 
-	return out;
+    return out;
 }

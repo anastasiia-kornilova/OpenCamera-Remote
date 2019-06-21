@@ -11,9 +11,9 @@ android {
         minSdkVersion 15
         targetSdkVersion 28
 
-		renderscriptTargetApi 20
-		//renderscriptSupportModeEnabled true // don't use support library as it bloats the APK, and we don't need pre-4.4 support
-		//need build tools higher than 20 at least to support ScriptIntrinsicHistogram
+        renderscriptTargetApi 20
+        //renderscriptSupportModeEnabled true // don't use support library as it bloats the APK, and we don't need pre-4.4 support
+        //need build tools higher than 20 at least to support ScriptIntrinsicHistogram
 
         testApplicationId "net.sourceforge.opencamera.test"
         testInstrumentationRunner "android.test.InstrumentationTestRunner"
@@ -35,10 +35,15 @@ android {
     lintOptions {
         checkReleaseBuilds false
     }
+
+    // needed to use android.test package (ActivityInstrumentationTestCase2 etc) when targetting sdk 28 (Android 9) -
+    // see https://developer.android.com/training/testing/set-up-project
+    useLibrary 'android.test.runner'
+    useLibrary 'android.test.base'
+    //useLibrary 'android.test.mock'
 }
 
 dependencies {
-    //compile 'com.android.support:support-v4:25.3.1'
     implementation 'com.android.support:support-v4:28.0.0'
     // oscP5.jar used for receiving broadcast messages over UDP
     implementation files('libs/oscP5.jar')

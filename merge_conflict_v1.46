@@ -1,0 +1,69 @@
+andym@LAPTOP-I0EHPF62 MINGW64 /f/data/projects/android/u-ajavamind-opencamera (master)
+$ git pull https://git.code.sf.net/p/opencamera/code v1.46
+remote: Enumerating objects: 14545, done.
+remote: Counting objects: 100% (13778/13778), done.
+remote: Compressing objects: 100% (6177/6177), done.
+Receiving objects:  9remote: Total 13409 (delta 6598), reused 9001 (delta 4260)
+Receiving objects: 100% (13409/13409), 2.14 MiB | 2.86 MiB/s, done.
+Resolving deltas: 100% (6598/6598), completed with 109 local objects.
+From https://git.code.sf.net/p/opencamera/code
+ * tag                 v1.46      -> FETCH_HEAD
+warning: Cannot merge binary files: app/src/main/res/mipmap-xxxhdpi/ic_launcher.png (HEAD vs. 2a21f3f8e910736c601c6e20ba36193a48a8b2a0)
+warning: Cannot merge binary files: app/src/main/res/mipmap-xxhdpi/ic_launcher.png (HEAD vs. 2a21f3f8e910736c601c6e20ba36193a48a8b2a0)
+warning: Cannot merge binary files: app/src/main/res/mipmap-xhdpi/ic_launcher.png (HEAD vs. 2a21f3f8e910736c601c6e20ba36193a48a8b2a0)
+warning: Cannot merge binary files: app/src/main/res/mipmap-mdpi/ic_launcher.png (HEAD vs. 2a21f3f8e910736c601c6e20ba36193a48a8b2a0)
+warning: Cannot merge binary files: app/src/main/res/mipmap-hdpi/ic_launcher.png (HEAD vs. 2a21f3f8e910736c601c6e20ba36193a48a8b2a0)
+Auto-merging gradle/wrapper/gradle-wrapper.properties
+CONFLICT (content): Merge conflict in gradle/wrapper/gradle-wrapper.properties
+Auto-merging build.gradle
+CONFLICT (content): Merge conflict in build.gradle
+Auto-merging app/src/main/res/xml/preferences.xml
+CONFLICT (content): Merge conflict in app/src/main/res/xml/preferences.xml
+Auto-merging app/src/main/res/values/strings.xml
+CONFLICT (content): Merge conflict in app/src/main/res/values/strings.xml
+Auto-merging app/src/main/res/values/arrays.xml
+Auto-merging app/src/main/res/values-sl/arrays.xml
+Auto-merging app/src/main/res/values-ru/arrays.xml
+Auto-merging app/src/main/res/values-pt-rPT/arrays.xml
+Auto-merging app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+CONFLICT (add/add): Merge conflict in app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+Auto-merging app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+CONFLICT (content): Merge conflict in app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+Auto-merging app/src/main/res/mipmap-xhdpi/ic_launcher.png
+CONFLICT (content): Merge conflict in app/src/main/res/mipmap-xhdpi/ic_launcher.png
+Auto-merging app/src/main/res/mipmap-mdpi/ic_launcher.png
+CONFLICT (content): Merge conflict in app/src/main/res/mipmap-mdpi/ic_launcher.png
+Auto-merging app/src/main/res/mipmap-hdpi/ic_launcher.png
+CONFLICT (content): Merge conflict in app/src/main/res/mipmap-hdpi/ic_launcher.png
+Removing app/src/main/res/drawable-mdpi/gallery.png
+Auto-merging app/src/main/java/net/sourceforge/opencamera/UI/MainUI.java
+Auto-merging app/src/main/java/net/sourceforge/opencamera/UI/DrawPreview.java
+CONFLICT (content): Merge conflict in app/src/main/java/net/sourceforge/opencamera/UI/DrawPreview.java
+Auto-merging app/src/main/java/net/sourceforge/opencamera/StorageUtils.java
+CONFLICT (content): Merge conflict in app/src/main/java/net/sourceforge/opencamera/StorageUtils.java
+Auto-merging app/src/main/java/net/sourceforge/opencamera/Preview/Preview.java
+CONFLICT (content): Merge conflict in app/src/main/java/net/sourceforge/opencamera/Preview/Preview.java
+Auto-merging app/src/main/java/net/sourceforge/opencamera/Preview/ApplicationInterface.java
+CONFLICT (content): Merge conflict in app/src/main/java/net/sourceforge/opencamera/Preview/ApplicationInterface.java
+Auto-merging app/src/main/java/net/sourceforge/opencamera/PreferenceKeys.java
+CONFLICT (content): Merge conflict in app/src/main/java/net/sourceforge/opencamera/PreferenceKeys.java
+Auto-merging app/src/main/java/net/sourceforge/opencamera/MyPreferenceFragment.java
+CONFLICT (content): Merge conflict in app/src/main/java/net/sourceforge/opencamera/MyPreferenceFragment.java
+Auto-merging app/src/main/java/net/sourceforge/opencamera/MyDebug.java
+CONFLICT (content): Merge conflict in app/src/main/java/net/sourceforge/opencamera/MyDebug.java
+Auto-merging app/src/main/java/net/sourceforge/opencamera/MyApplicationInterface.java
+CONFLICT (content): Merge conflict in app/src/main/java/net/sourceforge/opencamera/MyApplicationInterface.java
+Auto-merging app/src/main/java/net/sourceforge/opencamera/MainActivity.java
+CONFLICT (content): Merge conflict in app/src/main/java/net/sourceforge/opencamera/MainActivity.java
+Auto-merging app/src/main/java/net/sourceforge/opencamera/ImageSaver.java
+Auto-merging app/src/main/java/net/sourceforge/opencamera/CameraController/CameraController2.java
+CONFLICT (content): Merge conflict in app/src/main/java/net/sourceforge/opencamera/CameraController/CameraController2.java
+Auto-merging app/src/main/java/net/sourceforge/opencamera/CameraController/CameraController1.java
+Auto-merging app/src/main/AndroidManifest.xml
+CONFLICT (content): Merge conflict in app/src/main/AndroidManifest.xml
+Auto-merging app/build.gradle
+CONFLICT (content): Merge conflict in app/build.gradle
+Removing _docs/gallery.png
+Automatic merge failed; fix conflicts and then commit the result.
+
+andym@LAPTOP-I0EHPF62 MINGW64 /f/data/projects/android/u-ajavamind-opencamera (master|MERGING)

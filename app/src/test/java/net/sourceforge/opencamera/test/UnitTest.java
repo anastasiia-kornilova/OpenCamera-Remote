@@ -4,6 +4,8 @@ import android.media.CamcorderProfile;
 
 import net.sourceforge.opencamera.CameraController.CameraController;
 import net.sourceforge.opencamera.CameraController.CameraController2;
+import net.sourceforge.opencamera.HDRProcessor;
+import net.sourceforge.opencamera.ImageSaver;
 import net.sourceforge.opencamera.LocationSupplier;
 import net.sourceforge.opencamera.Preview.Preview;
 import net.sourceforge.opencamera.Preview.VideoQualityHandler;
@@ -40,67 +42,67 @@ public class UnitTest {
 
 		String location_string = LocationSupplier.locationToDMS(0.0);
 		Log.d(TAG, "location_string: " + location_string);
-		assertTrue(location_string.equals("0°0'0\""));
+		assertEquals("0°0'0\"", location_string);
 
 		location_string = LocationSupplier.locationToDMS(0.0000306);
 		Log.d(TAG, "location_string: " + location_string);
-		assertTrue(location_string.equals("0°0'0\""));
+		assertEquals("0°0'0\"", location_string);
 
 		location_string = LocationSupplier.locationToDMS(0.000306);
 		Log.d(TAG, "location_string: " + location_string);
-		assertTrue(location_string.equals("0°0'1\""));
+		assertEquals("0°0'1\"", location_string);
 
 		location_string = LocationSupplier.locationToDMS(0.00306);
 		Log.d(TAG, "location_string: " + location_string);
-		assertTrue(location_string.equals("0°0'11\""));
+		assertEquals("0°0'11\"", location_string);
 
 		location_string = LocationSupplier.locationToDMS(0.9999);
 		Log.d(TAG, "location_string: " + location_string);
-		assertTrue(location_string.equals("0°59'59\""));
+		assertEquals("0°59'59\"", location_string);
 
 		location_string = LocationSupplier.locationToDMS(1.7438);
 		Log.d(TAG, "location_string: " + location_string);
-		assertTrue(location_string.equals("1°44'37\""));
+		assertEquals("1°44'37\"", location_string);
 
 		location_string = LocationSupplier.locationToDMS(53.000137);
 		Log.d(TAG, "location_string: " + location_string);
-		assertTrue(location_string.equals("53°0'0\""));
+		assertEquals("53°0'0\"", location_string);
 
 		location_string = LocationSupplier.locationToDMS(147.00938);
 		Log.d(TAG, "location_string: " + location_string);
-		assertTrue(location_string.equals("147°0'33\""));
+		assertEquals("147°0'33\"", location_string);
 
 		location_string = LocationSupplier.locationToDMS(-0.0);
 		Log.d(TAG, "location_string: " + location_string);
-		assertTrue(location_string.equals("0°0'0\""));
+		assertEquals("0°0'0\"", location_string);
 
 		location_string = LocationSupplier.locationToDMS(-0.0000306);
 		Log.d(TAG, "location_string: " + location_string);
-		assertTrue(location_string.equals("0°0'0\""));
+		assertEquals("0°0'0\"", location_string);
 
 		location_string = LocationSupplier.locationToDMS(-0.000306);
 		Log.d(TAG, "location_string: " + location_string);
-		assertTrue(location_string.equals("-0°0'1\""));
+		assertEquals("-0°0'1\"", location_string);
 
 		location_string = LocationSupplier.locationToDMS(-0.00306);
 		Log.d(TAG, "location_string: " + location_string);
-		assertTrue(location_string.equals("-0°0'11\""));
+		assertEquals("-0°0'11\"", location_string);
 
 		location_string = LocationSupplier.locationToDMS(-0.9999);
 		Log.d(TAG, "location_string: " + location_string);
-		assertTrue(location_string.equals("-0°59'59\""));
+		assertEquals("-0°59'59\"", location_string);
 
 		location_string = LocationSupplier.locationToDMS(-1.7438);
 		Log.d(TAG, "location_string: " + location_string);
-		assertTrue(location_string.equals("-1°44'37\""));
+		assertEquals("-1°44'37\"", location_string);
 
 		location_string = LocationSupplier.locationToDMS(-53.000137);
 		Log.d(TAG, "location_string: " + location_string);
-		assertTrue(location_string.equals("-53°0'0\""));
+		assertEquals("-53°0'0\"", location_string);
 
 		location_string = LocationSupplier.locationToDMS(-147.00938);
 		Log.d(TAG, "location_string: " + location_string);
-		assertTrue(location_string.equals("-147°0'33\""));
+		assertEquals("-147°0'33\"", location_string);
 	}
 
 	@Test
@@ -109,7 +111,7 @@ public class UnitTest {
 		SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd", Locale.US);
 		Date date1 = sdf.parse("2017/01/31");
 		assertEquals( TextFormatter.getDateString("preference_stamp_dateformat_none", date1), "" );
-		assertEquals( TextFormatter.getDateString("preference_stamp_dateformat_yyyymmdd", date1), "2017/01/31" );
+		assertEquals( TextFormatter.getDateString("preference_stamp_dateformat_yyyymmdd", date1), "2017-01-31" );
 		assertEquals( TextFormatter.getDateString("preference_stamp_dateformat_ddmmyyyy", date1), "31/01/2017" );
 		assertEquals( TextFormatter.getDateString("preference_stamp_dateformat_mmddyyyy", date1), "01/31/2017" );
 	}
@@ -215,11 +217,11 @@ public class UnitTest {
 		for(int i=0;i<exp_video_quality.size();i++) {
 			Log.d(TAG, "expected video quality: " + exp_video_quality.get(i));
 		}
-		assertTrue( video_quality.size() == exp_video_quality.size() );
+		assertEquals(video_quality.size(), exp_video_quality.size());
 		for(int i=0;i<video_quality.size();i++) {
 			String quality = video_quality.get(i);
 			String exp_quality = exp_video_quality.get(i);
-			assertTrue(quality.equals(exp_quality));
+			assertEquals(quality, exp_quality);
 		}
 	}
 
@@ -407,29 +409,29 @@ public class UnitTest {
 
 		CameraController.Size photo_size1 = Preview.getOptimalVideoPictureSize(sizes, 16.0f/9.0f, max_video_size1);
 		Log.d(TAG, "photo_size1: " + photo_size1.width + " x " + photo_size1.height);
-		assertTrue( photo_size1.equals(new CameraController.Size(3840, 2160)) );
+		assertEquals(new CameraController.Size(3840, 2160), photo_size1);
 
 		CameraController.Size photo_size1b = Preview.getOptimalVideoPictureSize(sizes, 1.0f, max_video_size1);
 		Log.d(TAG, "photo_size1b: " + photo_size1b.width + " x " + photo_size1b.height);
-		assertTrue( photo_size1b.equals(new CameraController.Size(1728, 1728)) );
+		assertEquals(new CameraController.Size(1728, 1728), photo_size1b);
 
 		CameraController.Size photo_size1c = Preview.getOptimalVideoPictureSize(sizes, 4.0f/3.0f, max_video_size1);
 		Log.d(TAG, "photo_size1c: " + photo_size1c.width + " x " + photo_size1c.height);
-		assertTrue( photo_size1c.equals(new CameraController.Size(1440, 1080)) );
+		assertEquals(new CameraController.Size(1440, 1080), photo_size1c);
 
 		CameraController.Size max_video_size2 = new CameraController.Size(1920, 1080);
 
 		CameraController.Size photo_size2 = Preview.getOptimalVideoPictureSize(sizes, 16.0f/9.0f, max_video_size2);
 		Log.d(TAG, "photo_size2: " + photo_size2.width + " x " + photo_size2.height);
-		assertTrue( photo_size2.equals(new CameraController.Size(1920, 1080)) );
+		assertEquals(new CameraController.Size(1920, 1080), photo_size2);
 
 		CameraController.Size photo_size2b = Preview.getOptimalVideoPictureSize(sizes, 1.0f, max_video_size2);
 		Log.d(TAG, "photo_size2b: " + photo_size2b.width + " x " + photo_size2b.height);
-		assertTrue( photo_size2b.equals(new CameraController.Size(1440, 1080)) );
+		assertEquals(new CameraController.Size(1440, 1080), photo_size2b);
 
 		CameraController.Size photo_size2c = Preview.getOptimalVideoPictureSize(sizes, 4.0f/3.0f, max_video_size2);
 		Log.d(TAG, "photo_size2c: " + photo_size2c.width + " x " + photo_size2c.height);
-		assertTrue( photo_size2c.equals(new CameraController.Size(1440, 1080)) );
+		assertEquals(new CameraController.Size(1440, 1080), photo_size2c);
 
 	}
 
@@ -448,6 +450,13 @@ public class UnitTest {
 		assertEquals( 0.5, CameraController2.getScaleForExposureTime(1000000000L/240, fixed_exposure_time, scaled_exposure_time, full_exposure_time_scale), delta );
 	}
 
+	/*@Test
+	public void testExponentialScaling() {
+		Log.d(TAG, "testExponentialScaling");
+		assertEquals(100, (int)MainActivity.exponentialScaling(0.0f, 100, 1600));
+		assertEquals(1600, (int)MainActivity.exponentialScaling(1.0f, 100, 1600));
+	}*/
+
 	@Test
 	public void testFormatLevelAngle() {
 		Log.d(TAG, "testFormatLevelAngle");
@@ -460,5 +469,245 @@ public class UnitTest {
 		assertEquals( "0.0", DrawPreview.formatLevelAngle(-0.0001));
 		assertEquals( "-0.1", DrawPreview.formatLevelAngle(-0.1));
 		assertEquals( "-10.7", DrawPreview.formatLevelAngle(-10.6753));
+	}
+
+	@Test
+	public void testImageSaverQueueSize() {
+		Log.d(TAG, "testImageSaverQueueSize");
+
+		// if any of these values change, review the comments in ImageSaver.getQueueSize().
+
+		assertTrue(ImageSaver.computeQueueSize(64) >= 6);
+
+		assertTrue(ImageSaver.computeQueueSize(128) >= ImageSaver.computeQueueSize(64));
+
+		assertTrue(ImageSaver.computeQueueSize(256) >= ImageSaver.computeQueueSize(128));
+		assertTrue(ImageSaver.computeQueueSize(256) <= 19);
+
+		assertTrue(ImageSaver.computeQueueSize(512) >= ImageSaver.computeQueueSize(256));
+		assertTrue(ImageSaver.computeQueueSize(512) >= 34);
+		assertTrue(ImageSaver.computeQueueSize(512) <= 70);
+	}
+
+	@Test
+	public void testImageSaverRequestCost() {
+		Log.d(TAG, "testImageSaverRequestCost");
+
+		assertTrue( ImageSaver.computeRequestCost(true, 1) > ImageSaver.computeRequestCost(false, 1));
+		assertEquals( ImageSaver.computeRequestCost(false, 3), 3*ImageSaver.computeRequestCost(false, 1));
+
+	}
+
+	private static class float4 {
+		final float r, g, b, a;
+
+		float4(float r, float g, float b, float a) {
+			this.r = r;
+			this.g = g;
+			this.b = b;
+			this.a = a;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if( !(o instanceof float4) )
+				return false;
+			float4 that = (float4)o;
+			return this.r == that.r && this.g == that.g && this.b == that.b && this.a == that.a;
+		}
+
+		@Override
+		public int hashCode() {
+			// must override this, as we override equals()
+			return (int)(531*r + 227*g + b*31 + a);
+		}
+	}
+
+	/** Duplicates the code in avg_brighter.rs for median filter, to test this.
+	 *  Finds median of the supplied values, sorting by the alpha component.
+	 */
+	private float4 findMedian(float4 p0, float4 p1, float4 p2, float4 p3, float4 p4) {
+        if( p0.a > p1.a ) {
+            float4 temp_p = p0;
+            p0 = p1;
+            p1 = temp_p;
+        }
+        if( p0.a > p2.a ) {
+            float4 temp_p = p0;
+            p0 = p2;
+            p2 = temp_p;
+        }
+        if( p0.a > p3.a ) {
+            float4 temp_p = p0;
+            p0 = p3;
+            p3 = temp_p;
+        }
+        if( p0.a > p4.a ) {
+            float4 temp_p = p0;
+            p0 = p4;
+            p4 = temp_p;
+        }
+        //
+        if( p1.a > p2.a ) {
+            float4 temp_p = p1;
+            p1 = p2;
+            p2 = temp_p;
+        }
+        if( p1.a > p3.a ) {
+            float4 temp_p = p1;
+            p1 = p3;
+            p3 = temp_p;
+        }
+        if( p1.a > p4.a ) {
+            float4 temp_p = p1;
+            p1 = p4;
+            p4 = temp_p;
+        }
+        //
+        if( p2.a > p3.a ) {
+            float4 temp_p = p2;
+            p2 = p3;
+            p3 = temp_p;
+        }
+        if( p2.a > p4.a ) {
+            float4 temp_p = p2;
+            p2 = p4;
+            p4 = temp_p;
+        }
+		Log.d(TAG, "median is: " + p2.r + " , " + p2.g + " , " + p2.b + " , " + p2.a);
+        return p2;
+	}
+
+	@Test
+	public void testMedian() {
+		Log.d(TAG, "testMedian");
+
+		float4 m0 = findMedian(
+				new float4(127, 0, 64, 127),
+				new float4(49, 49, 49, 49),
+				new float4(0, 0, 0, 0),
+				new float4(120, 120, 121, 121),
+				new float4(0, 51, 53, 53)
+		);
+		assertEquals(m0, new float4(0, 51, 53, 53));
+
+		float4 m1 = findMedian(
+				new float4(127, 0, 64, 127),
+				new float4(49, 49, 71, 71),
+				new float4(120, 120, 121, 121),
+				new float4(127, 151, 64, 151),
+				new float4(0, 51, 53, 53)
+		);
+		assertEquals(m1, new float4(120, 120, 121, 121));
+
+		float4 m2 = findMedian(
+				new float4(127, 0, 64, 127),
+				new float4(49, 49, 71, 71),
+				new float4(49, 49, 71, 71),
+				new float4(120, 120, 121, 121),
+				new float4(0, 51, 53, 53)
+		);
+		assertEquals(m2, new float4(49, 49, 71, 71));
+	}
+
+	@Test
+	public void testBrightenFactors() {
+		Log.d(TAG, "testBrightenFactors");
+
+		// If any of these tests fail due to changes to HDRProcessor, consider that we might want to update the values tested in
+		// computeBrightenFactors(), rather than simply updating the expected results, to preserve what the test is meant to test.
+
+		HDRProcessor.BrightenFactors brighten_factors = HDRProcessor.computeBrightenFactors(true,1600, 1000000000L/12, 20, 170);
+		assertEquals(1.5f, brighten_factors.gain, 1.0e-5f);
+		assertEquals(8.0f, brighten_factors.low_x, 0.1f);
+		assertEquals(255.5f, brighten_factors.mid_x, 1.0e-5f);
+		assertEquals(1.0f, brighten_factors.gamma, 1.0e-5f);
+
+		// this checks for stability - we change the inputs so we enter "use piecewise function with gain and gamma", but
+		// we should not significantly change the values of gain or low_x, and gamma should be close to 1
+		brighten_factors = HDRProcessor.computeBrightenFactors(true,1600, 1000000000L/12, 20, 171);
+		assertEquals(1.5f, brighten_factors.gain, 1.0e-5f);
+		assertEquals(8.0f, brighten_factors.low_x, 0.1f);
+		assertEquals(136.0f, brighten_factors.mid_x, 0.5f);
+		assertEquals(1.0f, brighten_factors.gamma, 0.5f);
+
+	}
+
+	@Test
+	public void testFocusBracketingDistances() {
+		Log.d(TAG, "testFocusBracketingDistances");
+
+		List<Float> focus_distances = CameraController2.setupFocusBracketingDistances(1.0f/0.1f, 1.0f/10.0f, 5);
+		for(int i=0;i<focus_distances.size();i++)
+			Log.d(TAG, i + ": " + focus_distances.get(i));
+		assertEquals(5, focus_distances.size());
+		assertEquals(1.0f/0.1f, focus_distances.get(0), 1.0e-5);
+		// linear interpolation in distance:
+		/*assertEquals(1.0f/2.575f, focus_distances.get(1), 1.0e-5);
+		assertEquals(1.0f/5.05f, focus_distances.get(2), 1.0e-5);
+		assertEquals(1.0f/7.525f, focus_distances.get(3), 1.0e-5);*/
+		// log interpolation:
+		assertEquals(1.0f/(0.138647f*(10.0f-0.1f) + 0.1f), focus_distances.get(1), 1.0e-5);
+		assertEquals(1.0f/(0.317394f*(10.0f-0.1f) + 0.1f), focus_distances.get(2), 1.0e-5);
+		assertEquals(1.0f/(0.569323f*(10.0f-0.1f) + 0.1f), focus_distances.get(3), 1.0e-5);
+		assertEquals(1.0f/10.0f, focus_distances.get(4), 1.0e-5);
+
+		focus_distances = CameraController2.setupFocusBracketingDistances(1.0f/10.0f, 1.0f/0.1f, 5);
+		for(int i=0;i<focus_distances.size();i++)
+			Log.d(TAG, i + ": " + focus_distances.get(i));
+		assertEquals(5, focus_distances.size());
+		// should be reverse of above
+		assertEquals(1.0f/0.1f, focus_distances.get(4), 1.0e-5);
+		// linear interpolation in distance:
+		/*assertEquals(1.0f/2.575f, focus_distances.get(3), 1.0e-5);
+		assertEquals(1.0f/5.05f, focus_distances.get(2), 1.0e-5);
+		assertEquals(1.0f/7.525f, focus_distances.get(1), 1.0e-5);*/
+		// log interpolation:
+		assertEquals(1.0f/(0.138647f*(10.0f-0.1f) + 0.1f), focus_distances.get(3), 1.0e-5);
+		assertEquals(1.0f/(0.317394f*(10.0f-0.1f) + 0.1f), focus_distances.get(2), 1.0e-5);
+		assertEquals(1.0f/(0.569323f*(10.0f-0.1f) + 0.1f), focus_distances.get(1), 1.0e-5);
+		assertEquals(1.0f/10.0f, focus_distances.get(0), 1.0e-5);
+
+		focus_distances = CameraController2.setupFocusBracketingDistances(1.0f/0.1f, 1.0f/15.0f, 3);
+		for(int i=0;i<focus_distances.size();i++)
+			Log.d(TAG, i + ": " + focus_distances.get(i));
+		assertEquals(3, focus_distances.size());
+		assertEquals(1.0f/0.1f, focus_distances.get(0), 1.0e-5);
+		// linear interpolation in distance:
+		//assertEquals(1.0f/5.05f, focus_distances.get(1), 1.0e-5); // not 7.55, as we clamp distances to a max of 10m when averaging
+		// log interpolation:
+		assertEquals(1.0f/(0.369070f*(10.0f-0.1f) + 0.1f), focus_distances.get(1), 1.0e-5); // we clamp distances to a max of 10m when averaging
+		assertEquals(1.0f/15.0f, focus_distances.get(2), 1.0e-5);
+
+		focus_distances = CameraController2.setupFocusBracketingDistances(1.0f/15.0f, 1.0f/0.1f, 3);
+		for(int i=0;i<focus_distances.size();i++)
+			Log.d(TAG, i + ": " + focus_distances.get(i));
+		assertEquals(3, focus_distances.size());
+		// should be reverse of above
+		assertEquals(1.0f/0.1f, focus_distances.get(2), 1.0e-5);
+		// linear interpolation in distance:
+		//assertEquals(1.0f/5.05f, focus_distances.get(1), 1.0e-5); // not 7.55, as we clamp distances to a max of 10m when averaging
+		// log interpolation:
+		assertEquals(1.0f/(0.369070f*(10.0f-0.1f) + 0.1f), focus_distances.get(1), 1.0e-5); // we clamp distances to a max of 10m when averaging
+		assertEquals(1.0f/15.0f, focus_distances.get(0), 1.0e-5);
+
+		focus_distances = CameraController2.setupFocusBracketingDistances(1.0f/0.1f, 1.0f/0.2f, 3);
+		for(int i=0;i<focus_distances.size();i++)
+			Log.d(TAG, i + ": " + focus_distances.get(i));
+		assertEquals(3, focus_distances.size());
+		assertEquals(1.0f/0.1f, focus_distances.get(0), 1.0e-5);
+		// log interpolation:
+		assertEquals(1.0f/(0.369070f*(0.2f-0.1f) + 0.1f), focus_distances.get(1), 1.0e-5);
+		assertEquals(1.0f/0.2f, focus_distances.get(2), 1.0e-5);
+
+		focus_distances = CameraController2.setupFocusBracketingDistances(1.0f/0.2f, 1.0f/0.1f, 3);
+		for(int i=0;i<focus_distances.size();i++)
+			Log.d(TAG, i + ": " + focus_distances.get(i));
+		assertEquals(3, focus_distances.size());
+		// should be reverse of above
+		assertEquals(1.0f/0.1f, focus_distances.get(2), 1.0e-5);
+		// log interpolation:
+		assertEquals(1.0f/(0.369070f*(0.2f-0.1f) + 0.1f), focus_distances.get(1), 1.0e-5);
+		assertEquals(1.0f/0.2f, focus_distances.get(0), 1.0e-5);
 	}
 }

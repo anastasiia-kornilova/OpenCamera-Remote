@@ -1,32 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string-array name="flash_icons">
-        <item>drawable/flash_off</item>
-        <item>drawable/flash_auto</item>
-        <item>drawable/flash_on</item>
-        <item>drawable/flash_torch</item>
-        <item>drawable/flash_red_eye</item>
-        <item>drawable/flash_auto</item>
-        <item>drawable/flash_on</item>
-    </string-array>
-    <string-array name="flash_entries">
-        <item>オフ</item>
-        <item>自動</item>
-        <item>オン</item>
-        <item>懐中電灯</item>
-        <item>赤目軽減</item>
-        <item>Screen Flash Auto</item>
-        <item>Screen Flash On</item>
-    </string-array>
-    <string-array name="flash_values">
-        <item>flash_off</item>
-        <item>flash_auto</item>
-        <item>flash_on</item>
-        <item>flash_torch</item>
-        <item>flash_red_eye</item>
-        <item>flash_frontscreen_auto</item>
-        <item>flash_frontscreen_on</item>
-    </string-array>
     <string-array name="focus_mode_icons">
         <item>drawable/focus_mode_auto</item>
         <item>drawable/focus_mode_infinity</item>
@@ -98,62 +71,6 @@
         <item>120</item>
         <item>300</item>
     </string-array>
-    <string-array name="preference_burst_mode_entries">
-        <item>なし</item>
-        <item>2倍</item>
-        <item>3倍</item>
-        <item>4倍</item>
-        <item>5倍</item>
-        <item>10倍</item>
-        <item>無制限</item>
-    </string-array>
-    <string-array name="preference_burst_mode_values">
-        <item>1</item>
-        <item>2</item>
-        <item>3</item>
-        <item>4</item>
-        <item>5</item>
-        <item>10</item>
-        <item>unlimited</item>
-    </string-array>
-    <string-array name="preference_burst_interval_entries">
-        <item>なし</item>
-        <item>1秒</item>
-        <item>2秒</item>
-        <item>3秒</item>
-        <item>5秒</item>
-        <item>10秒</item>
-        <item>15秒</item>
-        <item>20秒</item>
-        <item>30秒</item>
-        <item>1分</item>
-        <item>2分</item>
-        <item>5分</item>
-        <item>10分</item>
-        <item>20分</item>
-		<item>30分</item>
-		<item>1時間</item>
-		<item>2時間</item>
-    </string-array>
-    <string-array name="preference_burst_interval_values">
-        <item>0</item>
-        <item>1</item>
-        <item>2</item>
-        <item>3</item>
-        <item>5</item>
-        <item>10</item>
-        <item>15</item>
-        <item>20</item>
-        <item>30</item>
-        <item>60</item>
-        <item>120</item>
-        <item>300</item>
-        <item>600</item>
-        <item>1200</item>
-        <item>1800</item>
-        <item>3600</item>
-        <item>7200</item>
-    </string-array>
     <string-array name="preference_preview_size_entries">
         <item>最大サイズ</item>
         <item>マッチしたサイズ (WYSIWYG)</item>
@@ -197,14 +114,6 @@
     <string-array name="preference_rotate_preview_values">
         <item>0</item>
         <item>180</item>
-    </string-array>
-    <string-array name="preference_ui_placement_entries">
-        <item>左利き用</item>
-        <item>右利き用</item>
-    </string-array>
-    <string-array name="preference_ui_placement_values">
-        <item>ui_left</item>
-        <item>ui_right</item>
     </string-array>
     <string-array name="preference_immersive_mode_entries">
         <item>オフ</item>
@@ -262,32 +171,6 @@
         <item>preference_grid_golden_triangle_2</item>
         <item>preference_grid_diagonals</item>
     </string-array>
-    <string-array name="preference_crop_guide_entries">
-        <item>なし</item>
-        <item>1.00 (1対1)</item>
-        <item>1.25 (5対4)</item>
-        <item>1.33 (4対3)</item>
-        <item>1.40 (7対4)</item>
-        <item>1.50 (3対2)</item>
-        <item>1.78 (16対9)</item>
-        <item>1.85 (37対20)</item>
-        <item>2.33 (21対9)</item>
-        <item>2.35 (47対20)</item>
-        <item>2.40 (12対5)</item>
-    </string-array>
-    <string-array name="preference_crop_guide_values">
-        <item>crop_guide_none</item>
-        <item>crop_guide_1</item>
-        <item>crop_guide_1.25</item>
-        <item>crop_guide_1.33</item>
-        <item>crop_guide_1.4</item>
-        <item>crop_guide_1.5</item>
-        <item>crop_guide_1.78</item>
-        <item>crop_guide_1.85</item>
-        <item>crop_guide_2.33</item>
-        <item>crop_guide_2.35</item>
-        <item>crop_guide_2.4</item>
-    </string-array>
     <string-array name="preference_stamp_entries">
         <item>スタンプなし</item>
         <item>スタンプあり</item>
@@ -295,20 +178,6 @@
     <string-array name="preference_stamp_values">
         <item>preference_stamp_no</item>
         <item>preference_stamp_yes</item>
-    </string-array>
-    <string-array name="preference_stamp_dateformat_entries">
-        <item>デフォルト</item>
-        <item>年/月/日</item>
-        <item>日/月/年</item>
-        <item>月/日/年</item>
-        <item>なし</item>
-        </string-array>
-    <string-array name="preference_stamp_dateformat_values">
-        <item>preference_stamp_dateformat_default</item>
-        <item>preference_stamp_dateformat_yyyymmdd</item>
-        <item>preference_stamp_dateformat_ddmmyyyy</item>
-        <item>preference_stamp_dateformat_mmddyyyy</item>
-        <item>preference_stamp_dateformat_none</item>
     </string-array>
     <string-array name="preference_stamp_timeformat_entries">
         <item>デフォルト</item>
@@ -368,80 +237,6 @@
         <item>preference_stamp_style_shadowed</item>
         <item>preference_stamp_style_plain</item>
     </string-array>
-    <string-array name="preference_video_bitrate_entries">
-        <item>デフォルト</item>
-        <item>100kbps</item>
-        <item>200kbps</item>
-        <item>500kbps</item>
-        <item>1Mbps</item>
-        <item>2Mbps</item>
-        <item>3Mbps</item>
-        <item>4Mbps</item>
-        <item>5Mbps</item>
-        <item>6Mbps</item>
-        <item>7Mbps</item>
-        <item>8Mbps</item>
-        <item>9Mbps</item>
-        <item>10Mbps</item>
-        <item>15Mbps</item>
-        <item>20Mbps</item>
-        <item>30Mbps</item>
-        <item>40Mbps</item>
-        <item>50Mbps</item>
-        <item>60Mbps</item>
-        <item>70Mbps</item>
-        <item>80Mbps</item>
-        <item>90Mbps</item>
-        <item>100Mbps</item>
-    </string-array>
-    <string-array name="preference_video_bitrate_values">
-        <item>default</item>
-        <item>100000</item>
-        <item>200000</item>
-        <item>500000</item>
-        <item>1000000</item>
-        <item>2000000</item>
-        <item>3000000</item>
-        <item>4000000</item>
-        <item>5000000</item>
-        <item>6000000</item>
-        <item>7000000</item>
-        <item>8000000</item>
-        <item>9000000</item>
-        <item>10000000</item>
-        <item>15000000</item>
-        <item>20000000</item>
-        <item>30000000</item>
-        <item>40000000</item>
-        <item>50000000</item>
-        <item>60000000</item>
-        <item>70000000</item>
-        <item>80000000</item>
-        <item>90000000</item>
-        <item>100000000</item>
-    </string-array>
-    <string-array name="preference_video_fps_entries">
-        <item>デフォルト</item>
-        <item>15fps</item>
-        <item>24fps</item>
-        <item>25fps</item>
-        <item>30fps</item>
-        <item>60fps</item>
-        <item>96fps</item>
-        <item>100fps</item>
-        <item>120fps</item>
-    </string-array>
-    <string-array name="preference_video_fps_values">
-        <item>default</item>
-        <item>15</item>
-        <item>24</item>
-        <item>25</item>
-        <item>30</item>
-        <item>60</item>
-        <item>96</item>
-        <item>100</item>
-        <item>120</item>
-    </string-array>
     <string-array name="preference_video_restart_entries">
         <item>なし</item>
         <item>1回</item>
@@ -467,18 +262,6 @@
         <item>8</item>
         <item>9</item>
         <item>10</item>
-    </string-array>
-    <string-array name="preference_record_audio_src_entries">
-        <item>CAMCORDER</item>
-        <item>MIC (推奨)</item>
-        <item>DEFAULT</item>
-        <item>VOICE_COMMUNICATION</item>
-    </string-array>
-    <string-array name="preference_record_audio_src_values">
-        <item>audio_src_camcorder</item>
-        <item>audio_src_mic</item>
-        <item>audio_src_default</item>
-        <item>audio_src_voice_communication</item>
     </string-array>
     <string-array name="preference_record_audio_channels_entries">
         <item>デフォルト</item>
