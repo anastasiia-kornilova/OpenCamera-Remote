@@ -1027,7 +1027,7 @@ public class MyPreferenceFragment extends PreferenceFragment implements OnShared
                         about_string.append(version_code);
                         about_string.append("\n(c) 2013-2019 Mark Harman");
 						about_string.append("\nModifications for WiFi remote control by Andy Modla");
-						about_string.append("\n(c) 2016-2017 Andy Modla");
+						about_string.append("\n(c) 2016-2019 Andy Modla");
 						about_string.append("\nReleased under the ");
 						about_string.append(gpl_link);
 						about_string.append("\nNanoHTTPD web server license:");
