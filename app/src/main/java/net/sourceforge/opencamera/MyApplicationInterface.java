@@ -219,6 +219,8 @@ public class MyApplicationInterface extends BasicApplicationInterface {
 	private Bitmap decodeFile(File f){
 		//Log.d(TAG, "decodeFile "+ f.getAbsolutePath());
 		Bitmap bitmap = null;
+		if (f == null)
+			return null;
 		//Decode image size
 		try {
 			FileInputStream fis = new FileInputStream(f);

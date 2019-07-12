@@ -43,6 +43,8 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.net.Uri;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
@@ -76,6 +78,7 @@ import android.speech.tts.TextToSpeech;
 import android.support.annotation.NonNull;
 import android.support.annotation.RequiresApi;
 import android.support.v4.content.ContextCompat;
+import android.text.format.Formatter;
 import android.util.Log;
 import android.view.Display;
 import android.view.GestureDetector;
@@ -969,37 +972,45 @@ public class MainActivity extends Activity {
 	}
 
 	public String getHostnameAddress() {
-		try {
-			for (Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en
-					.hasMoreElements(); ) {
-				NetworkInterface intf = en.nextElement();
-				Enumeration<NetworkInterface> niEnum = NetworkInterface.getNetworkInterfaces();
-				String last = null;
-				while (niEnum.hasMoreElements())
-				{
-					NetworkInterface ni = niEnum.nextElement();
-					if(!ni.isLoopback() && !ni.isPointToPoint()){
-						for (InterfaceAddress interfaceAddress : ni.getInterfaceAddresses())
-						{
-							if( MyDebug.LOG ) Log.d(TAG, "network prefix length="+interfaceAddress.getNetworkPrefixLength());
-							if (interfaceAddress.getAddress()!= null) {
-								if( MyDebug.LOG ) Log.d(TAG, interfaceAddress.getAddress().getHostAddress());
-								last =  (interfaceAddress.getAddress().getHostAddress());
-								if (last.matches("\\d*\\.\\d*\\.\\d*\\.\\d*")) {
-									return last;
-								}
-							}
-						}
-					}
-				}
-			}
-		} catch (SocketException ex) {
-			if( MyDebug.LOG ) {
-				Log.d(TAG, "Socket Exception");
-			}
-		}
-		return null;
+		WifiManager wifiMan = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+		WifiInfo wifiInf = wifiMan.getConnectionInfo();
+		int ipAddress = wifiInf.getIpAddress();
+		String ip = String.format("%d.%d.%d.%d", (ipAddress & 0xff),(ipAddress >> 8 & 0xff),(ipAddress >> 16 & 0xff),(ipAddress >> 24 & 0xff));
+		return ip;
 	}
+
+//	public String getHostnameAddress() {
+//		try {
+//			for (Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en
+//					.hasMoreElements(); ) {
+//				NetworkInterface intf = en.nextElement();
+//				Enumeration<NetworkInterface> niEnum = NetworkInterface.getNetworkInterfaces();
+//				String last = null;
+//				while (niEnum.hasMoreElements())
+//				{
+//					NetworkInterface ni = niEnum.nextElement();
+//					if(!ni.isLoopback() && !ni.isPointToPoint()){
+//						for (InterfaceAddress interfaceAddress : ni.getInterfaceAddresses())
+//						{
+//							if( MyDebug.LOG ) Log.d(TAG, "network prefix length="+interfaceAddress.getNetworkPrefixLength());
+//							if (interfaceAddress.getAddress()!= null) {
+//								if( MyDebug.LOG ) Log.d(TAG, interfaceAddress.getAddress().getHostAddress());
+//								last =  (interfaceAddress.getAddress().getHostAddress());
+//								if (last.matches("\\d*\\.\\d*\\.\\d*\\.\\d*")) {
+//									return last;
+//								}
+//							}
+//						}
+//					}
+//				}
+//			}
+//		} catch (SocketException ex) {
+//			if( MyDebug.LOG ) {
+//				Log.d(TAG, "Socket Exception");
+//			}
+//		}
+//		return null;
+//	}
 
 	public String getBroadcastAddress() {
 		try {
@@ -1040,7 +1051,7 @@ public class MainActivity extends Activity {
 		// Do this in stop not pause - code transferred from onPause()
         mainUI.destroyPopup();
         mSensorManager.unregisterListener(accelerometerListener);
-        mSensorManager.unregisterListener(magneticListener);
+        unregisterMagneticListener();
         orientationEventListener.disable();
 		try {
 			unregisterReceiver(cameraReceiver);
@@ -1442,6 +1453,11 @@ public class MainActivity extends Activity {
 				// BluetoothLeService requires Android 4.3+
 				return;
 			}
+			if (mBluetoothLeService == null) {
+                if( MyDebug.LOG )
+                    Log.d(TAG, "BluetoothLeService not available");
+			    return;
+            }
             final String action = intent.getAction();
             if (BluetoothLeService.ACTION_GATT_CONNECTED.equals(action)) {
 				if( MyDebug.LOG )
