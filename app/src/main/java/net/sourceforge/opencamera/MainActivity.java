@@ -865,12 +865,7 @@ public class MainActivity extends Activity {
 					}
 				}
 				else if (command.startsWith("S") || command.startsWith("C")) {
-					byte[] s = new byte[4];
-					s[0] = data[1];
-					s[1] = data[2];
-					s[2] = data[3];
-					s[3] = data[4];
-					sCount = Bytes.getAsString(s);
+				    sCount = getParam(data);
 					if( MyDebug.LOG ) Log.d(TAG, "remote takePicture() " + sCount);
 					if (!preview.isVideo()) {
 						MainActivity.this.runOnUiThread(new Runnable() {
@@ -884,12 +879,7 @@ public class MainActivity extends Activity {
 					}
 				}
 				else if (command.startsWith("V")) { // record/stop video
-					byte[] s = new byte[4];
-					s[0] = data[1];
-					s[1] = data[2];
-					s[2] = data[3];
-					s[3] = data[4];
-					sCount = Bytes.getAsString(s);
+                   sCount = getParam(data);
 					if( MyDebug.LOG ) Log.d(TAG, "remote record video " + sCount);
 					if (preview.isVideo()) {
 						MainActivity.this.runOnUiThread(new Runnable() {
@@ -964,6 +954,25 @@ public class MainActivity extends Activity {
 			}
 		}
 	}
+
+	private static final int MAXPARAM_SIZE = 16;
+	private String getParam(byte[] data) {
+	    String param = "";
+        byte[] s = new byte[MAXPARAM_SIZE];
+        boolean done = false;
+        for (int i=0; i<MAXPARAM_SIZE; i++) {
+            byte b = data[i+1];
+            if (done || b == 0 || b == '\r' || b == '\n') {
+                s[i] = ' ';
+                done = true;
+            }
+            else {
+                s[i] = data[i + 1];
+            }
+        }
+        param = Bytes.getAsString(s).trim();
+        return param;
+    }
 
 	public String getHostnameURL() {
 		String hostname = getHostnameAddress();
