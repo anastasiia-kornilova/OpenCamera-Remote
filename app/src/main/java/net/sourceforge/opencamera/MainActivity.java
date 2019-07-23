@@ -830,129 +830,10 @@ public class MainActivity extends Activity {
 	// Andy Modla begin block
 	@Override
 	protected void onStart() {
-		if( MyDebug.LOG ) {
+		if (MyDebug.LOG) {
 			Log.d(TAG, "onStart");
 		}
 		super.onStart();
-		// UDP server setup
-		// Create the UDP server to listen for incoming broadcast messages,
-		// create a listener for the server.
-		// A listener will receive NetMessages which contain camera commands.
-		// NetListener is an interface and requires methods netEvent
-		// and netStatus.
-		//
-		NetListener nl1 = new NetListener() {
-			public void netEvent(NetMessage m) {
-				if( MyDebug.LOG ) Log.d(TAG, "netEvent from ip addr="+ m.getDatagramPacket().getAddress());
-				byte[] data = m.getData();
-				byte[] b = new byte[1];
-				b[0] = data[0];
-				String command = Bytes.getAsString(b);
-				if( MyDebug.LOG ) Log.d(TAG, "netEvent (UDP Server) command=" + command);
-				if (command.startsWith("F")) {
-					if (!preview.isVideo()) {
-						if (!preview.isFocusWaiting()) {
-							if( MyDebug.LOG ) Log.d(TAG, "remote request focus");
-							MainActivity.this.runOnUiThread(new Runnable() {
-								public void run() {
-									preview.requestAutoFocus();
-								}
-							});
-						}
-					}
-					else {
-						preview.showToast(null, "Remote Not In Photo Mode");
-					}
-				}
-				else if (command.startsWith("S") || command.startsWith("C")) {
-				    sCount = getParam(data);
-					if( MyDebug.LOG ) Log.d(TAG, "remote takePicture() " + sCount);
-					if (!preview.isVideo()) {
-						MainActivity.this.runOnUiThread(new Runnable() {
-							public void run() {
-								takePicture(false);
-							}
-						});
-					}
-					else {
-						preview.showToast(null, "Remote Not In Photo Mode");
-					}
-				}
-				else if (command.startsWith("V")) { // record/stop video
-                   sCount = getParam(data);
-					if( MyDebug.LOG ) Log.d(TAG, "remote record video " + sCount);
-					if (preview.isVideo()) {
-						MainActivity.this.runOnUiThread(new Runnable() {
-							public void run() {
-								if (preview.isVideoRecording())
-									preview.stopVideo(true);
-								else
-									takePicture(false);
-							}
-						});
-					}
-					else {
-						preview.showToast(null, "Remote Not In Video Mode");
-					}
-				}
-				else if (command.startsWith("P")) { // pause
-					if( MyDebug.LOG ) Log.d(TAG, "remote pause Video " );
-					if (preview.isVideo()) {
-						MainActivity.this.runOnUiThread(new Runnable() {
-							public void run() {
-								if (preview.isVideoRecording()) {
-									preview.pauseVideo();
-								}
-							}
-						});
-					}
-					else {
-						preview.showToast(null, "Remote Not In Video Mode");
-					}
-				}
-				else if (command.startsWith("R")) { // reset / information request
-					if (httpServer != null) {
-						httpUrl = getHostnameURL();
-						if( MyDebug.LOG ) Log.d(TAG, "information request " + httpUrl);
-						preview.showToast(null, httpUrl);
-					}
-				}
-			}
-			public void netStatus(NetStatus s) {
-				if( MyDebug.LOG ) Log.d(TAG, "netStatus (UDP Server) : "+s);
-			}
-		};
-		// UDP server for receiving Broadcast messages
-		udpServer = new UdpServer( nl1 , port );
-		if (udpServer == null) {
-			if( MyDebug.LOG ) Log.d(TAG, "UdpServer error");
-			preview.showToast(null, "Remote Message Server not started");
-		}
-		// HTTP server for receiving GET image requests over local network
-		if (applicationInterface.getHttpServerPref()) {
-			try {
-				if (httpServer == null) {
-					SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-					if (applicationInterface.getStorageUtils().isUsingSAF()) {
-						// TODO not tested
-						String save_location_saf = sharedPreferences.getString(PreferenceKeys.getSaveLocationSAFPreferenceKey(), "");
-						File file = getStorageUtils().getFileFromDocumentUriSAF(Uri.parse(save_location_saf), false);
-						httpServer = new SimpleWebServer(null, serverPort, file, true);
-					} else {
-						String folder_name = sharedPreferences.getString(PreferenceKeys.getSaveLocationPreferenceKey(), "OpenCamera");
-						httpServer = new SimpleWebServer(null, serverPort, StorageUtils.getImageFolder(folder_name), true);
-					}
-				}
-				if (httpServer != null) {
-					if (!httpServer.wasStarted()) {
-						httpServer.setApplicationInterface(applicationInterface);
-						httpServer.start();
-					}
-				}
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
 	}
 
 	private static final int MAXPARAM_SIZE = 16;
@@ -1053,32 +934,33 @@ public class MainActivity extends Activity {
 	// Andy Modla begin block
 	@Override
 	protected void onStop() {
-		if( MyDebug.LOG ) {
+		if (MyDebug.LOG) {
 			Log.d(TAG, "onStop");
 		}
 		super.onStop();
-		// Do this in stop not pause - code transferred from onPause()
-        mainUI.destroyPopup();
-        mSensorManager.unregisterListener(accelerometerListener);
-        unregisterMagneticListener();
-        orientationEventListener.disable();
-		try {
-			unregisterReceiver(cameraReceiver);
-		}
-		catch(IllegalArgumentException e) {
-			// this can happen if not registered - simplest to just catch the exception
-			e.printStackTrace();
-		}
-		stopRemoteControl();
-		freeAudioListener(false);
-		stopSpeechRecognizer();
-        applicationInterface.getLocationSupplier().freeLocationListeners();
-		applicationInterface.getGyroSensor().stopRecording();
-		applicationInterface.getGyroSensor().disableSensors();
-		soundPoolManager.releaseSound();
-        applicationInterface.clearLastImages(); // this should happen when pausing the preview, but call explicitly just to be safe
-		applicationInterface.getDrawPreview().clearGhostImage();
-        preview.onPause();
+//		// Do this in stop not pause - code transferred from onPause()
+//        mainUI.destroyPopup();
+//        mSensorManager.unregisterListener(accelerometerListener);
+//        unregisterMagneticListener();
+//        orientationEventListener.disable();
+//		try {
+//			unregisterReceiver(cameraReceiver);
+//		}
+//		catch(IllegalArgumentException e) {
+//			// this can happen if not registered - simplest to just catch the exception
+//			e.printStackTrace();
+//		}
+//		stopRemoteControl();
+//		freeAudioListener(false);
+//		stopSpeechRecognizer();
+//        applicationInterface.getLocationSupplier().freeLocationListeners();
+//		applicationInterface.getGyroSensor().stopRecording();
+//		applicationInterface.getGyroSensor().disableSensors();
+//		soundPoolManager.releaseSound();
+//        applicationInterface.clearLastImages(); // this should happen when pausing the preview, but call explicitly just to be safe
+//		applicationInterface.getDrawPreview().clearGhostImage();
+//        preview.onPause();
+//	}
 	}
 
 	void destroyServer() {
@@ -1684,6 +1566,126 @@ public class MainActivity extends Activity {
 
 		preview.onResume();
 
+		// UDP server setup
+		// Create the UDP server to listen for incoming broadcast messages,
+		// create a listener for the server.
+		// A listener will receive NetMessages which contain camera commands.
+		// NetListener is an interface and requires methods netEvent
+		// and netStatus.
+		//
+		NetListener nl1 = new NetListener() {
+			public void netEvent(NetMessage m) {
+				if( MyDebug.LOG ) Log.d(TAG, "netEvent from ip addr="+ m.getDatagramPacket().getAddress());
+				byte[] data = m.getData();
+				byte[] b = new byte[1];
+				b[0] = data[0];
+				String command = Bytes.getAsString(b);
+				if( MyDebug.LOG ) Log.d(TAG, "netEvent (UDP Server) command=" + command);
+				if (command.startsWith("F")) {
+					if (!preview.isVideo()) {
+						if (!preview.isFocusWaiting()) {
+							if( MyDebug.LOG ) Log.d(TAG, "remote request focus");
+							MainActivity.this.runOnUiThread(new Runnable() {
+								public void run() {
+									preview.requestAutoFocus();
+								}
+							});
+						}
+					}
+					else {
+						preview.showToast(null, "Remote Not In Photo Mode");
+					}
+				}
+				else if (command.startsWith("S") || command.startsWith("C")) {
+					sCount = getParam(data);
+					if( MyDebug.LOG ) Log.d(TAG, "remote takePicture() " + sCount);
+					if (!preview.isVideo()) {
+						MainActivity.this.runOnUiThread(new Runnable() {
+							public void run() {
+								takePicture(false);
+							}
+						});
+					}
+					else {
+						preview.showToast(null, "Remote Not In Photo Mode");
+					}
+				}
+				else if (command.startsWith("V")) { // record/stop video
+					sCount = getParam(data);
+					if( MyDebug.LOG ) Log.d(TAG, "remote record video " + sCount);
+					if (preview.isVideo()) {
+						MainActivity.this.runOnUiThread(new Runnable() {
+							public void run() {
+								if (preview.isVideoRecording())
+									preview.stopVideo(true);
+								else
+									takePicture(false);
+							}
+						});
+					}
+					else {
+						preview.showToast(null, "Remote Not In Video Mode");
+					}
+				}
+				else if (command.startsWith("P")) { // pause
+					if( MyDebug.LOG ) Log.d(TAG, "remote pause Video " );
+					if (preview.isVideo()) {
+						MainActivity.this.runOnUiThread(new Runnable() {
+							public void run() {
+								if (preview.isVideoRecording()) {
+									preview.pauseVideo();
+								}
+							}
+						});
+					}
+					else {
+						preview.showToast(null, "Remote Not In Video Mode");
+					}
+				}
+				else if (command.startsWith("R")) { // reset / information request
+					if (httpServer != null) {
+						httpUrl = getHostnameURL();
+						if( MyDebug.LOG ) Log.d(TAG, "information request " + httpUrl);
+						preview.showToast(null, httpUrl);
+					}
+				}
+			}
+			public void netStatus(NetStatus s) {
+				if( MyDebug.LOG ) Log.d(TAG, "netStatus (UDP Server) : "+s);
+			}
+		};
+		// UDP server for receiving Broadcast messages
+		udpServer = new UdpServer( nl1 , port );
+		if (udpServer == null) {
+			if( MyDebug.LOG ) Log.d(TAG, "UdpServer error");
+			preview.showToast(null, "Remote Message Server not started");
+		}
+		// HTTP server for receiving GET image requests over local network
+		if (applicationInterface.getHttpServerPref()) {
+			try {
+				if (httpServer == null) {
+					SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+					if (applicationInterface.getStorageUtils().isUsingSAF()) {
+						// TODO not tested
+						String save_location_saf = sharedPreferences.getString(PreferenceKeys.getSaveLocationSAFPreferenceKey(), "");
+						File file = getStorageUtils().getFileFromDocumentUriSAF(Uri.parse(save_location_saf), false);
+						httpServer = new SimpleWebServer(null, serverPort, file, true);
+					} else {
+						String folder_name = sharedPreferences.getString(PreferenceKeys.getSaveLocationPreferenceKey(), "OpenCamera");
+						httpServer = new SimpleWebServer(null, serverPort, StorageUtils.getImageFolder(folder_name), true);
+					}
+				}
+				if (httpServer != null) {
+					if (!httpServer.wasStarted()) {
+						httpServer.setApplicationInterface(applicationInterface);
+						httpServer.start();
+					}
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+
 		if( MyDebug.LOG ) {
 			Log.d(TAG, "onResume: total time to resume: " + (System.currentTimeMillis() - debug_time));
 		}
@@ -1709,30 +1711,29 @@ public class MainActivity extends Activity {
 			Log.d(TAG, "onPause");
 			debug_time = System.currentTimeMillis();
 		}
-		waitUntilImageQueueEmpty(); // so we don't risk losing any images
-		applicationInterface.setStitchPreviewImage(null);
 		super.onPause(); // docs say to call this before freeing other things
-//        mainUI.destroyPopup(); // important as user could change/reset settings from Android settings when pausing
-//        mSensorManager.unregisterListener(accelerometerListener);
-//        unregisterMagneticListener();
-//        orientationEventListener.disable();
-//        try {
-//			unregisterReceiver(cameraReceiver);
-//		}
-//		catch(IllegalArgumentException e) {
-//        	// this can happen if not registered - simplest to just catch the exception
-//        	e.printStackTrace();
-//		}
-//        stopRemoteControl();
-//        freeAudioListener(false);
-//        stopSpeechRecognizer();
-//        applicationInterface.getLocationSupplier().freeLocationListeners();
-//		applicationInterface.getGyroSensor().stopRecording();
-//		applicationInterface.getGyroSensor().disableSensors();
-//		soundPoolManager.releaseSound();
-//		applicationInterface.clearLastImages(); // this should happen when pausing the preview, but call explicitly just to be safe
-//		applicationInterface.getDrawPreview().clearGhostImage();
-//		preview.onPause();
+		applicationInterface.setStitchPreviewImage(null);
+        mainUI.destroyPopup(); // important as user could change/reset settings from Android settings when pausing
+        mSensorManager.unregisterListener(accelerometerListener);
+        unregisterMagneticListener();
+        orientationEventListener.disable();
+        try {
+			unregisterReceiver(cameraReceiver);
+		}
+		catch(IllegalArgumentException e) {
+        	// this can happen if not registered - simplest to just catch the exception
+        	e.printStackTrace();
+		}
+        stopRemoteControl();
+        freeAudioListener(false);
+        stopSpeechRecognizer();
+        applicationInterface.getLocationSupplier().freeLocationListeners();
+		applicationInterface.getGyroSensor().stopRecording();
+		applicationInterface.getGyroSensor().disableSensors();
+		soundPoolManager.releaseSound();
+		applicationInterface.clearLastImages(); // this should happen when pausing the preview, but call explicitly just to be safe
+		applicationInterface.getDrawPreview().clearGhostImage();
+		preview.onPause();
 
 		if (udpServer != null) {
 			udpServer.dispose();
