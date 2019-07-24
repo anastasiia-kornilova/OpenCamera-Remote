@@ -179,7 +179,7 @@ public class MainActivity extends Activity {
 	public volatile String test_last_saved_image;
 
 	// Andy Modla begin block
-	private UdpServer udpServer; 	// Broadcast receiver
+	private UdpServer1 udpServer; 	// Broadcast receiver
 	private SimpleWebServer httpServer;
 	private int port = 8000;  // Broadcast port
 	private int serverPort = 8080;  // HTTP server port
@@ -1655,7 +1655,7 @@ public class MainActivity extends Activity {
 			}
 		};
 		// UDP server for receiving Broadcast messages
-		udpServer = new UdpServer( nl1 , port );
+		udpServer = new UdpServer1( nl1 , port );
 		if (udpServer == null) {
 			if( MyDebug.LOG ) Log.d(TAG, "UdpServer error");
 			preview.showToast(null, "Remote Message Server not started");
