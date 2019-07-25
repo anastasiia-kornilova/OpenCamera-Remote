@@ -126,7 +126,6 @@ public abstract class AbstractUdpServer1 implements Runnable {
     }
 
     public void dispose() {
-        this.isRunning = false;
         this._myThread = null;
         if (this._myDatagramSocket != null) {
             if (this._myDatagramSocket.isConnected()) {
@@ -140,6 +139,10 @@ public abstract class AbstractUdpServer1 implements Runnable {
             Logger.printDebug("UdpServer.dispose()", "Closing unicast datagram socket.");
         }
 
+    }
+
+    public void stop() {
+        this.isRunning = false;
     }
 
     public void send(byte[] var1) {

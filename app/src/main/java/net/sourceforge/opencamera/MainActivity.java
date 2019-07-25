@@ -1736,7 +1736,7 @@ public class MainActivity extends Activity {
 		preview.onPause();
 
 		if (udpServer != null) {
-			udpServer.dispose();
+			udpServer.stop();
 			Vector list = udpServer.getListeners();
 			for (int i=0; i<list.size(); i++) {
 				udpServer.removeListener((netP5.NetListener)list.get(i));
