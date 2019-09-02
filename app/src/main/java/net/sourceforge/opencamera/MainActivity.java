@@ -83,6 +83,7 @@ import android.util.Log;
 import android.view.Display;
 import android.view.GestureDetector;
 import android.view.GestureDetector.SimpleOnGestureListener;
+import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MotionEvent;
@@ -122,7 +123,7 @@ public class MainActivity extends Activity {
 	private SoundPoolManager soundPoolManager;
 	private ManualSeekbars manualSeekbars;
 	private TextFormatter textFormatter;
-	private MyApplicationInterface applicationInterface;
+	public MyApplicationInterface applicationInterface;
 	private Preview preview;
 	private OrientationEventListener orientationEventListener;
 	private int large_heap_memory;
@@ -963,7 +964,11 @@ public class MainActivity extends Activity {
 //	}
 	}
 
-	void destroyServer() {
+    // Andy Modla end block
+
+    // Andy Modla begin block
+
+    void destroyServer() {
 		if (httpServer != null) {
 			httpServer.closeAllConnections();
 			httpServer.stop();
@@ -971,8 +976,96 @@ public class MainActivity extends Activity {
 		}
 	}
 
-	// Andy Modla end block
+    @Override
+    public boolean onGenericMotionEvent(MotionEvent event) {
+		boolean consumed = false;
+		//boolean consumed = super.onGenericMotionEvent(event);
 
+		if (!consumed  && (0 != (event.getSource() & InputDevice.SOURCE_MOUSE))) {
+			//if (0 != (event.getSource() & InputDevice.SOURCE_CLASS_POINTER)) {
+            if (MyDebug.LOG) Log.d(TAG, "mouse button state="+event.getButtonState());
+			if (mainUI.popupIsOpen() || settingsIsOpen())
+				return false;
+            consumed = true;
+            int buttonState = event.getButtonState();
+            int actionmasked = event.getActionMasked();
+            if (MyDebug.LOG) Log.d(TAG, "action mask=" + actionmasked);
+            if (actionmasked == MotionEvent.ACTION_HOVER_ENTER) {
+                if (MyDebug.LOG) Log.d(TAG, "HOOVER ENTER");
+                consumed = true;
+            } else if (actionmasked == MotionEvent.ACTION_HOVER_EXIT) {
+                if (MyDebug.LOG) Log.d(TAG, "HOVER EXIT");
+                //
+                consumed = true;
+            } else if (buttonState == MotionEvent.BUTTON_PRIMARY) {
+                int action = event.getAction();
+                if (action == MotionEvent.ACTION_BUTTON_PRESS) {
+                    if (MyDebug.LOG) Log.d(TAG, "Primary Mouse button press");
+					if (!preview.isVideo()) {
+						MainActivity.this.runOnUiThread(new Runnable() {
+							public void run() {
+								takePicture(false);
+							}
+						});
+					}
+					else {
+						MainActivity.this.runOnUiThread(new Runnable() {
+							public void run() {
+								if (preview.isVideoRecording())
+									preview.stopVideo(true);
+								else
+									takePicture(false);
+							}
+						});
+					}
+                }
+                consumed = true;
+			} else if (buttonState == MotionEvent.BUTTON_SECONDARY) {
+				if (MyDebug.LOG) Log.d(TAG, "Secondary Mouse button press");
+				applicationInterface.setStitchPreviewImage(null);
+				openGallery();
+				consumed = true;
+			} else if (buttonState == MotionEvent.BUTTON_TERTIARY) {
+				if (MyDebug.LOG) Log.d(TAG, "Tertiary Mouse button press");
+				if (!preview.isVideo()) {
+					if (!preview.isFocusWaiting()) {
+						if( MyDebug.LOG ) Log.d(TAG, "remote request focus");
+						MainActivity.this.runOnUiThread(new Runnable() {
+							public void run() {
+								preview.requestAutoFocus();
+							}
+						});
+					}
+				}
+				consumed = true;
+			} else switch (event.getAction()) {
+                case MotionEvent.ACTION_SCROLL:
+                    float speed = event.getAxisValue(MotionEvent.AXIS_VSCROLL);
+                    if (MyDebug.LOG) Log.d(TAG, "scroll="+speed);
+                    // zoom camera  here (ZOOM_STEP * speed);
+					if (speed < 0)
+						zoomOut();
+					else
+						zoomIn();
+                    consumed = true;
+                    break;
+                case MotionEvent.ACTION_BUTTON_PRESS:
+					if (MyDebug.LOG) Log.d(TAG, "ACTION_BUTTON_PRESS");
+                    consumed = true;
+                    break;
+                case MotionEvent.ACTION_BUTTON_RELEASE:
+					if (MyDebug.LOG) Log.d(TAG, "ACTION_BUTTON_RELEASE");
+                    consumed = true;
+                    break;
+            }
+//            consumed = true;
+            return consumed;
+        }
+		//return super.onGenericMotionEvent(event);
+		return consumed;
+    }
+
+	// Andy Modla end block
 
 	@Override
 	protected void onDestroy() {
@@ -1103,6 +1196,14 @@ public class MainActivity extends Activity {
 	public boolean onKeyDown(int keyCode, KeyEvent event) {
 		if( MyDebug.LOG )
 			Log.d(TAG, "onKeyDown: " + keyCode);
+//		if( event.getSource() == InputDevice.SOURCE_MOUSE &&
+//				(keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_HOME
+//						|| keyCode == KeyEvent.KEYCODE_MOVE_HOME || keyCode == KeyEvent.KEYCODE_BREAK )) {
+//			return true;
+//		}
+		if( event.getSource() == InputDevice.SOURCE_MOUSE || event.getSource() == InputDevice.SOURCE_CLASS_POINTER ) {
+			return true;
+		}
 		boolean handled = mainUI.onKeyDown(keyCode, event);
 		if( handled )
 			return true;
@@ -1112,6 +1213,14 @@ public class MainActivity extends Activity {
 	public boolean onKeyUp(int keyCode, KeyEvent event) { 
 		if( MyDebug.LOG )
 			Log.d(TAG, "onKeyUp: " + keyCode);
+//		if( event.getSource() == InputDevice.SOURCE_MOUSE &&
+//				(keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_HOME
+//						|| keyCode == KeyEvent.KEYCODE_MOVE_HOME || keyCode == KeyEvent.KEYCODE_BREAK )) {
+//			return true;
+//		}
+		if( event.getSource() == InputDevice.SOURCE_MOUSE || event.getSource() == InputDevice.SOURCE_CLASS_POINTER ) {
+			return true;
+		}
 		mainUI.onKeyUp(keyCode, event);
         return super.onKeyUp(keyCode, event);
 	}
@@ -3323,7 +3432,7 @@ public class MainActivity extends Activity {
 		openGallery();
 	}
 
-	private void openGallery() {
+	public void openGallery() {
 		if( MyDebug.LOG )
 			Log.d(TAG, "openGallery");
 		//Intent intent = new Intent(Intent.ACTION_VIEW, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);

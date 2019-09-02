@@ -2430,6 +2430,10 @@ public class MainUI {
 			case KeyEvent.KEYCODE_NUMPAD_DIVIDE:
 				toggleExposureUI();
 				break;
+//			case KeyEvent.KEYCODE_ENTER:
+//				main_activity.applicationInterface.setStitchPreviewImage(null);
+//				main_activity.openGallery();
+//			break;
 		}
 		return false;
 	}

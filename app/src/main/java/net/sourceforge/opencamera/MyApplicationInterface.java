@@ -2985,7 +2985,7 @@ public class MyApplicationInterface extends BasicApplicationInterface {
     }
 
     // Andy Modla begin
-	void setStitchPreviewImage(LastImage lastImage) {
+	public void setStitchPreviewImage(LastImage lastImage) {
 		stitchPreviewImage = lastImage;
 		if (backgroundBitmap != null) {
 			backgroundBitmap.recycle();
