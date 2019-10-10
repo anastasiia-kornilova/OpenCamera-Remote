@@ -2430,10 +2430,22 @@ public class MainUI {
 			case KeyEvent.KEYCODE_NUMPAD_DIVIDE:
 				toggleExposureUI();
 				break;
+// Andy Modla begin block
 //			case KeyEvent.KEYCODE_ENTER:
 //				main_activity.applicationInterface.setStitchPreviewImage(null);
 //				main_activity.openGallery();
-//			break;
+//			    return true;
+			case KeyEvent.KEYCODE_ENTER:
+				// To execute this code the user has the following Settings:
+				// volume up key focus
+				// On screen GUI option Immersive mode Hide GUI and do not Show Take Photo Icon
+				if( MyDebug.LOG )
+					Log.d(TAG, "KEYCODE_ENTER "+ keyCode);
+				MainActivity.sCount = "";  // Andy Modla
+				main_activity.takePicture(false);
+				return true;
+			//break;
+// Andy Modla end block
 		}
 		return false;
 	}
