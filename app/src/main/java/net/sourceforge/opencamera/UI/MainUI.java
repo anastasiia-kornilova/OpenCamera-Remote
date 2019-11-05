@@ -2227,7 +2227,7 @@ public class MainUI {
 
 	public boolean onKeyDown(int keyCode, KeyEvent event) {
 		if( MyDebug.LOG )
-			Log.d(TAG, "onKeyDown: " + keyCode);
+			Log.d(TAG, "MainUI onKeyDown: " + keyCode);
 		switch( keyCode ) {
 			case KeyEvent.KEYCODE_VOLUME_UP:
 			case KeyEvent.KEYCODE_VOLUME_DOWN:
@@ -2452,7 +2452,7 @@ public class MainUI {
 
 	public void onKeyUp(int keyCode, KeyEvent event) {
 		if( MyDebug.LOG )
-			Log.d(TAG, "onKeyUp: " + keyCode);
+			Log.d(TAG, "MainUI onKeyUp: " + keyCode);
 		if( keyCode == KeyEvent.KEYCODE_VOLUME_UP )
 			keydown_volume_up = false;
 		else if( keyCode == KeyEvent.KEYCODE_VOLUME_DOWN )

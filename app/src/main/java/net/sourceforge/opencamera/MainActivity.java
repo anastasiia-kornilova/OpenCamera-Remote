@@ -1022,9 +1022,17 @@ public class MainActivity extends Activity {
                 consumed = true;
 			} else if (buttonState == MotionEvent.BUTTON_SECONDARY) {
 				if (MyDebug.LOG) Log.d(TAG, "Secondary Mouse button press");
-				applicationInterface.setStitchPreviewImage(null);
-				openGallery();
-				consumed = true;
+				SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+				String volume_keys = sharedPreferences.getString(PreferenceKeys.VolumeKeysPreferenceKey, "volume_take_photo");
+				if (volume_keys.equals("volume_focus")) {
+					getPreview().requestAutoFocus();
+					consumed = true;
+				}
+				else{
+					applicationInterface.setStitchPreviewImage(null);
+					openGallery();
+					consumed = true;
+				}
 			} else if (buttonState == MotionEvent.BUTTON_TERTIARY) {
 				if (MyDebug.LOG) Log.d(TAG, "Tertiary Mouse button press");
 				if (!preview.isVideo()) {
@@ -1195,7 +1203,7 @@ public class MainActivity extends Activity {
 	
 	public boolean onKeyDown(int keyCode, KeyEvent event) {
 		if( MyDebug.LOG )
-			Log.d(TAG, "onKeyDown: " + keyCode);
+			Log.d(TAG, "MainActivity onKeyDown: " + keyCode);
 //		if( event.getSource() == InputDevice.SOURCE_MOUSE &&
 //				(keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_HOME
 //						|| keyCode == KeyEvent.KEYCODE_MOVE_HOME || keyCode == KeyEvent.KEYCODE_BREAK )) {
@@ -1212,7 +1220,7 @@ public class MainActivity extends Activity {
 
 	public boolean onKeyUp(int keyCode, KeyEvent event) { 
 		if( MyDebug.LOG )
-			Log.d(TAG, "onKeyUp: " + keyCode);
+			Log.d(TAG, "MainActivity onKeyUp: " + keyCode);
 //		if( event.getSource() == InputDevice.SOURCE_MOUSE &&
 //				(keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_HOME
 //						|| keyCode == KeyEvent.KEYCODE_MOVE_HOME || keyCode == KeyEvent.KEYCODE_BREAK )) {
