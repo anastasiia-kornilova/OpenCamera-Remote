@@ -181,6 +181,7 @@ public class MainActivity extends Activity {
 
 	// Andy Modla begin block
 	private UdpServer1 udpServer; 	// Broadcast receiver
+	public NetListener nll;
 	private SimpleWebServer httpServer;
 	private int port = 8000;  // Broadcast port
 	private int serverPort = 8080;  // HTTP server port
@@ -969,6 +970,15 @@ public class MainActivity extends Activity {
     // Andy Modla begin block
 
     void destroyServer() {
+		if (udpServer != null) {
+			Vector list = udpServer.getListeners();
+			for (int i=0; i<list.size(); i++) {
+				udpServer.removeListener((netP5.NetListener)list.get(i));
+			}
+			udpServer.stop();
+			udpServer = null;
+		}
+
 		if (httpServer != null) {
 			httpServer.closeAllConnections();
 			httpServer.stop();
@@ -1690,92 +1700,95 @@ public class MainActivity extends Activity {
 		// NetListener is an interface and requires methods netEvent
 		// and netStatus.
 		//
-		NetListener nl1 = new NetListener() {
-			public void netEvent(NetMessage m) {
-				if( MyDebug.LOG ) Log.d(TAG, "netEvent from ip addr="+ m.getDatagramPacket().getAddress());
-				byte[] data = m.getData();
-				byte[] b = new byte[1];
-				b[0] = data[0];
-				String command = Bytes.getAsString(b);
-				if( MyDebug.LOG ) Log.d(TAG, "netEvent (UDP Server) command=" + command);
-				if (command.startsWith("F")) {
-					if (!preview.isVideo()) {
-						if (!preview.isFocusWaiting()) {
-							if( MyDebug.LOG ) Log.d(TAG, "remote request focus");
+		if (nll == null) {
+			nll = new NetListener() {
+				public void netEvent(NetMessage m) {
+					if (MyDebug.LOG)
+						Log.d(TAG, "netEvent from ip addr=" + m.getDatagramPacket().getAddress());
+					byte[] data = m.getData();
+					byte[] b = new byte[1];
+					b[0] = data[0];
+					String command = Bytes.getAsString(b);
+					if (MyDebug.LOG) Log.d(TAG, "netEvent (UDP Server) command=" + command);
+					if (command.startsWith("F")) {
+						if (!preview.isVideo()) {
+							if (!preview.isFocusWaiting()) {
+								if (MyDebug.LOG) Log.d(TAG, "remote request focus");
+								MainActivity.this.runOnUiThread(new Runnable() {
+									public void run() {
+										preview.requestAutoFocus();
+									}
+								});
+							}
+						} else {
+							preview.showToast(null, "Remote Not In Photo Mode");
+						}
+					} else if (command.startsWith("S") || command.startsWith("C")) {
+						sCount = getParam(data);
+						if (MyDebug.LOG) Log.d(TAG, "remote takePicture() " + sCount);
+						if (!preview.isVideo()) {
 							MainActivity.this.runOnUiThread(new Runnable() {
 								public void run() {
-									preview.requestAutoFocus();
+									takePicture(false);
 								}
 							});
+						} else {
+							preview.showToast(null, "Remote Not In Photo Mode");
+						}
+					} else if (command.startsWith("V")) { // record/stop video
+						sCount = getParam(data);
+						if (MyDebug.LOG) Log.d(TAG, "remote record video " + sCount);
+						if (preview.isVideo()) {
+							MainActivity.this.runOnUiThread(new Runnable() {
+								public void run() {
+									if (preview.isVideoRecording())
+										preview.stopVideo(true);
+									else
+										takePicture(false);
+								}
+							});
+						} else {
+							preview.showToast(null, "Remote Not In Video Mode");
+						}
+					} else if (command.startsWith("P")) { // pause
+						if (MyDebug.LOG) Log.d(TAG, "remote pause Video ");
+						if (preview.isVideo()) {
+							MainActivity.this.runOnUiThread(new Runnable() {
+								public void run() {
+									if (preview.isVideoRecording()) {
+										preview.pauseVideo();
+									}
+								}
+							});
+						} else {
+							preview.showToast(null, "Remote Not In Video Mode");
+						}
+					} else if (command.startsWith("R")) { // reset / information request
+						if (httpServer != null) {
+							httpUrl = getHostnameURL();
+							if (MyDebug.LOG) Log.d(TAG, "information request " + httpUrl);
+							preview.showToast(null, httpUrl);
 						}
 					}
-					else {
-						preview.showToast(null, "Remote Not In Photo Mode");
-					}
 				}
-				else if (command.startsWith("S") || command.startsWith("C")) {
-					sCount = getParam(data);
-					if( MyDebug.LOG ) Log.d(TAG, "remote takePicture() " + sCount);
-					if (!preview.isVideo()) {
-						MainActivity.this.runOnUiThread(new Runnable() {
-							public void run() {
-								takePicture(false);
-							}
-						});
-					}
-					else {
-						preview.showToast(null, "Remote Not In Photo Mode");
-					}
+
+				public void netStatus(NetStatus s) {
+					if (MyDebug.LOG) Log.d(TAG, "netStatus (UDP Server) : " + s);
 				}
-				else if (command.startsWith("V")) { // record/stop video
-					sCount = getParam(data);
-					if( MyDebug.LOG ) Log.d(TAG, "remote record video " + sCount);
-					if (preview.isVideo()) {
-						MainActivity.this.runOnUiThread(new Runnable() {
-							public void run() {
-								if (preview.isVideoRecording())
-									preview.stopVideo(true);
-								else
-									takePicture(false);
-							}
-						});
-					}
-					else {
-						preview.showToast(null, "Remote Not In Video Mode");
-					}
-				}
-				else if (command.startsWith("P")) { // pause
-					if( MyDebug.LOG ) Log.d(TAG, "remote pause Video " );
-					if (preview.isVideo()) {
-						MainActivity.this.runOnUiThread(new Runnable() {
-							public void run() {
-								if (preview.isVideoRecording()) {
-									preview.pauseVideo();
-								}
-							}
-						});
-					}
-					else {
-						preview.showToast(null, "Remote Not In Video Mode");
-					}
-				}
-				else if (command.startsWith("R")) { // reset / information request
-					if (httpServer != null) {
-						httpUrl = getHostnameURL();
-						if( MyDebug.LOG ) Log.d(TAG, "information request " + httpUrl);
-						preview.showToast(null, httpUrl);
-					}
-				}
-			}
-			public void netStatus(NetStatus s) {
-				if( MyDebug.LOG ) Log.d(TAG, "netStatus (UDP Server) : "+s);
-			}
-		};
-		// UDP server for receiving Broadcast messages
-		udpServer = new UdpServer1( nl1 , port );
+			};
+		}
 		if (udpServer == null) {
-			if( MyDebug.LOG ) Log.d(TAG, "UdpServer error");
-			preview.showToast(null, "Remote Message Server not started");
+			// UDP server for receiving Broadcast messages
+			udpServer = new UdpServer1(nll, port);
+			if (udpServer == null) {
+				if (MyDebug.LOG) Log.d(TAG, "UdpServer error");
+				preview.showToast(null, "Remote Message Server not running");
+			}
+		} else {
+				Vector list = udpServer.getListeners();
+				for (int i=0; i<list.size(); i++) {
+					udpServer.removeListener((netP5.NetListener)list.get(i));
+				}
 		}
 		// HTTP server for receiving GET image requests over local network
 		if (applicationInterface.getHttpServerPref()) {
@@ -1852,14 +1865,6 @@ public class MainActivity extends Activity {
 		applicationInterface.getDrawPreview().clearGhostImage();
 		preview.onPause();
 
-		if (udpServer != null) {
-			udpServer.stop();
-			Vector list = udpServer.getListeners();
-			for (int i=0; i<list.size(); i++) {
-				udpServer.removeListener((netP5.NetListener)list.get(i));
-			}
-			udpServer = null;
-		}
 
 		if( MyDebug.LOG ) {
 			Log.d(TAG, "onPause: total time to pause: " + (System.currentTimeMillis() - debug_time));
