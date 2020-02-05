@@ -24,8 +24,10 @@ import java.io.FileNotFoundException;
 //import java.io.FileOutputStream;
 import java.io.IOException;
 //import java.io.OutputStream;
+import java.io.PrintStream;
 import java.lang.ref.WeakReference;
 import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -55,6 +57,7 @@ import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
+import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorManager;
 import android.location.Location;
@@ -66,6 +69,7 @@ import android.os.BatteryManager;
 import android.os.Build;
 import android.os.Bundle;
 //import android.os.Environment;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.ParcelFileDescriptor;
 import android.provider.DocumentsContract;
@@ -876,7 +880,10 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     public void stopVideo(boolean from_restart) {
 		if( MyDebug.LOG )
-			Log.d(TAG, "stopVideo()");
+			Log.d("MROB", "Stop sensors recording");
+		cleanUpSensorWriter();
+		if( MyDebug.LOG )
+			Log.d("MROB", "stopVideo()");
 		if( video_recorder == null ) {
 			// no need to do anything if not recording
 			// (important to exit, otherwise we'll momentarily switch the take photo icon to video mode in MyApplicationInterface.stoppingVideo() when opening the settings in landscape mode
@@ -5123,12 +5130,17 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 		return null;
 	}
 
+	boolean isBuffersInited = false;
+
 	/** Start video recording.
 	 */
 	@TargetApi(Build.VERSION_CODES.LOLLIPOP)
 	private void startVideoRecording(final boolean max_filesize_restart) {
 		if( MyDebug.LOG )
-			Log.d(TAG, "startVideoRecording");
+			Log.d("MROB", "startVideoRecording");
+		setUpSensorWriter();
+		if( MyDebug.LOG )
+			Log.d("MROB", "Sensors recorders set up");
 		focus_success = FOCUS_DONE; // clear focus rectangle (don't do for taking photos yet)
 		final VideoProfile profile = getVideoProfile();
 		VideoFileInfo info = createVideoFile(profile.fileExtension);
@@ -6224,11 +6236,59 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 		}
     }
 
-	public void onGyroscopeSensorChanged(SensorEvent event) {
-		if( MyDebug.LOG )
-			Log.d("MROB", "onGyroscopeSensorChanged: " + event.values[0]
-					+ ", " + event.values[1] + ", " + event.values[2]);
+	private MyStringBuffer mGyroBuffer;
+	private MyStringBuffer mAccelBuffer;
+
+	private void setUpSensorWriter() {
+		String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
+		String directoryPath = Environment.getExternalStorageDirectory().getPath() + "/videoSensor/" + timestamp + "/";
+
+		boolean dirsOk = new File(directoryPath).mkdirs();
+		if (!dirsOk) {
+			if( MyDebug.LOG )
+				Log.d("MROB", "Can not create directory for sensors");
+		}
+
+		String gyroFile =  directoryPath + timestamp + "gyro" + ".csv";
+		String accelFile = directoryPath + timestamp + "acc" + ".csv";
+
+		try {
+			PrintStream gyroWriter = new PrintStream(gyroFile);
+			PrintStream accelWriter = new PrintStream(accelFile);
+			mGyroBuffer = new MyStringBuffer(gyroWriter);
+			mAccelBuffer = new MyStringBuffer(accelWriter);
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
+
+		isBuffersInited = true;
 	}
+
+	private void cleanUpSensorWriter() {
+		mGyroBuffer.close();
+		mAccelBuffer.close();
+		isBuffersInited = false;
+	}
+
+	public void onGyroscopeSensorChanged(SensorEvent sensorEvent) {
+		if (isBuffersInited) {
+			int sensorType = sensorEvent.sensor.getType();
+			// StringBuilder is important here because it does not suffer when threading
+			StringBuilder sensorData = new StringBuilder();
+
+			sensorData.append(sensorEvent.values[0]);
+			sensorData.append(',');
+			sensorData.append(sensorEvent.values[1]);
+			sensorData.append(',');
+			sensorData.append(sensorEvent.values[2]);
+			sensorData.append(',');
+			sensorData.append(sensorEvent.timestamp);
+			sensorData.append('\n');
+
+			mGyroBuffer.append(sensorData.toString());
+		}
+	}
+
 
     public void onAccelerometerSensorChanged(SensorEvent event) {
 		/*if( MyDebug.LOG )
