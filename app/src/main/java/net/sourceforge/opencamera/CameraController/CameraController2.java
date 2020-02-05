@@ -77,6 +77,7 @@ public class CameraController2 extends CameraController {
 	private final static int tonemap_max_curve_points_c = 64;
 	private final ErrorCallback preview_error_cb;
 	private final ErrorCallback camera_error_cb;
+	private final CameraTimestampCallback cameraTimestampCallback;
 	private CameraCaptureSession captureSession;
 	private CaptureRequest.Builder previewBuilder;
 	private boolean previewIsVideoMode;
@@ -958,9 +959,12 @@ public class CameraController2 extends CameraController {
 	private class OnImageAvailableListener implements ImageReader.OnImageAvailableListener {
 		@Override
 		public void onImageAvailable(ImageReader reader) {
-			if( MyDebug.LOG )
-				Log.d(TAG, "new still image available");
-			if( picture_cb == null || !jpeg_todo ) {
+			Image image = reader.acquireNextImage();
+			if (image != null) {
+				cameraTimestampCallback.onNewTimestamp(image.getTimestamp());
+				image.close();
+			}
+			/*if( picture_cb == null || !jpeg_todo ) {
 				// in theory this shouldn't happen - but if this happens, still free the image to avoid risk of memory leak,
 				// or strange behaviour where an old image appears when the user next takes a photo
 				Log.e(TAG, "no picture callback available");
@@ -1058,7 +1062,7 @@ public class CameraController2 extends CameraController {
 			}
 
 			if( MyDebug.LOG )
-				Log.d(TAG, "done onImageAvailable");
+				Log.d(TAG, "done onImageAvailable");*/
 		}
 
 		/** Called when an image has been received, but we're in a burst mode, and not all images have
@@ -1444,7 +1448,8 @@ public class CameraController2 extends CameraController {
 	 * @param camera_error_cb onError() will be called if the camera closes due to serious error. No more calls to the CameraController2 object should be made (though a new one can be created, to try reopening the camera).
 	 * @throws CameraControllerException if the camera device fails to open.
      */
-	public CameraController2(Context context, int cameraId, final ErrorCallback preview_error_cb, final ErrorCallback camera_error_cb) throws CameraControllerException {
+	public CameraController2(Context context, int cameraId, final ErrorCallback preview_error_cb, final ErrorCallback camera_error_cb
+			, final CameraTimestampCallback cameraTimestampCallback) throws CameraControllerException {
 		super(cameraId);
 		if( MyDebug.LOG ) {
 			Log.d(TAG, "create new CameraController2: " + cameraId);
@@ -1454,6 +1459,7 @@ public class CameraController2 extends CameraController {
 		this.context = context;
 		this.preview_error_cb = preview_error_cb;
 		this.camera_error_cb = camera_error_cb;
+		this.cameraTimestampCallback = cameraTimestampCallback;
 
 		this.is_samsung_s7 = Build.MODEL.toLowerCase(Locale.US).contains("sm-g93");
 		if( MyDebug.LOG )
@@ -3492,8 +3498,8 @@ public class CameraController2 extends CameraController {
 			throw new RuntimeException(); // throw as RuntimeException, as this is a programming error
 		}
 		// maxImages only needs to be 2, as we always read the JPEG data and close the image straight away in the imageReader
-		imageReader = ImageReader.newInstance(picture_width, picture_height, ImageFormat.JPEG, 2);
-		//imageReader = ImageReader.newInstance(picture_width, picture_height, ImageFormat.YUV_420_888, 2);
+//		imageReader = ImageReader.newInstance(picture_width, picture_height, ImageFormat.JPEG, 2);
+		imageReader = ImageReader.newInstance(picture_width, picture_height, ImageFormat.YUV_420_888, 10);
 		if( MyDebug.LOG ) {
 			Log.d(TAG, "created new imageReader: " + imageReader.toString());
 			Log.d(TAG, "imageReader surface: " + imageReader.getSurface().toString());
@@ -4619,8 +4625,12 @@ public class CameraController2 extends CameraController {
 						captureSession = session;
 						Surface surface = getPreviewSurface();
 						previewBuilder.addTarget(surface);
-						if( video_recorder != null )
+						if( video_recorder != null ) {
 							previewBuilder.addTarget(video_recorder_surface);
+							previewBuilder.addTarget(imageReader.getSurface());
+							if( MyDebug.LOG )
+								Log.e("MROB", "Added imageReader");
+						}
 						try {
 							setRepeatingRequest();
 						}
@@ -4691,10 +4701,14 @@ public class CameraController2 extends CameraController {
         	List<Surface> surfaces;
         	if( video_recorder != null ) {
 				if( supports_photo_video_recording && !want_video_high_speed && want_photo_video_recording ) {
+					if ( MyDebug.LOG )
+						Log.d("MROB", "With ImageReader");
 					surfaces = Arrays.asList(preview_surface, video_recorder_surface, imageReader.getSurface());
 				}
 				else {
 					surfaces = Arrays.asList(preview_surface, video_recorder_surface);
+					if ( MyDebug.LOG )
+						Log.d("MROB", "Without ImageReader");
 				}
 				// n.b., raw not supported for photo snapshots while video recording
         	}

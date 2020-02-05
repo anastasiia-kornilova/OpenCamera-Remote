@@ -268,6 +268,10 @@ public abstract class CameraController {
 	public interface ErrorCallback {
 		void onError();
 	}
+
+	public interface CameraTimestampCallback {
+		void onNewTimestamp(long timestamp);
+	}
 	
 	public static class Face {
 		public final int score;

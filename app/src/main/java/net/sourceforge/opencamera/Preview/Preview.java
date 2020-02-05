@@ -881,7 +881,6 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
     public void stopVideo(boolean from_restart) {
 		if( MyDebug.LOG )
 			Log.d("MROB", "Stop sensors recording");
-		cleanUpSensorWriter();
 		if( MyDebug.LOG )
 			Log.d("MROB", "stopVideo()");
 		if( video_recorder == null ) {
@@ -957,6 +956,7 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
     				applicationInterface.onVideoRecordStopError(profile);
     			}
 			}
+			cleanUpSensorWriter(from_restart);
 			videoRecordingStopped();
 		}
 	}
@@ -1550,6 +1550,16 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 					}
 				}
 			};
+			CameraController.CameraTimestampCallback cameraTimestampCallback = new CameraController.CameraTimestampCallback() {
+				@Override
+				public void onNewTimestamp(long timestamp) {
+					if (isBuffersInited) {
+						mFrameBuffer.append(timestamp + "\n");
+						if( MyDebug.LOG )
+							Log.d("MROB", "new still image available with timestamp: " + timestamp + " " + isBuffersInited);
+					}
+				}
+			};
 	        if( using_android_l ) {
 				CameraController.ErrorCallback previewErrorCallback = new CameraController.ErrorCallback() {
 					public void onError() {
@@ -1558,7 +1568,7 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 						applicationInterface.onFailedStartPreview();
 					}
 				};
-	        	camera_controller_local = new CameraController2(Preview.this.getContext(), cameraId, previewErrorCallback, cameraErrorCallback);
+				camera_controller_local = new CameraController2(Preview.this.getContext(), cameraId, previewErrorCallback, cameraErrorCallback, cameraTimestampCallback);
 	    		if( applicationInterface.useCamera2FakeFlash() ) {
 	    			camera_controller_local.setUseCamera2FakeFlash(true);
 	    		}
@@ -6237,6 +6247,7 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
     }
 
 	private MyStringBuffer mGyroBuffer;
+	private MyStringBuffer mFrameBuffer;
 	private MyStringBuffer mAccelBuffer;
 
 	private void setUpSensorWriter() {
@@ -6251,12 +6262,15 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 
 		String gyroFile =  directoryPath + timestamp + "gyro" + ".csv";
 		String accelFile = directoryPath + timestamp + "acc" + ".csv";
+		String frameFile = directoryPath + timestamp + "frame" + ".csv";
 
 		try {
 			PrintStream gyroWriter = new PrintStream(gyroFile);
 			PrintStream accelWriter = new PrintStream(accelFile);
+			PrintStream frameWriter = new PrintStream(frameFile);
 			mGyroBuffer = new MyStringBuffer(gyroWriter);
 			mAccelBuffer = new MyStringBuffer(accelWriter);
+			mFrameBuffer = new MyStringBuffer(frameWriter);
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		}
@@ -6264,15 +6278,19 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 		isBuffersInited = true;
 	}
 
-	private void cleanUpSensorWriter() {
-		mGyroBuffer.close();
-		mAccelBuffer.close();
-		isBuffersInited = false;
+	private void cleanUpSensorWriter(boolean from_restart) {
+		if (!from_restart) {
+			if( MyDebug.LOG )
+				Log.d("MROB", "Close all files");
+			mGyroBuffer.close();
+			mAccelBuffer.close();
+			mFrameBuffer.close();
+			isBuffersInited = false;
+		}
 	}
 
 	public void onGyroscopeSensorChanged(SensorEvent sensorEvent) {
 		if (isBuffersInited) {
-			int sensorType = sensorEvent.sensor.getType();
 			// StringBuilder is important here because it does not suffer when threading
 			StringBuilder sensorData = new StringBuilder();
 
