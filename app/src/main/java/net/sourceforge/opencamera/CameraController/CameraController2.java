@@ -1492,6 +1492,11 @@ public class CameraController2 extends CameraController {
 							Log.d(TAG, "characteristics_is_front_facing: " + characteristics_is_front_facing);
 						}
 
+						if( MyDebug.LOG )
+							Log.d("MROB", "Realtime camera stamps : " + (characteristics.get(CameraCharacteristics.SENSOR_INFO_TIMESTAMP_SOURCE)
+									== CameraCharacteristics.SENSOR_INFO_TIMESTAMP_SOURCE_REALTIME));
+
+
 						CameraController2.this.camera = cam;
 
 						// note, this won't start the preview yet, but we create the previewBuilder in order to start setting camera parameters
