@@ -6224,6 +6224,12 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 		}
     }
 
+	public void onGyroscopeSensorChanged(SensorEvent event) {
+		if( MyDebug.LOG )
+			Log.d("MROB", "onGyroscopeSensorChanged: " + event.values[0]
+					+ ", " + event.values[1] + ", " + event.values[2]);
+	}
+
     public void onAccelerometerSensorChanged(SensorEvent event) {
 		/*if( MyDebug.LOG )
     		Log.d(TAG, "onAccelerometerSensorChanged: " + event.values[0] + ", " + event.values[1] + ", " + event.values[2]);*/

@@ -113,6 +113,7 @@ public class MainActivity extends Activity {
 	private SensorManager mSensorManager;
 	private Sensor mSensorAccelerometer;
 	private Sensor mSensorMagnetic;
+	private Sensor mSensorGyroscope;
 	private MainUI mainUI;
 	private BluetoothLeService mBluetoothLeService;
 	private String mRemoteDeviceAddress;
@@ -350,6 +351,16 @@ public class MainActivity extends Activity {
 			Log.d(TAG, "onCreate: time after creating accelerometer sensor: " + (System.currentTimeMillis() - debug_time));
 
 		// magnetic sensor (for compass direction)
+		if( mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE) != null ) {
+			if( MyDebug.LOG )
+				Log.d("MROB", "Gyro found");
+			mSensorGyroscope = mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+		}
+		else {
+			if( MyDebug.LOG )
+				Log.d("MROB", "Gyro not found");
+		}
+
 		if( mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD) != null ) {
 			if( MyDebug.LOG )
 				Log.d(TAG, "found magnetic sensor");
@@ -1273,6 +1284,17 @@ public class MainActivity extends Activity {
 			preview.onAccelerometerSensorChanged(event);
 		}
 	};
+
+	private final SensorEventListener gyroscopeListener = new SensorEventListener() {
+		@Override
+		public void onAccuracyChanged(Sensor sensor, int accuracy) {
+		}
+
+		@Override
+		public void onSensorChanged(SensorEvent event) {
+			preview.onGyroscopeSensorChanged(event);
+		}
+	};
 	
 	private int magnetic_accuracy = -1;
 	private AlertDialog magnetic_accuracy_dialog;
@@ -1672,6 +1694,12 @@ public class MainActivity extends Activity {
         mSensorManager.registerListener(accelerometerListener, mSensorAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
         registerMagneticListener();
         orientationEventListener.enable();
+        if (mSensorGyroscope != null) {
+			mSensorManager.registerListener(gyroscopeListener, mSensorGyroscope, SensorManager.SENSOR_DELAY_FASTEST);
+		} else {
+			if (MyDebug.LOG)
+				Log.d("MROB", "Can not register listener");
+		}
 
         registerReceiver(cameraReceiver, new IntentFilter("com.miband2.action.CAMERA"));
 
