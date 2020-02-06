@@ -1555,8 +1555,6 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 				public void onNewTimestamp(long timestamp) {
 					if (isBuffersInited) {
 						mFrameBuffer.append(timestamp + "\n");
-						if( MyDebug.LOG )
-							Log.d("MROB", "new still image available with timestamp: " + timestamp + " " + isBuffersInited);
 					}
 				}
 			};

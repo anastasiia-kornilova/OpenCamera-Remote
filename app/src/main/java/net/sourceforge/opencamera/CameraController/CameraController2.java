@@ -960,9 +960,13 @@ public class CameraController2 extends CameraController {
 		@Override
 		public void onImageAvailable(ImageReader reader) {
 			Image image = reader.acquireNextImage();
+
 			if (image != null) {
 				cameraTimestampCallback.onNewTimestamp(image.getTimestamp());
 				image.close();
+			} else {
+				if( MyDebug.LOG )
+					Log.d("MROB", "Empty");
 			}
 			/*if( picture_cb == null || !jpeg_todo ) {
 				// in theory this shouldn't happen - but if this happens, still free the image to avoid risk of memory leak,
@@ -3499,7 +3503,7 @@ public class CameraController2 extends CameraController {
 		}
 		// maxImages only needs to be 2, as we always read the JPEG data and close the image straight away in the imageReader
 //		imageReader = ImageReader.newInstance(picture_width, picture_height, ImageFormat.JPEG, 2);
-		imageReader = ImageReader.newInstance(picture_width, picture_height, ImageFormat.YUV_420_888, 10);
+		imageReader = ImageReader.newInstance(picture_width / 16, picture_height / 16, ImageFormat.YUV_420_888, 20);
 		if( MyDebug.LOG ) {
 			Log.d(TAG, "created new imageReader: " + imageReader.toString());
 			Log.d(TAG, "imageReader surface: " + imageReader.getSurface().toString());
