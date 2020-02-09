@@ -101,6 +101,9 @@ import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.ZoomControls;
 
 import org.nanohttpd.webserver.SimpleWebServer;
+import org.opencv.android.BaseLoaderCallback;
+import org.opencv.android.LoaderCallbackInterface;
+import org.opencv.android.OpenCVLoader;
 
 import netP5.*; // network library for UDP Server (Andy Modla change)
 
@@ -1678,9 +1681,33 @@ public class MainActivity extends Activity {
         }
     }
 
+	private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
+		@Override
+		public void onManagerConnected(int status) {
+			switch (status) {
+				case LoaderCallbackInterface.SUCCESS:
+				{
+					Log.i("MROB", "OpenCV loaded successfully");
+				} break;
+				default:
+				{
+					super.onManagerConnected(status);
+				} break;
+			}
+		}
+	};
 
     @Override
     protected void onResume() {
+		super.onResume();
+		if (!OpenCVLoader.initDebug()) {
+			Log.d("MROB", "Internal OpenCV library not found. Using OpenCV Manager for initialization");
+			OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_4_0, this, mLoaderCallback);
+		} else {
+			Log.d("MROB", "OpenCV library found inside package. Using it!");
+			mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
+		}
+
 		long debug_time = 0;
 		if( MyDebug.LOG ) {
 			Log.d(TAG, "onResume");

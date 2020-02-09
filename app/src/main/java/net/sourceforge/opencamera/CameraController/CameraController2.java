@@ -1,24 +1,8 @@
 package net.sourceforge.opencamera.CameraController;
 
-import net.sourceforge.opencamera.MyDebug;
-
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Queue;
-
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.graphics.Point;
 import android.graphics.Rect;
@@ -56,6 +40,22 @@ import android.util.SizeF;
 import android.view.Display;
 import android.view.Surface;
 import android.view.SurfaceHolder;
+
+import net.sourceforge.opencamera.MyDebug;
+
+import org.opencv.core.CvType;
+import org.opencv.core.Mat;
+import org.opencv.imgcodecs.Imgcodecs;
+import org.opencv.imgproc.Imgproc;
+
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Queue;
 
 /** Provides support using Android 5's Camera 2 API
  *  android.hardware.camera2.*.
@@ -973,12 +973,13 @@ public class CameraController2 extends CameraController {
 			cnt += 1;
 			if (image != null) {
 				long ts = image.getTimestamp();
+//				image.close();
 				cameraTimestampCallback.onNewTimestamp(ts);
-				if (cnt % 10 == 0) {
-					if( MyDebug.LOG )
+				if (cnt % 20 == 0) {
+					if (MyDebug.LOG)
 						Log.d("MROB", "New image to record");
-					File file = new File(Environment.getExternalStorageDirectory().getPath() + "/videoSensor/imgs/"
-							, ts + ".jpg");
+					String file = Environment.getExternalStorageDirectory().getPath()
+							+ "/videoSensor/imgs/" + ts + ".png";
 					mBackgroundHandler.post(new ImageSaver(image, file));
 				} else {
 					image.close();
@@ -3525,7 +3526,7 @@ public class CameraController2 extends CameraController {
 		}
 		// maxImages only needs to be 2, as we always read the JPEG data and close the image straight away in the imageReader
 //		imageReader = ImageReader.newInstance(picture_width, picture_height, ImageFormat.JPEG, 2);
-		imageReader = ImageReader.newInstance(picture_width, picture_height, ImageFormat.JPEG, 20);
+		imageReader = ImageReader.newInstance(picture_width, picture_height, ImageFormat.YUV_420_888, 20);
 		if( MyDebug.LOG ) {
 			Log.d(TAG, "created new imageReader: " + imageReader.toString());
 			Log.d(TAG, "imageReader surface: " + imageReader.getSurface().toString());
@@ -3533,7 +3534,7 @@ public class CameraController2 extends CameraController {
 		// It's intentional that we pass a handler on null, so the OnImageAvailableListener runs on the UI thread.
 		// If ever we want to change this on future, we should ensure that all image available listeners (JPEG+RAW) are
 		// using the same handler/thread.
-		imageReader.setOnImageAvailableListener(new OnImageAvailableListener(), mBackgroundHandler);
+		imageReader.setOnImageAvailableListener(new OnImageAvailableListener(), null);
 		if( want_raw && raw_size != null&& !previewIsVideoMode  ) {
 			// unlike the JPEG imageReader, we can't read the data and close the image straight away, so we need to allow a larger
 			// value for maxImages
@@ -7595,36 +7596,72 @@ public class CameraController2 extends CameraController {
 		/**
 		 * The file we save the image into.
 		 */
-		private final File mFile;
+		private final String mFile;
 
-		ImageSaver(Image image, File file) {
+		ImageSaver(Image image, String file) {
 			mImage = image;
 			mFile = file;
 		}
 
-		@Override
-		public void run() {
-			ByteBuffer buffer = mImage.getPlanes()[0].getBuffer();
-			byte[] bytes = new byte[buffer.remaining()];
-			buffer.get(bytes);
-			FileOutputStream output = null;
-			try {
-				output = new FileOutputStream(mFile);
-				output.write(bytes);
-			} catch (IOException e) {
-				e.printStackTrace();
-			} finally {
-				mImage.close();
-				if( MyDebug.LOG )
-					Log.d("MROB", "Image saved" + mFile.getName());
-				if (null != output) {
-					try {
-						output.close();
-					} catch (IOException e) {
-						e.printStackTrace();
+		private static Mat imageToMat(Image image) {
+			ByteBuffer buffer;
+			int rowStride;
+			int pixelStride;
+			int width = image.getWidth();
+			int height = image.getHeight();
+			int offset = 0;
+
+			Image.Plane[] planes = image.getPlanes();
+			byte[] data = new byte[image.getWidth() * image.getHeight() * ImageFormat.getBitsPerPixel(ImageFormat.YUV_420_888) / 8];
+			byte[] rowData = new byte[planes[0].getRowStride()];
+
+			for (int i = 0; i < planes.length; i++) {
+				buffer = planes[i].getBuffer();
+				rowStride = planes[i].getRowStride();
+				pixelStride = planes[i].getPixelStride();
+				int w = (i == 0) ? width : width / 2;
+				int h = (i == 0) ? height : height / 2;
+				for (int row = 0; row < h; row++) {
+					int bytesPerPixel = ImageFormat.getBitsPerPixel(ImageFormat.YUV_420_888) / 8;
+					if (pixelStride == bytesPerPixel) {
+						int length = w * bytesPerPixel;
+						buffer.get(data, offset, length);
+
+						if (h - row != 1) {
+							buffer.position(buffer.position() + rowStride - length);
+						}
+						offset += length;
+					} else {
+
+
+						if (h - row == 1) {
+							buffer.get(rowData, 0, width - pixelStride + 1);
+						} else {
+							buffer.get(rowData, 0, rowStride);
+						}
+
+						for (int col = 0; col < w; col++) {
+							data[offset++] = rowData[col * pixelStride];
+						}
 					}
 				}
 			}
+
+			Mat mat = new Mat(height + height / 2, width, CvType.CV_8UC1);
+			mat.put(0, 0, data);
+
+			return mat;
+		}
+
+		@Override
+		public void run() {
+			Mat mYuvMat = imageToMat(mImage);
+			Mat bgrMat = new Mat(mImage.getHeight(), mImage.getWidth(), CvType.CV_8UC4);
+			mImage.close();
+			Imgproc.cvtColor(mYuvMat, bgrMat, Imgproc.COLOR_YUV2BGR_I420);
+			Imgcodecs.imwrite(mFile, bgrMat);
+			if( MyDebug.LOG )
+				Log.d("MROB", "Image saved to " + mFile);
 		}
 
 	}
