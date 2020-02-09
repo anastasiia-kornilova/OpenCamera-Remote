@@ -86,6 +86,7 @@ public class CameraController2 extends CameraController {
 	private final ErrorCallback preview_error_cb;
 	private final ErrorCallback camera_error_cb;
 	private final CameraTimestampCallback cameraTimestampCallback;
+	private final FrameCallback frameCallback;
 	private CameraCaptureSession captureSession;
 	private CaptureRequest.Builder previewBuilder;
 	private boolean previewIsVideoMode;
@@ -967,23 +968,19 @@ public class CameraController2 extends CameraController {
 	private class OnImageAvailableListener implements ImageReader.OnImageAvailableListener {
 
 		private long cnt = 0;
+
 		@Override
 		public void onImageAvailable(ImageReader reader) {
 			Image image = reader.acquireNextImage();
 			cnt += 1;
 			if (image != null) {
 				long ts = image.getTimestamp();
-//				image.close();
 				cameraTimestampCallback.onNewTimestamp(ts);
 				if (cnt % 20 == 0) {
-					if (MyDebug.LOG)
-						Log.d("MROB", "New image to record");
-					String file = Environment.getExternalStorageDirectory().getPath()
-							+ "/videoSensor/imgs/" + ts + ".png";
-					mBackgroundHandler.post(new ImageSaver(image, file));
-				} else {
-					image.close();
+					ExtractedImage extractedImage = new ExtractedImage(image, ts);
+					frameCallback.onNewFrame(extractedImage);
 				}
+				image.close();
 			} else {
 				if( MyDebug.LOG )
 					Log.d("MROB", "Empty");
@@ -1473,7 +1470,8 @@ public class CameraController2 extends CameraController {
 	 * @throws CameraControllerException if the camera device fails to open.
      */
 	public CameraController2(Context context, int cameraId, final ErrorCallback preview_error_cb, final ErrorCallback camera_error_cb
-			, final CameraTimestampCallback cameraTimestampCallback) throws CameraControllerException {
+			, final CameraTimestampCallback cameraTimestampCallback
+			, final FrameCallback frameCallback) throws CameraControllerException {
 		super(cameraId);
 		if( MyDebug.LOG ) {
 			Log.d(TAG, "create new CameraController2: " + cameraId);
@@ -1484,6 +1482,7 @@ public class CameraController2 extends CameraController {
 		this.preview_error_cb = preview_error_cb;
 		this.camera_error_cb = camera_error_cb;
 		this.cameraTimestampCallback = cameraTimestampCallback;
+		this.frameCallback = frameCallback;
 
 		this.is_samsung_s7 = Build.MODEL.toLowerCase(Locale.US).contains("sm-g93");
 		if( MyDebug.LOG )

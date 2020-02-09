@@ -272,6 +272,10 @@ public abstract class CameraController {
 	public interface CameraTimestampCallback {
 		void onNewTimestamp(long timestamp);
 	}
+
+	public interface FrameCallback {
+		void onNewFrame(ExtractedImage extractedImage);
+	}
 	
 	public static class Face {
 		public final int score;

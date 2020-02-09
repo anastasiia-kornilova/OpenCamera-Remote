@@ -1,5 +1,6 @@
 package net.sourceforge.opencamera.Preview;
 
+import net.sourceforge.opencamera.CameraController.ExtractedImage;
 import net.sourceforge.opencamera.CameraController.RawImage;
 //import net.sourceforge.opencamera.MainActivity;
 import net.sourceforge.opencamera.MyDebug;
@@ -98,6 +99,11 @@ import android.view.View.MeasureSpec;
 import android.view.accessibility.AccessibilityManager;
 import android.widget.FrameLayout;
 import android.widget.Toast;
+
+import org.opencv.core.CvType;
+import org.opencv.core.Mat;
+import org.opencv.imgcodecs.Imgcodecs;
+import org.opencv.imgproc.Imgproc;
 
 /** This class was originally named due to encapsulating the camera preview,
  *  but in practice it's grown to more than this, and includes most of the
@@ -1517,6 +1523,21 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 		}
 	}
 
+	private class AsyncTaskWriter extends AsyncTask<ExtractedImage, Integer, Integer> {
+		@Override
+		protected Integer doInBackground(ExtractedImage... extractedImages) {
+			ExtractedImage image = extractedImages[0];
+			ImageUtils utils = new ImageUtils(image);
+			Mat mYuvMat = utils.imageToMat(image);
+			Mat bgrMat = new Mat(image.getHeight(), image.getWidth(), CvType.CV_8UC4);
+			Imgproc.cvtColor(mYuvMat, bgrMat, Imgproc.COLOR_YUV2BGR_I420);
+			String path = Environment.getExternalStorageDirectory().getPath()
+					+ "/videoSensor/imgs/" + image.getFrameTimestamp() + ".png";
+			Imgcodecs.imwrite(path, bgrMat);
+			return 1;
+		}
+	}
+
 	/** Open the camera - this should be called from background thread, to avoid hogging the UI thread.
 	 */
 	private CameraController openCameraCore(int cameraId) {
@@ -1558,6 +1579,12 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 					}
 				}
 			};
+			CameraController.FrameCallback frameCallback = new CameraController.FrameCallback() {
+				@Override
+				public void onNewFrame(ExtractedImage extractedImage) {
+					new AsyncTaskWriter().execute(extractedImage);
+				}
+			};
 	        if( using_android_l ) {
 				CameraController.ErrorCallback previewErrorCallback = new CameraController.ErrorCallback() {
 					public void onError() {
@@ -1566,7 +1593,8 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 						applicationInterface.onFailedStartPreview();
 					}
 				};
-				camera_controller_local = new CameraController2(Preview.this.getContext(), cameraId, previewErrorCallback, cameraErrorCallback, cameraTimestampCallback);
+				camera_controller_local = new CameraController2(Preview.this.getContext(), cameraId, previewErrorCallback
+						, cameraErrorCallback, cameraTimestampCallback, frameCallback);
 	    		if( applicationInterface.useCamera2FakeFlash() ) {
 	    			camera_controller_local.setUseCamera2FakeFlash(true);
 	    		}
