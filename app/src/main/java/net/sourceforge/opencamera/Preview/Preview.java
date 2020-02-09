@@ -6339,6 +6339,22 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 		/*if( MyDebug.LOG )
     		Log.d(TAG, "onAccelerometerSensorChanged: " + event.values[0] + ", " + event.values[1] + ", " + event.values[2]);*/
 
+		if (isBuffersInited) {
+			// StringBuilder is important here because it does not suffer when threading
+			StringBuilder sensorData = new StringBuilder();
+
+			sensorData.append(event.values[0]);
+			sensorData.append(',');
+			sensorData.append(event.values[1]);
+			sensorData.append(',');
+			sensorData.append(event.values[2]);
+			sensorData.append(',');
+			sensorData.append(event.timestamp);
+			sensorData.append('\n');
+
+			mAccelBuffer.append(sensorData.toString());
+		}
+
     	this.has_gravity = true;
     	for(int i=0;i<3;i++) {
     		//this.gravity[i] = event.values[i];
