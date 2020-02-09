@@ -2,6 +2,9 @@ package net.sourceforge.opencamera.CameraController;
 
 import net.sourceforge.opencamera.MyDebug;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -14,6 +17,8 @@ import java.util.Queue;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.graphics.Point;
 import android.graphics.Rect;
@@ -41,6 +46,7 @@ import android.media.ImageReader;
 import android.media.MediaActionSound;
 import android.media.MediaRecorder;
 import android.os.Build;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.support.annotation.NonNull;
@@ -59,6 +65,8 @@ public class CameraController2 extends CameraController {
 	private static final String TAG = "CameraController2";
 
 	private final Context context;
+	private final HandlerThread mBackgroundThread;
+	private final Handler mBackgroundHandler;
 	private CameraDevice camera;
 	private String cameraIdS;
 
@@ -957,13 +965,24 @@ public class CameraController2 extends CameraController {
 	}
 
 	private class OnImageAvailableListener implements ImageReader.OnImageAvailableListener {
+
+		private long cnt = 0;
 		@Override
 		public void onImageAvailable(ImageReader reader) {
 			Image image = reader.acquireNextImage();
-
+			cnt += 1;
 			if (image != null) {
-				cameraTimestampCallback.onNewTimestamp(image.getTimestamp());
-				image.close();
+				long ts = image.getTimestamp();
+				cameraTimestampCallback.onNewTimestamp(ts);
+				if (cnt % 10 == 0) {
+					if( MyDebug.LOG )
+						Log.d("MROB", "New image to record");
+					File file = new File(Environment.getExternalStorageDirectory().getPath() + "/videoSensor/imgs/"
+							, ts + ".jpg");
+					mBackgroundHandler.post(new ImageSaver(image, file));
+				} else {
+					image.close();
+				}
 			} else {
 				if( MyDebug.LOG )
 					Log.d("MROB", "Empty");
@@ -1474,6 +1493,9 @@ public class CameraController2 extends CameraController {
 		handler = new Handler(thread.getLooper());
 
 		final CameraManager manager = (CameraManager)context.getSystemService(Context.CAMERA_SERVICE);
+		mBackgroundThread = new HandlerThread("CameraBackground");
+		mBackgroundThread.start();
+		mBackgroundHandler = new Handler(mBackgroundThread.getLooper());
 
 		class MyStateCallback extends CameraDevice.StateCallback {
 			boolean callback_done; // must sychronize on this and notifyAll when setting to true
@@ -3503,7 +3525,7 @@ public class CameraController2 extends CameraController {
 		}
 		// maxImages only needs to be 2, as we always read the JPEG data and close the image straight away in the imageReader
 //		imageReader = ImageReader.newInstance(picture_width, picture_height, ImageFormat.JPEG, 2);
-		imageReader = ImageReader.newInstance(picture_width / 16, picture_height / 16, ImageFormat.YUV_420_888, 20);
+		imageReader = ImageReader.newInstance(picture_width, picture_height, ImageFormat.JPEG, 20);
 		if( MyDebug.LOG ) {
 			Log.d(TAG, "created new imageReader: " + imageReader.toString());
 			Log.d(TAG, "imageReader surface: " + imageReader.getSurface().toString());
@@ -3511,7 +3533,7 @@ public class CameraController2 extends CameraController {
 		// It's intentional that we pass a handler on null, so the OnImageAvailableListener runs on the UI thread.
 		// If ever we want to change this on future, we should ensure that all image available listeners (JPEG+RAW) are
 		// using the same handler/thread.
-		imageReader.setOnImageAvailableListener(new OnImageAvailableListener(), null);
+		imageReader.setOnImageAvailableListener(new OnImageAvailableListener(), mBackgroundHandler);
 		if( want_raw && raw_size != null&& !previewIsVideoMode  ) {
 			// unlike the JPEG imageReader, we can't read the data and close the image straight away, so we need to allow a larger
 			// value for maxImages
@@ -4633,7 +4655,7 @@ public class CameraController2 extends CameraController {
 							previewBuilder.addTarget(video_recorder_surface);
 							previewBuilder.addTarget(imageReader.getSurface());
 							if( MyDebug.LOG )
-								Log.e("MROB", "Added imageReader");
+								Log.d("MROB", "Added imageReader");
 						}
 						try {
 							setRepeatingRequest();
@@ -7563,4 +7585,47 @@ public class CameraController2 extends CameraController {
             }
 		}
 	};
+
+	private static class ImageSaver implements Runnable {
+
+		/**
+		 * The JPEG image
+		 */
+		private final Image mImage;
+		/**
+		 * The file we save the image into.
+		 */
+		private final File mFile;
+
+		ImageSaver(Image image, File file) {
+			mImage = image;
+			mFile = file;
+		}
+
+		@Override
+		public void run() {
+			ByteBuffer buffer = mImage.getPlanes()[0].getBuffer();
+			byte[] bytes = new byte[buffer.remaining()];
+			buffer.get(bytes);
+			FileOutputStream output = null;
+			try {
+				output = new FileOutputStream(mFile);
+				output.write(bytes);
+			} catch (IOException e) {
+				e.printStackTrace();
+			} finally {
+				mImage.close();
+				if( MyDebug.LOG )
+					Log.d("MROB", "Image saved" + mFile.getName());
+				if (null != output) {
+					try {
+						output.close();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+		}
+
+	}
 }
