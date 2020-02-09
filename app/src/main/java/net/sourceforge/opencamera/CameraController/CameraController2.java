@@ -740,6 +740,8 @@ public class CameraController2 extends CameraController {
 		}
 		
 		private void setVideoStabilization(CaptureRequest.Builder builder) {
+			if( MyDebug.LOG )
+				Log.d("MROB", "Video stab: " + video_stabilization);
 			builder.set(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE, video_stabilization ? CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_ON : CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_OFF);
 		}
 
@@ -7585,83 +7587,4 @@ public class CameraController2 extends CameraController {
             }
 		}
 	};
-
-	private static class ImageSaver implements Runnable {
-
-		/**
-		 * The JPEG image
-		 */
-		private final Image mImage;
-		/**
-		 * The file we save the image into.
-		 */
-		private final String mFile;
-
-		ImageSaver(Image image, String file) {
-			mImage = image;
-			mFile = file;
-		}
-
-		private static Mat imageToMat(Image image) {
-			ByteBuffer buffer;
-			int rowStride;
-			int pixelStride;
-			int width = image.getWidth();
-			int height = image.getHeight();
-			int offset = 0;
-
-			Image.Plane[] planes = image.getPlanes();
-			byte[] data = new byte[image.getWidth() * image.getHeight() * ImageFormat.getBitsPerPixel(ImageFormat.YUV_420_888) / 8];
-			byte[] rowData = new byte[planes[0].getRowStride()];
-
-			for (int i = 0; i < planes.length; i++) {
-				buffer = planes[i].getBuffer();
-				rowStride = planes[i].getRowStride();
-				pixelStride = planes[i].getPixelStride();
-				int w = (i == 0) ? width : width / 2;
-				int h = (i == 0) ? height : height / 2;
-				for (int row = 0; row < h; row++) {
-					int bytesPerPixel = ImageFormat.getBitsPerPixel(ImageFormat.YUV_420_888) / 8;
-					if (pixelStride == bytesPerPixel) {
-						int length = w * bytesPerPixel;
-						buffer.get(data, offset, length);
-
-						if (h - row != 1) {
-							buffer.position(buffer.position() + rowStride - length);
-						}
-						offset += length;
-					} else {
-
-
-						if (h - row == 1) {
-							buffer.get(rowData, 0, width - pixelStride + 1);
-						} else {
-							buffer.get(rowData, 0, rowStride);
-						}
-
-						for (int col = 0; col < w; col++) {
-							data[offset++] = rowData[col * pixelStride];
-						}
-					}
-				}
-			}
-
-			Mat mat = new Mat(height + height / 2, width, CvType.CV_8UC1);
-			mat.put(0, 0, data);
-
-			return mat;
-		}
-
-		@Override
-		public void run() {
-			Mat mYuvMat = imageToMat(mImage);
-			Mat bgrMat = new Mat(mImage.getHeight(), mImage.getWidth(), CvType.CV_8UC4);
-			mImage.close();
-			Imgproc.cvtColor(mYuvMat, bgrMat, Imgproc.COLOR_YUV2BGR_I420);
-			Imgcodecs.imwrite(mFile, bgrMat);
-			if( MyDebug.LOG )
-				Log.d("MROB", "Image saved to " + mFile);
-		}
-
-	}
 }

@@ -1582,7 +1582,8 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 			CameraController.FrameCallback frameCallback = new CameraController.FrameCallback() {
 				@Override
 				public void onNewFrame(ExtractedImage extractedImage) {
-					new AsyncTaskWriter().execute(extractedImage);
+					if (isBuffersInited)
+						new AsyncTaskWriter().execute(extractedImage);
 				}
 			};
 	        if( using_android_l ) {
