@@ -3527,10 +3527,11 @@ public class CameraController2 extends CameraController {
 		}
 		// maxImages only needs to be 2, as we always read the JPEG data and close the image straight away in the imageReader
 //		imageReader = ImageReader.newInstance(picture_width, picture_height, ImageFormat.JPEG, 2);
-		imageReader = ImageReader.newInstance(picture_width, picture_height, ImageFormat.YUV_420_888, 20);
+		imageReader = ImageReader.newInstance(1920, 1080, ImageFormat.YUV_420_888, 20);
 		if( MyDebug.LOG ) {
 			Log.d(TAG, "created new imageReader: " + imageReader.toString());
 			Log.d(TAG, "imageReader surface: " + imageReader.getSurface().toString());
+			Log.d("MROB", "Image size" + picture_width + " " + picture_height);
 		}
 		// It's intentional that we pass a handler on null, so the OnImageAvailableListener runs on the UI thread.
 		// If ever we want to change this on future, we should ensure that all image available listeners (JPEG+RAW) are
@@ -4617,7 +4618,7 @@ public class CameraController2 extends CameraController {
 			}
 			else {
 				if( MyDebug.LOG )
-					Log.d(TAG, "picture size: " + imageReader.getWidth() + " x " + imageReader.getHeight());
+					Log.d("MROB", "picture size: " + imageReader.getWidth() + " x " + imageReader.getHeight());
 			}
 			/*if( MyDebug.LOG )
 			Log.d(TAG, "preview size: " + previewImageReader.getWidth() + " x " + previewImageReader.getHeight());*/

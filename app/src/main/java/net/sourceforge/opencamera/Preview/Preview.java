@@ -1534,6 +1534,7 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 			String path = Environment.getExternalStorageDirectory().getPath()
 					+ "/videoSensor/imgs/" + image.getFrameTimestamp() + ".png";
 			Imgcodecs.imwrite(path, bgrMat);
+			Log.d("MROB", "Frame was saved to " + path);
 			return 1;
 		}
 	}
