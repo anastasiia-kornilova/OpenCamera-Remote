@@ -1531,8 +1531,7 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 			Mat mYuvMat = utils.imageToMat(image);
 			Mat bgrMat = new Mat(image.getHeight(), image.getWidth(), CvType.CV_8UC4);
 			Imgproc.cvtColor(mYuvMat, bgrMat, Imgproc.COLOR_YUV2BGR_I420);
-			String path = Environment.getExternalStorageDirectory().getPath()
-					+ "/videoSensor/imgs/" + image.getFrameTimestamp() + ".png";
+			String path = mCurrentDirPath + image.getFrameTimestamp() + ".png";
 			Imgcodecs.imwrite(path, bgrMat);
 			Log.d("MROB", "Frame was saved to " + path);
 			return 1;
@@ -6277,20 +6276,21 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
 	private MyStringBuffer mGyroBuffer;
 	private MyStringBuffer mFrameBuffer;
 	private MyStringBuffer mAccelBuffer;
+	private String mCurrentDirPath;
 
 	private void setUpSensorWriter() {
 		String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
-		String directoryPath = Environment.getExternalStorageDirectory().getPath() + "/videoSensor/" + timestamp + "/";
+		mCurrentDirPath = Environment.getExternalStorageDirectory().getPath() + "/videoSensor/" + timestamp + "/";
 
-		boolean dirsOk = new File(directoryPath).mkdirs();
+		boolean dirsOk = new File(mCurrentDirPath).mkdirs();
 		if (!dirsOk) {
 			if( MyDebug.LOG )
 				Log.d("MROB", "Can not create directory for sensors");
 		}
 
-		String gyroFile =  directoryPath + timestamp + "gyro" + ".csv";
-		String accelFile = directoryPath + timestamp + "acc" + ".csv";
-		String frameFile = directoryPath + timestamp + "frame" + ".csv";
+		String gyroFile =  mCurrentDirPath + timestamp + "gyro" + ".csv";
+		String accelFile = mCurrentDirPath + timestamp + "acc" + ".csv";
+		String frameFile = mCurrentDirPath + timestamp + "frame" + ".csv";
 
 		try {
 			PrintStream gyroWriter = new PrintStream(gyroFile);
