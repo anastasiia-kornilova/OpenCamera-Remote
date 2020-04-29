@@ -6,7 +6,7 @@ OpenCamera Remote is an extended [Open Camera](https://play.google.com/store/app
 
 Our main contribution to this application is adding IMU recording (built-in smartphone gyroscope, accelerometer) and "hardware" **synchronization** IMU timestamps with frame timestamps. Note, that the synchronization will not work on all smartphones, only those one that support [parameter](https://developer.android.com/reference/android/hardware/camera2/CameraMetadata#SENSOR_INFO_TIMESTAMP_SOURCE_REALTIME) `SENSOR_INFO_TIMESTAMP_SOURCE_REALTIME`.
 
-##### Here you can download APK (??? TBD)
+##### Here you can download [APK](https://drive.google.com/open?id=1gUq1iygCGJbrzyvXeLN4EEKQrEzxlm8v)
 
 #### Good practices and tips to use this application in scientific scenarios
 
@@ -18,7 +18,7 @@ Our main contribution to this application is adding IMU recording (built-in smar
 
 #### How to record?
 
-To record, install an application from the APK (??? TBD) or build it from the sources. Pay attention, that there is an external dependency from the OpenCV, so you need to download its' SDK and add SDK as module in the project.  
+To record, install an application from the [APK](https://drive.google.com/open?id=1gUq1iygCGJbrzyvXeLN4EEKQrEzxlm8v) or build it from the sources. Pay attention, that there is an external dependency from the OpenCV, so you need to download its' SDK and add SDK as module in the project.
 
 ##### Manual recording
 
