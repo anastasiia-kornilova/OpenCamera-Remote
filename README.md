@@ -29,7 +29,16 @@ To record, install an application from the [APK](https://drive.google.com/open?i
 
 ##### Auto recording over network
 
-TBD
+###### Wi-Fi
+
+1. Turn on hotspot on the smartphone or make hotspot from another device
+2. Connect you computer to that hotspot and smartphone (in case of another tethering device)
+3. Make sure that traffic in your network is small to get more stable delay
+4. Go to the network settings of smartphone and check its' IP address
+5. Check connection from computer through `ping <smartphone IP-address>`
+6. Open installed from [APK](https://drive.google.com/open?id=1gUq1iygCGJbrzyvXeLN4EEKQrEzxlm8v) OpenCamera-Remote-IMU
+7. The command `echo "V<filename>" | nc -w1 -u -b <smartphone IP-address> 8000` will run your recording
+8. To stop recording, run that command one more time. 
 
 #### Where can I find recorded results and how they organized?
 
