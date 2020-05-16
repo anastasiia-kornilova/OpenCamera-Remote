@@ -4654,6 +4654,12 @@ public class CameraController2 extends CameraController {
 						captureSession = session;
 						Surface surface = getPreviewSurface();
 						previewBuilder.addTarget(surface);
+						previewBuilder.set(CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE
+								, CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_OFF);
+						int ois_mode = previewBuilder.get(CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE);
+						if (ois_mode == CameraCharacteristics.LENS_OPTICAL_STABILIZATION_MODE_OFF)
+							if (MyDebug.LOG)
+								Log.d("MROB", "OIS disabled");
 						if( video_recorder != null ) {
 							previewBuilder.addTarget(video_recorder_surface);
 							previewBuilder.addTarget(imageReader.getSurface());
